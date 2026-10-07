@@ -4,19 +4,13 @@ import requests
 import urllib.parse
 import pandas as pd
 
-# 💡 내 컴퓨터의 절대 경로를 강제로 추적해서 templates 폴더를 정확히 짚어줍니다.
 base_dir = os.path.abspath(os.path.dirname(__file__))
 template_dir = os.path.join(base_dir, 'templates')
 
 app = Flask(__name__, template_folder=template_dir)
 
 # ==========================================
-# 🔑 1. API 키 설정 (이하 기존 코드 그대로 유지)
-# ==========================================
-
-
-# ==========================================
-# 🔑 1. API 키 설정 (깃허브 올릴 땐 꼭 지우세요!)
+# 🔑 1. API 키 설정
 # ==========================================
 NAVER_CLIENT_ID = "gthv6ddfee"
 NAVER_CLIENT_SECRET = "fPXCfIgHCdzW7XaH3q421qXGLbtaWEpBPrIXbRex"
@@ -41,7 +35,7 @@ except Exception as e:
     print("CSV 로드 오류:", e)
 
 # ==========================================
-# 🛠 3. API 함수 정의 (이 부분이 비어있었습니다!)
+# 🛠 3. API 함수 정의
 # ==========================================
 def get_nearby_stations(lat, lon):
     url = f"http://apis.data.go.kr/1613000/BusSttnInfoInqireService/getCrdntPrxmtSttnList?serviceKey={PUBLIC_DATA_KEY}&gpsLati={lat}&gpsLong={lon}&numOfRows=5&pageNo=1&_type=json"
@@ -83,16 +77,23 @@ def get_walking_time(start_lat, start_lon, start_name, end_lat, end_lon, end_nam
 # ==========================================
 @app.route('/')
 def home():
-    # CSV에 있는 건물 이름들을 웹 화면 드롭다운으로 보내줍니다.
     building_names = list(HALLYM_BUILDINGS.keys())
     return render_template('index.html', buildings=building_names)
 
 @app.route('/get_route_info', methods=['POST'])
 def get_route_info():
-    data = request.json
-    my_location = data.get('location')
+    data = request.get_json()
     
-    my_lat, my_lon = HALLYM_BUILDINGS.get(my_location, (None, None))
+    # 프론트에서 넘어온 좌표와 위치명 확인
+    my_lat = data.get('lat')
+    my_lon = data.get('lon')
+    my_location = data.get('location', '현재 위치') 
+
+    # 수동 검색인 경우 건물 이름으로 좌표 검색
+    if not my_lat or not my_lon:
+        if my_location and my_location != '현재 위치':
+            my_lat, my_lon = HALLYM_BUILDINGS.get(my_location, (None, None))
+            
     if not my_lat:
         return jsonify({"error": "위치를 찾을 수 없습니다."})
 
@@ -125,4 +126,3 @@ def get_route_info():
 
 if __name__ == '__main__':
     app.run(debug=True)
-

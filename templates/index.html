@@ -7,9 +7,8 @@
     <!-- 요즘 가장 많이 쓰는 폰트인 'Pretendard' 적용 -->
     <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css" />
     <style>
-        /* 전체 색상 및 폰트 설정 */
         :root {
-            --primary-color: #005AAB; /* 한림대 상징색(블루) 톤 */
+            --primary-color: #005AAB; 
             --bg-color: #F5F7FA;
         }
         body {
@@ -19,13 +18,11 @@
             padding: 0;
             color: #333;
         }
-        /* 모바일 화면에 딱 맞는 중앙 정렬 컨테이너 */
         .container {
             max-width: 480px;
             margin: 0 auto;
             padding: 20px;
         }
-        /* 상단 헤더 (타이틀) */
         .header {
             text-align: center;
             padding: 40px 0 20px 0;
@@ -42,7 +39,6 @@
             color: #666;
             margin-top: 8px;
         }
-        /* 검색창 (드롭다운 & 버튼) 영역 */
         .search-box {
             background: white;
             padding: 24px;
@@ -60,7 +56,7 @@
             outline: none;
             font-family: inherit;
             margin-bottom: 16px;
-            appearance: none; /* 기본 화살표 숨김 */
+            appearance: none; 
             background: url('data:image/svg+xml;utf8,<svg fill="%23999" height="24" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg"><path d="M7 10l5 5 5-5z"/><path d="M0 0h24v24H0z" fill="none"/></svg>') no-repeat right 10px center;
             background-color: white;
         }
@@ -85,7 +81,6 @@
         button:active {
             transform: scale(0.98);
         }
-        /* 결과 카드 디자인 */
         .result-card {
             background: white;
             padding: 24px;
@@ -93,27 +88,35 @@
             box-shadow: 0 10px 30px rgba(0,0,0,0.03);
             margin-bottom: 16px;
         }
+        .station-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid #EDF2F7;
+        }
         .station-name {
             font-size: 18px;
             font-weight: 800;
-            margin-bottom: 6px;
             color: #1A202C;
         }
-        .walk-info {
+        .walk-time {
             font-size: 14px;
             color: #005AAB;
             font-weight: 600;
-            margin-bottom: 16px;
-            padding-bottom: 16px;
-            border-bottom: 1px solid #EDF2F7;
+        }
+        .bus-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
         }
         .bus-item {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 12px 0;
         }
-        .bus-no {
+        .bus-number {
             font-size: 16px;
             font-weight: 800;
             color: #2D3748;
@@ -134,10 +137,7 @@
             font-weight: 600;
         }
     </style>
-        <script src="https://oapi.map.naver.com/openapi/v3/maps.js?ncpKeyId=gthv6ddfee"></script>
-
-
-
+    <script src="https://oapi.map.naver.com/openapi/v3/maps.js?ncpKeyId=gthv6ddfee"></script>
 </head>
 <body>
     <div class="container">
@@ -147,30 +147,28 @@
             <p>지금 내 건물에서 가장 빨리 타는 버스</p>
         </div>
 
-        <!-- 건물 선택 영역 -->
-               <!-- 검색 및 GPS 영역 -->
+        <!-- 검색 및 GPS 영역 -->
         <div class="search-box">
-            <!-- 1. 건물 직접 선택 (기존 기능) -->
-            <select id="building-select">
-                <option value="">현재 있는 건물을 선택하세요 (직접 선택)</option>
-                {% for name in buildings %}
-                <option value="{{ name }}">{{ name }}</option>
-                {% endfor %}
-            </select>
-            
-            <!-- 2. 내 위치(GPS) 버튼 -->
-            <button onclick="findMyLocation()" style="background-color: #2D3748; margin-bottom: 16px;">
-                📍 내 위치 자동 파악하기 (GPS)
+            <!-- 1. 메인 버튼: 내 현재 위치로 가장 빠른 길 찾기 -->
+            <button onclick="findRoutesByGPS()" style="background-color: #03c75a; font-size: 18px; margin-bottom: 20px;">
+                📍 내 실시간 위치로 주변 버스 찾기
             </button>
             
-            <!-- 3. 네이버 지도가 그려질 도화지 (처음엔 숨겨둠) -->
-            <div id="map" style="width:100%; height:250px; border-radius: 12px; margin-bottom: 16px;"></div>
+            <!-- 2. 네이버 지도가 그려질 도화지 -->
+            <div id="map" style="width:100%; height:250px; border-radius: 12px; margin-bottom: 20px;"></div>
 
-
-            <!-- 4. 검색 버튼 -->
-            <button onclick="findRoutes()">최단 경로 찾기</button>
+            <!-- 3. 보조 수단: GPS 안될 때 수동 선택 -->
+            <div style="padding-top: 15px; border-top: 1px solid #eee;">
+                <p style="font-size: 13px; color: #888; margin-bottom: 8px;">위치 허용이 안 되시나요?</p>
+                <select id="building-select" style="margin-bottom: 10px;">
+                    <option value="">현재 있는 건물을 직접 선택하세요</option>
+                    {% for name in buildings %}
+                    <option value="{{ name }}">{{ name }}</option>
+                    {% endfor %}
+                </select>
+                <button onclick="findRoutes()" style="background-color: #2D3748;">선택한 건물로 버스 찾기</button>
+            </div>
         </div>
-
 
         <!-- 로딩 애니메이션 텍스트 -->
         <div id="loading" class="loading">
@@ -182,15 +180,14 @@
     </div>
 
     <script>
-        let myLat = 0;
-        let myLon = 0;
+        let currentLat = null;
+        let currentLon = null;
         let map;
         let marker;
-        let watchId; // 실시간 추적을 관리하는 ID
+        let watchId;
 
-        // 1. 초기 화면: 웹사이트가 열리자마자 한림대 중심 지도를 띄웁니다.
         window.onload = function() {
-            // 한림대 캠퍼스라이프센터 대략적 좌표
+            // 초기 지도 설정 (한림대 중심)
             const defaultLat = 37.8863; 
             const defaultLon = 127.7381;
 
@@ -203,42 +200,102 @@
                 position: new naver.maps.LatLng(defaultLat, defaultLon),
                 map: map
             });
+
+            // 사이트 열자마자 GPS 추적 시작
+            findMyLocation();
         };
 
-        // 2. 실시간 위치 추적: 버튼을 누르면 이동하는 대로 핀이 따라갑니다.
-        function findMyLocation() {
-            if (navigator.geolocation) {
-                document.getElementById('loading').style.display = 'block';
-                document.getElementById('loading').innerText = '📍 실시간 위치를 추적합니다...';
+        // 실시간 위치 추적 함수
+        function findRoutesByGPS() {
+    const loading = document.getElementById('loading');
+    loading.style.display = 'block';
+    loading.innerText = '📍 실시간 위치를 파악 중입니다...';
 
-                // watchPosition: 위치가 바뀔 때마다 내부 코드가 계속 다시 실행됩니다.
-                watchId = navigator.geolocation.watchPosition(function(position) {
-                    myLat = position.coords.latitude;
-                    myLon = position.coords.longitude;
+    const onSuccess = (position) => {
+        currentLat = position.coords.latitude;
+        currentLon = position.coords.longitude;
+
+        const newLocation = new naver.maps.LatLng(currentLat, currentLon);
+        map.panTo(newLocation);
+        marker.setPosition(newLocation);
+
+        loading.innerText = '🚌 버스 도착 시간을 계산하고 있습니다...';
+        fetch('/get_route_info', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ lat: currentLat, lon: currentLon })
+        })
+        .then(r => r.json())
+        .then(renderResults)
+        .catch(() => {
+            loading.style.display = 'none';
+            alert('데이터 통신에 실패했습니다.');
+        });
+    };
+
+    const onFail = (error) => {
+        loading.style.display = 'none';
+        console.log('GPS error', error.code, error.message);
+        const msg = {
+            1: '위치 권한이 차단되어 있습니다. 브라우저/기기 설정에서 위치를 허용해주세요.',
+            2: '현재 위치를 확인할 수 없습니다. Wi-Fi/위치 서비스를 확인하거나 수동 선택을 이용해주세요.',
+            3: '위치 확인 시간이 초과되었습니다. 아래 수동 선택을 이용해주세요.'
+        }[error.code] || '위치를 가져오지 못했습니다.';
+        alert(msg);
+    };
+
+    // 1차: 정밀 모드 → 실패(권한 거부 제외)하면 2차: 저정밀 모드로 재시도
+    navigator.geolocation.getCurrentPosition(onSuccess, (err) => {
+        if (err.code === 1) return onFail(err);
+        navigator.geolocation.getCurrentPosition(onSuccess, onFail,
+            { enableHighAccuracy: false, timeout: 10000, maximumAge: 60000 });
+    }, { enableHighAccuracy: true, timeout: 8000, maximumAge: 0 });
+}
+
+        // GPS 기반 검색 함수
+                // GPS 기반 검색 함수 (똑똑한 대기형으로 업그레이드)
+        function findRoutesByGPS() {
+            document.getElementById('loading').style.display = 'block';
+            document.getElementById('loading').innerText = '📍 실시간 위치를 파악 중입니다 (최대 10초 소요)...';
+
+            // 버튼을 누르는 순간 즉시 위치를 강제로 다시 가져옵니다.
+            navigator.geolocation.getCurrentPosition(
+                function(position) {
+                    // 1. 위치 찾기 성공!
+                    currentLat = position.coords.latitude;
+                    currentLon = position.coords.longitude;
                     
-                    document.getElementById('loading').style.display = 'none';
-                    
-                    const newLocation = new naver.maps.LatLng(myLat, myLon);
-                    
-                    // 지도 화면을 내 위치로 부드럽게 이동시키고 핀 위치 변경
+                    // 지도 핀 위치 업데이트
+                    const newLocation = new naver.maps.LatLng(currentLat, currentLon);
                     map.panTo(newLocation);
                     marker.setPosition(newLocation);
-                    marker.setAnimation(naver.maps.Animation.BOUNCE);
+
+                    // 2. 서버에 버스 정보 요청
+                    document.getElementById('loading').innerText = '🚌 버스 도착 시간을 계산하고 있습니다...';
                     
-                }, function(error) {
+                    fetch('/get_route_info', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ lat: currentLat, lon: currentLon })
+                    })
+                    .then(response => response.json())
+                    .then(data => renderResults(data))
+                    .catch(error => {
+                        document.getElementById('loading').style.display = 'none';
+                        alert('데이터 통신에 실패했습니다.');
+                    });
+                },
+                function(error) {
+                    // 위치 찾기 실패 (시간 초과 또는 실내)
                     document.getElementById('loading').style.display = 'none';
-                    alert("GPS 권한을 허용해주시거나 잠시 후 다시 시도해주세요.");
-                }, {
-                    enableHighAccuracy: true, // 배터리를 더 쓰더라도 가장 정확한 GPS 좌표 사용
-                    maximumAge: 0,
-                    timeout: 5000
-                });
-            } else {
-                alert("이 브라우저에서는 GPS를 지원하지 않습니다.");
-            }
+                    alert("GPS 신호가 약합니다. 건물 안쪽이실 경우 창가로 조금 이동하시거나, 아래의 '수동 선택'을 이용해주세요.");
+                },
+                { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 } // 최대 10초까지 기다림
+            );
         }
 
-        // 3. 기존 검색 함수 (수정 없음)
+
+        // 수동 검색 함수
         function findRoutes() {
             const building = document.getElementById('building-select').value;
             if (!building) {
@@ -255,48 +312,49 @@
                 body: JSON.stringify({location: building})
             })
             .then(response => response.json())
-            .then(data => {
-                document.getElementById('loading').style.display = 'none';
-                const container = document.getElementById('result-container');
-                
-                if(data.error) {
-                    container.innerHTML = `<div class="result-card" style="text-align:center; color:#E53E3E; font-weight:bold;">${data.error}</div>`;
-                    return;
-                }
-
-                data.forEach(station => {
-                    let busHtml = '';
-                    if (station.buses.length === 0) {
-                        busHtml = '<div class="bus-item" style="color:#A0AEC0; font-weight:600;">도착 예정인 버스가 없습니다.</div>';
-                    } else {
-                        station.buses.forEach(bus => {
-                            busHtml += `
-                                <div class="bus-item">
-                                    <span class="bus-no">${bus.route}번</span>
-                                    <span class="bus-time">${bus.min_left}분 후</span>
-                                </div>
-                            `;
-                        });
-                    }
-
-                    const card = `
-                        <div class="result-card">
-                            <div class="station-name">🚏 ${station.station_name}</div>
-                            <div class="walk-info">🚶‍♂️ 도보 ${station.walk_min}분 (${station.walk_dist}m)</div>
-                            <div class="bus-list">
-                                ${busHtml}
-                            </div>
-                        </div>
-                    `;
-                    container.innerHTML += card;
-                });
-            })
+            .then(data => renderResults(data))
             .catch(error => {
                 document.getElementById('loading').style.display = 'none';
                 alert('데이터 통신에 실패했습니다.');
             });
         }
 
+        // 결과 화면 그리기 함수 (중복 제거용)
+        function renderResults(data) {
+            document.getElementById('loading').style.display = 'none';
+            const container = document.getElementById('result-container');
+            
+            if(data.error) {
+                container.innerHTML = `<div class="result-card" style="text-align:center; color:#E53E3E; font-weight:bold;">${data.error}</div>`;
+                return;
+            }
+
+            let html = '';
+            data.forEach(station => {
+                html += `
+                <div class="result-card">
+                    <div class="station-header">
+                        <h3 class="station-name">🚏 ${station.station_name}</h3>
+                        <span class="walk-time">도보 ${station.walk_min}분 (${station.walk_dist}m)</span>
+                    </div>
+                    <div class="bus-list">`;
+                
+                if (station.buses.length > 0) {
+                    station.buses.forEach(bus => {
+                        html += `
+                        <div class="bus-item">
+                            <span class="bus-number">${bus.route}번</span>
+                            <span class="bus-time">${bus.min_left}분 후</span>
+                        </div>`;
+                    });
+                } else {
+                    html += `<div style="text-align: center; color: #A0AEC0; padding: 10px 0; font-weight:600;">도착 예정 버스가 없습니다.</div>`;
+                }
+                
+                html += `</div></div>`;
+            });
+            container.innerHTML = html;
+        }
     </script>
 </body>
 </html>
