@@ -185,6 +185,7 @@
         let map;
         let marker;
         let watchId;
+        let firstFixDone = false; // 첫 위치를 받았는지 (지도 이동/핀 애니메이션을 한 번만 하기 위함)
 
         window.onload = function() {
             // 초기 지도 설정 (한림대 중심)
@@ -201,99 +202,100 @@
                 map: map
             });
 
-            // 사이트 열자마자 GPS 추적 시작
+            // 사이트 열자마자 위치 추적 시작
             findMyLocation();
         };
 
         // 실시간 위치 추적 함수
-        function findRoutesByGPS() {
-    const loading = document.getElementById('loading');
-    loading.style.display = 'block';
-    loading.innerText = '📍 실시간 위치를 파악 중입니다...';
+        function findMyLocation() {
+            if (!navigator.geolocation) return;
 
-    const onSuccess = (position) => {
-        currentLat = position.coords.latitude;
-        currentLon = position.coords.longitude;
+            watchId = navigator.geolocation.watchPosition(function(position) {
+                currentLat = position.coords.latitude;
+                currentLon = position.coords.longitude;
 
-        const newLocation = new naver.maps.LatLng(currentLat, currentLon);
-        map.panTo(newLocation);
-        marker.setPosition(newLocation);
+                const newLocation = new naver.maps.LatLng(currentLat, currentLon);
+                marker.setPosition(newLocation);
 
-        loading.innerText = '🚌 버스 도착 시간을 계산하고 있습니다...';
-        fetch('/get_route_info', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ lat: currentLat, lon: currentLon })
-        })
-        .then(r => r.json())
-        .then(renderResults)
-        .catch(() => {
-            loading.style.display = 'none';
-            alert('데이터 통신에 실패했습니다.');
-        });
-    };
-
-    const onFail = (error) => {
-        loading.style.display = 'none';
-        console.log('GPS error', error.code, error.message);
-        const msg = {
-            1: '위치 권한이 차단되어 있습니다. 브라우저/기기 설정에서 위치를 허용해주세요.',
-            2: '현재 위치를 확인할 수 없습니다. Wi-Fi/위치 서비스를 확인하거나 수동 선택을 이용해주세요.',
-            3: '위치 확인 시간이 초과되었습니다. 아래 수동 선택을 이용해주세요.'
-        }[error.code] || '위치를 가져오지 못했습니다.';
-        alert(msg);
-    };
-
-    // 1차: 정밀 모드 → 실패(권한 거부 제외)하면 2차: 저정밀 모드로 재시도
-    navigator.geolocation.getCurrentPosition(onSuccess, (err) => {
-        if (err.code === 1) return onFail(err);
-        navigator.geolocation.getCurrentPosition(onSuccess, onFail,
-            { enableHighAccuracy: false, timeout: 10000, maximumAge: 60000 });
-    }, { enableHighAccuracy: true, timeout: 8000, maximumAge: 0 });
-}
-
-        // GPS 기반 검색 함수
-                // GPS 기반 검색 함수 (똑똑한 대기형으로 업그레이드)
-        function findRoutesByGPS() {
-            document.getElementById('loading').style.display = 'block';
-            document.getElementById('loading').innerText = '📍 실시간 위치를 파악 중입니다 (최대 10초 소요)...';
-
-            // 버튼을 누르는 순간 즉시 위치를 강제로 다시 가져옵니다.
-            navigator.geolocation.getCurrentPosition(
-                function(position) {
-                    // 1. 위치 찾기 성공!
-                    currentLat = position.coords.latitude;
-                    currentLon = position.coords.longitude;
-                    
-                    // 지도 핀 위치 업데이트
-                    const newLocation = new naver.maps.LatLng(currentLat, currentLon);
+                // 첫 위치를 받았을 때만 지도를 이동시키고 핀을 한 번 튀게 함
+                // (이후에는 사용자가 지도를 자유롭게 움직일 수 있음)
+                if (!firstFixDone) {
+                    firstFixDone = true;
                     map.panTo(newLocation);
-                    marker.setPosition(newLocation);
-
-                    // 2. 서버에 버스 정보 요청
-                    document.getElementById('loading').innerText = '🚌 버스 도착 시간을 계산하고 있습니다...';
-                    
-                    fetch('/get_route_info', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ lat: currentLat, lon: currentLon })
-                    })
-                    .then(response => response.json())
-                    .then(data => renderResults(data))
-                    .catch(error => {
-                        document.getElementById('loading').style.display = 'none';
-                        alert('데이터 통신에 실패했습니다.');
-                    });
-                },
-                function(error) {
-                    // 위치 찾기 실패 (시간 초과 또는 실내)
-                    document.getElementById('loading').style.display = 'none';
-                    alert("GPS 신호가 약합니다. 건물 안쪽이실 경우 창가로 조금 이동하시거나, 아래의 '수동 선택'을 이용해주세요.");
-                },
-                { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 } // 최대 10초까지 기다림
-            );
+                    marker.setAnimation(naver.maps.Animation.BOUNCE);
+                    setTimeout(() => marker.setAnimation(null), 1500);
+                }
+            }, function(error) {
+                console.log('watchPosition error', error.code, error.message);
+            }, {
+                enableHighAccuracy: false,
+                maximumAge: 10000,
+                timeout: 15000
+            });
         }
 
+        // 서버에 버스 정보 요청 (GPS 검색에서 공통 사용)
+        function requestRoutesByCoords(lat, lon) {
+            const loading = document.getElementById('loading');
+            loading.style.display = 'block';
+            loading.innerText = '🚌 버스 도착 시간을 계산하고 있습니다...';
+            document.getElementById('result-container').innerHTML = '';
+
+            fetch('/get_route_info', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ lat: lat, lon: lon })
+            })
+            .then(r => r.json())
+            .then(renderResults)
+            .catch(() => {
+                loading.style.display = 'none';
+                alert('데이터 통신에 실패했습니다.');
+            });
+        }
+
+        // GPS 기반 검색 함수
+        function findRoutesByGPS() {
+            const loading = document.getElementById('loading');
+            loading.style.display = 'block';
+
+            // 이미 watchPosition으로 받아둔 좌표가 있으면 바로 사용
+            if (currentLat !== null && currentLon !== null) {
+                requestRoutesByCoords(currentLat, currentLon);
+                return;
+            }
+
+            loading.innerText = '📍 실시간 위치를 파악 중입니다...';
+
+            const onSuccess = (position) => {
+                currentLat = position.coords.latitude;
+                currentLon = position.coords.longitude;
+
+                const newLocation = new naver.maps.LatLng(currentLat, currentLon);
+                map.panTo(newLocation);
+                marker.setPosition(newLocation);
+
+                requestRoutesByCoords(currentLat, currentLon);
+            };
+
+            const onFail = (error) => {
+                loading.style.display = 'none';
+                console.log('GPS error', error.code, error.message);
+                const msg = {
+                    1: '위치 권한이 차단되어 있습니다. 브라우저/기기 설정에서 위치를 허용해주세요.',
+                    2: '현재 위치를 확인할 수 없습니다. Wi-Fi/위치 서비스를 확인하거나 수동 선택을 이용해주세요.',
+                    3: '위치 확인 시간이 초과되었습니다. 아래 수동 선택을 이용해주세요.'
+                }[error.code] || '위치를 가져오지 못했습니다.';
+                alert(msg);
+            };
+
+            // 1차: 정밀 모드 → 실패(권한 거부 제외)하면 2차: 저정밀 모드로 재시도
+            navigator.geolocation.getCurrentPosition(onSuccess, (err) => {
+                if (err.code === 1) return onFail(err);
+                navigator.geolocation.getCurrentPosition(onSuccess, onFail,
+                    { enableHighAccuracy: false, timeout: 20000, maximumAge: 60000 });
+            }, { enableHighAccuracy: true, timeout: 8000, maximumAge: 0 });
+        }
 
         // 수동 검색 함수
         function findRoutes() {
@@ -303,18 +305,20 @@
                 return;
             }
 
-            document.getElementById('loading').style.display = 'block';
+            const loading = document.getElementById('loading');
+            loading.style.display = 'block';
+            loading.innerText = '🚌 버스 도착 시간을 계산하고 있습니다...';
             document.getElementById('result-container').innerHTML = '';
 
             fetch('/get_route_info', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({location: building})
+                body: JSON.stringify({ location: building })
             })
             .then(response => response.json())
             .then(data => renderResults(data))
             .catch(error => {
-                document.getElementById('loading').style.display = 'none';
+                loading.style.display = 'none';
                 alert('데이터 통신에 실패했습니다.');
             });
         }
@@ -324,7 +328,7 @@
             document.getElementById('loading').style.display = 'none';
             const container = document.getElementById('result-container');
             
-            if(data.error) {
+            if (data.error) {
                 container.innerHTML = `<div class="result-card" style="text-align:center; color:#E53E3E; font-weight:bold;">${data.error}</div>`;
                 return;
             }
