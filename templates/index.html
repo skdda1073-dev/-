@@ -200,10 +200,12 @@
 
     <script>
         // 서버에서 넘어온 학교별 건물 리스트 저장
-        const buildingData = {
-            hallym: {{ hallym_buildings | tojson }},
-            knu: {{ knu_buildings | tojson }}
+                const buildingData = {
+            hallym: JSON.parse('{{ hallym_buildings | tojson | safe }}'),
+            knu: JSON.parse('{{ knu_buildings | tojson | safe }}')
         };
+
+
 
         const campusCenter = {
             hallym: { lat: 37.8863, lon: 127.7381 },
