@@ -24,7 +24,7 @@
         }
         .header {
             text-align: center;
-            padding: 30px 0 20px 0;
+            padding: 20px 0 16px 0;
         }
         .header h1 {
             font-size: 28px;
@@ -34,18 +34,25 @@
             letter-spacing: -0.5px;
         }
         .header p {
-            font-size: 15px;
+            font-size: 14px;
             color: #666;
-            margin-top: 8px;
+            margin-top: 6px;
+        }
+        .search-box {
+            background: white;
+            padding: 22px;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.04);
+            margin-bottom: 18px;
         }
         .campus-tabs {
             display: flex;
-            gap: 10px;
-            margin-bottom: 16px;
+            gap: 8px;
+            margin-bottom: 18px;
         }
         .campus-tab {
             flex: 1;
-            padding: 14px;
+            padding: 12px;
             border-radius: 12px;
             border: 2px solid #E2E8F0;
             background: white;
@@ -60,48 +67,200 @@
             background-color: var(--primary-color);
             color: white;
         }
-        .search-box {
-            background: white;
-            padding: 24px;
-            border-radius: 20px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.03);
-            margin-bottom: 20px;
+        .step-block {
+            background: #F8FAFC;
+            border: 1px solid #EDF2F7;
+            border-radius: 14px;
+            padding: 14px;
+            margin-bottom: 12px;
         }
-        select {
+        .step-label {
+            font-size: 13px;
+            font-weight: 800;
+            color: #2D3748;
+            margin: 0 0 10px 0;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .step-badge {
+            background: var(--primary-color);
+            color: white;
+            font-size: 11px;
+            padding: 2px 7px;
+            border-radius: 20px;
+        }
+        select, .dest-input {
             width: 100%;
-            padding: 16px;
-            border: 1.5px solid #E2E8F0;
-            border-radius: 12px;
-            font-size: 16px;
-            font-weight: 500;
+            box-sizing: border-box;
+            padding: 13px 14px;
+            border: 1.5px solid #CBD5E0;
+            border-radius: 10px;
+            font-size: 15px;
+            font-weight: 600;
             outline: none;
             font-family: inherit;
-            margin-bottom: 12px;
-            appearance: none; 
-            background: url('data:image/svg+xml;utf8,<svg fill="%23999" height="24" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg"><path d="M7 10l5 5 5-5z"/><path d="M0 0h24v24H0z" fill="none"/></svg>') no-repeat right 10px center;
             background-color: white;
         }
-        select:focus {
+        select {
+            margin-bottom: 8px;
+            appearance: none; 
+            background: url('data:image/svg+xml;utf8,<svg fill="%23666" height="24" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg"><path d="M7 10l5 5 5-5z"/><path d="M0 0h24v24H0z" fill="none"/></svg>') no-repeat right 10px center;
+            background-color: white;
+        }
+        select:focus, .dest-input:focus {
             border-color: var(--primary-color);
         }
-        button {
+        .btn-gps {
             width: 100%;
-            background-color: var(--primary-color);
+            background-color: #03c75a;
             color: white;
             border: none;
-            padding: 18px;
-            border-radius: 12px;
-            font-size: 16px;
+            padding: 14px;
+            border-radius: 10px;
+            font-size: 15px;
+            font-weight: 800;
+            cursor: pointer;
+            margin-bottom: 12px;
+            transition: transform 0.1s;
+        }
+        .btn-building {
+            width: 100%;
+            background-color: #2D3748;
+            color: white;
+            border: none;
+            padding: 14px;
+            border-radius: 10px;
+            font-size: 15px;
             font-weight: 700;
             cursor: pointer;
-            transition: background 0.2s, transform 0.1s;
+            transition: transform 0.1s;
         }
-        button:active {
+        .btn-gps:active, .btn-building:active {
             transform: scale(0.98);
         }
+        .divider-text {
+            text-align: center;
+            font-size: 12px;
+            color: #A0AEC0;
+            font-weight: 600;
+            margin: 4px 0 10px 0;
+        }
+        .autocomplete-wrapper {
+            position: relative;
+        }
+        .autocomplete-list {
+            position: absolute;
+            top: 48px;
+            left: 0;
+            right: 0;
+            background: white;
+            border: 1.5px solid #CBD5E0;
+            border-radius: 12px;
+            box-shadow: 0 12px 24px rgba(0,0,0,0.12);
+            z-index: 1000;
+            max-height: 220px;
+            overflow-y: auto;
+            display: none;
+        }
+        .autocomplete-item {
+            padding: 12px 14px;
+            border-bottom: 1px solid #EDF2F7;
+            cursor: pointer;
+        }
+        .autocomplete-item:last-child {
+            border-bottom: none;
+        }
+        .autocomplete-item:hover {
+            background-color: #F7FAFC;
+        }
+        .dest-selected-tag {
+            display: none;
+            align-items: center;
+            justify-content: space-between;
+            background: #EBF8FF;
+            border: 1.5px solid #90CDF4;
+            color: #005AAB;
+            padding: 11px 14px;
+            border-radius: 10px;
+            font-size: 14px;
+            font-weight: 800;
+        }
+
+        /* ★ 하얀색 바탕의 네이버 지도 스타일 결과 카드 */
+        .naver-white-card {
+            background: #FFFFFF;
+            color: #1A202C;
+            padding: 24px;
+            border-radius: 20px;
+            margin-bottom: 16px;
+            border: 2px solid #005AAB;
+            box-shadow: 0 10px 30px rgba(0, 90, 171, 0.08);
+        }
+        .eta-badge-opt {
+            display: inline-block;
+            background: #EBF8FF;
+            color: #005AAB;
+            font-size: 13px;
+            font-weight: 800;
+            padding: 5px 10px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+        }
+        .eta-big-time {
+            font-size: 36px;
+            font-weight: 800;
+            color: #1A202C;
+            letter-spacing: -1px;
+            line-height: 1.1;
+        }
+        .eta-clock-range {
+            font-size: 15px;
+            color: #4A5568;
+            font-weight: 600;
+            margin: 8px 0 16px 0;
+        }
+        .eta-bar-track {
+            display: flex;
+            align-items: center;
+            background: #EDF2F7;
+            border-radius: 20px;
+            height: 26px;
+            overflow: hidden;
+            margin-bottom: 20px;
+            font-size: 12px;
+            font-weight: 800;
+        }
+        .eta-bar-walk {
+            background: #E2E8F0;
+            color: #2D3748;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            min-width: 70px;
+        }
+        .eta-bar-bus {
+            background: #03c75a;
+            color: #FFFFFF;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            min-width: 80px;
+        }
+        .eta-step-row {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            padding-top: 14px;
+            border-top: 1px solid #EDF2F7;
+        }
+
+        /* 일반 주변 정류장 카드 (목적지 미선택 시) */
         .result-card {
             background: white;
-            padding: 24px;
+            padding: 22px;
             border-radius: 20px;
             box-shadow: 0 10px 30px rgba(0,0,0,0.03);
             margin-bottom: 16px;
@@ -109,7 +268,7 @@
         .station-header {
             display: flex;
             justify-content: space-between;
-            align-items: flex-start;
+            align-items: center;
             margin-bottom: 12px;
             padding-bottom: 12px;
             border-bottom: 1px solid #EDF2F7;
@@ -120,41 +279,24 @@
             color: #1A202C;
             margin: 0;
         }
-        .walk-time {
-            font-size: 14px;
-            color: #005AAB;
-            font-weight: 600;
-            white-space: nowrap;
-        }
         .bus-list {
             display: flex;
             flex-direction: column;
-            gap: 12px;
         }
         .bus-item {
             display: flex;
             justify-content: space-between;
             align-items: center;
         }
-        .bus-number {
-            font-size: 16px;
-            font-weight: 800;
-            color: #2D3748;
-            background: #EDF2F7;
-            padding: 6px 12px;
-            border-radius: 8px;
-        }
-        .bus-time {
-            color: #E53E3E;
-            font-weight: 800;
-            font-size: 16px;
-        }
         .loading {
             text-align: center;
             display: none;
-            padding: 30px;
-            color: #718096;
-            font-weight: 600;
+            padding: 26px;
+            color: #005AAB;
+            font-weight: 700;
+            background: white;
+            border-radius: 16px;
+            margin-bottom: 16px;
         }
     </style>
     <script src="https://oapi.map.naver.com/openapi/v3/maps.js?ncpKeyId=gthv6ddfee"></script>
@@ -167,28 +309,49 @@
         </div>
 
         <div class="search-box">
-            <!-- 1. 학교 선택 탭 버튼 -->
+            <!-- 학교 전환 탭 -->
             <div class="campus-tabs">
                 <button id="tab-hallym" class="campus-tab active" onclick="switchCampus('hallym')">🏫 한림대학교</button>
                 <button id="tab-knu" class="campus-tab" onclick="switchCampus('knu')">🏫 강원대학교</button>
             </div>
 
-            <!-- 2. 실시간 GPS 검색 버튼 -->
-            <button onclick="findRoutesByGPS()" style="background-color: #03c75a; font-size: 18px; margin-bottom: 20px;">
-                📍 내 실시간 위치로 주변 버스 찾기
-            </button>
-            
-            <!-- 3. 네이버 지도 -->
-            <div id="map" style="width:100%; height:250px; border-radius: 12px; margin-bottom: 20px;"></div>
+            <!-- 출발 위치 선택 -->
+            <div class="step-block">
+                <div class="step-label">
+                    <span class="step-badge">출발</span> 어디서 출발하시나요?
+                </div>
+                
+                <button class="btn-gps" onclick="findRoutesByGPS()">
+                    📍 내 실시간 위치에서 가까운 버스 정류장
+                </button>
 
-            <!-- 4. 건물 직접 선택 영역 -->
-            <div style="padding-top: 15px; border-top: 1px solid #eee;">
-                <p style="font-size: 13px; color: #888; margin-bottom: 8px;">건물 위치로 직접 검색하시겠어요?</p>
+                <div class="divider-text">또는 교내 건물에서 출발</div>
+
                 <select id="building-select">
-                    <option value="">현재 있는 건물을 선택하세요</option>
+                    <option value="">출발 건물을 선택하세요</option>
                 </select>
-                <button onclick="findRoutes()" style="background-color: #2D3748;">선택한 건물로 버스 찾기</button>
+                <button class="btn-building" onclick="findRoutes()">
+                    🏢 선택한 건물에서 가까운 정류장
+                </button>
             </div>
+
+            <!-- 목적지 선택 (어디로 가시나요?) -->
+            <div class="step-block" style="margin-bottom: 16px;">
+                <div class="step-label">
+                    <span class="step-badge" style="background:#03c75a;">도착</span> 🎯 어디로 가시나요? <span style="font-weight:500; color:#718096; font-size:12px;">(선택 시 맞춤 경로로 전환)</span>
+                </div>
+                <div class="autocomplete-wrapper">
+                    <input type="text" id="dest-input" class="dest-input" placeholder="목적지 입력 (예: 남춘천역, 한림, 롯데시네마, 명동)" autocomplete="off" oninput="onSearchDestination(this.value)">
+                    <div id="autocomplete-list" class="autocomplete-list"></div>
+                </div>
+                <div id="dest-selected-tag" class="dest-selected-tag">
+                    <span id="dest-selected-text">🎯 도착지: </span>
+                    <span style="cursor:pointer; font-weight:800; padding: 0 4px;" onclick="clearDestination()">✕ 취소</span>
+                </div>
+            </div>
+
+            <!-- 네이버 지도 -->
+            <div id="map" style="width:100%; height:240px; border-radius: 14px;"></div>
         </div>
 
         <div id="loading" class="loading">
@@ -199,13 +362,10 @@
     </div>
 
     <script>
-        // 서버에서 넘어온 학교별 건물 리스트 저장
-                const buildingData = {
+        const buildingData = {
             hallym: JSON.parse('{{ hallym_buildings | tojson | safe }}'),
             knu: JSON.parse('{{ knu_buildings | tojson | safe }}')
         };
-
-
 
         const campusCenter = {
             hallym: { lat: 37.8863, lon: 127.7381 },
@@ -213,10 +373,17 @@
         };
 
         let selectedCampus = 'hallym';
+        let lastSearchMode = null;
         let currentLat = null;
         let currentLon = null;
+        let destLat = null;
+        let destLon = null;
+        let destName = '';
+        let searchTimer = null;
+
         let map;
-        let marker;
+        let startMarker;
+        let stationMarkers = [];
 
         window.onload = function() {
             const center = campusCenter.hallym;
@@ -225,36 +392,47 @@
                 zoom: 16
             });
 
-            marker = new naver.maps.Marker({
+            startMarker = new naver.maps.Marker({
                 position: new naver.maps.LatLng(center.lat, center.lon),
                 map: map
             });
 
-            // 초기 건물 목록을 한림대로 세팅
             updateBuildingSelect('hallym');
             findMyLocation();
         };
 
-        // 학교 전환 함수 (한림대 <-> 강원대)
+        function formatKoreanTime(dateObj) {
+            let h = dateObj.getHours();
+            const m = String(dateObj.getMinutes()).padStart(2, '0');
+            const ampm = h >= 12 ? '오후' : '오전';
+            h = h % 12;
+            if (h === 0) h = 12;
+            return `${ampm} ${h}:${m}`;
+        }
+
+        function format24Time(dateObj) {
+            const h = String(dateObj.getHours()).padStart(2, '0');
+            const m = String(dateObj.getMinutes()).padStart(2, '0');
+            return `${h}:${m}`;
+        }
+
         function switchCampus(campus) {
             selectedCampus = campus;
             document.getElementById('tab-hallym').classList.toggle('active', campus === 'hallym');
             document.getElementById('tab-knu').classList.toggle('active', campus === 'knu');
-
-            // 드롭다운 목록 교체
             updateBuildingSelect(campus);
 
-            // 지도 중심 이동
             const center = campusCenter[campus];
             const newLoc = new naver.maps.LatLng(center.lat, center.lon);
             map.panTo(newLoc);
-            marker.setPosition(newLoc);
+            startMarker.setPosition(newLoc);
+            clearStationMarkers();
         }
 
         function updateBuildingSelect(campus) {
             const selectEl = document.getElementById('building-select');
             const schoolName = campus === 'hallym' ? '한림대' : '강원대';
-            selectEl.innerHTML = `<option value="">[${schoolName}] 건물을 직접 선택하세요</option>`;
+            selectEl.innerHTML = `<option value="">[${schoolName}] 출발 건물을 선택하세요</option>`;
             
             buildingData[campus].forEach(name => {
                 const opt = document.createElement('option');
@@ -264,76 +442,226 @@
             });
         }
 
+        function onSearchDestination(keyword) {
+            clearTimeout(searchTimer);
+            const listEl = document.getElementById('autocomplete-list');
+            if (!keyword || keyword.trim().length < 1) {
+                listEl.style.display = 'none';
+                return;
+            }
+
+            searchTimer = setTimeout(() => {
+                fetch(`/search_poi?q=${encodeURIComponent(keyword.trim())}`)
+                .then(res => res.json())
+                .then(items => {
+                    if (!items || items.length === 0) {
+                        listEl.style.display = 'none';
+                        return;
+                    }
+                    let html = '';
+                    items.forEach(item => {
+                        const safeName = item.name.replace(/'/g, "\\'");
+                        html += `
+                        <div class="autocomplete-item" onclick="selectDestination('${safeName}', ${item.lat}, ${item.lon})">
+                            <div style="font-size: 14px; font-weight: 700; color: #1A202C;">📍 ${item.name}</div>
+                            <div style="font-size: 12px; color: #718096; margin-top: 2px;">${item.sub}</div>
+                        </div>`;
+                    });
+                    listEl.innerHTML = html;
+                    listEl.style.display = 'block';
+                });
+            }, 250);
+        }
+
+        function selectDestination(name, lat, lon) {
+            destName = name;
+            destLat = lat;
+            destLon = lon;
+            document.getElementById('autocomplete-list').style.display = 'none';
+            document.getElementById('dest-input').value = '';
+            document.getElementById('dest-input').style.display = 'none';
+            
+            const tagEl = document.getElementById('dest-selected-tag');
+            document.getElementById('dest-selected-text').innerText = `🎯 도착지: ${name}`;
+            tagEl.style.display = 'flex';
+
+            const building = document.getElementById('building-select').value;
+            if (lastSearchMode === 'gps' && currentLat && currentLon) {
+                requestBusByCoords(currentLat, currentLon);
+            } else if (building) {
+                findRoutes();
+            }
+        }
+
+        function clearDestination() {
+            destName = '';
+            destLat = null;
+            destLon = null;
+            document.getElementById('dest-selected-tag').style.display = 'none';
+            document.getElementById('dest-input').style.display = 'block';
+
+            const building = document.getElementById('building-select').value;
+            if (lastSearchMode === 'gps' && currentLat && currentLon) {
+                requestBusByCoords(currentLat, currentLon);
+            } else if (building) {
+                findRoutes();
+            }
+        }
+
+        function clearStationMarkers() {
+            stationMarkers.forEach(m => m.setMap(null));
+            stationMarkers = [];
+        }
+
+        function drawStationMarkersOnMap(stations) {
+            clearStationMarkers();
+            if (!stations || stations.length === 0) return;
+
+            const bounds = new naver.maps.LatLngBounds();
+            if (stations[0].target_lat) {
+                const startPos = new naver.maps.LatLng(stations[0].target_lat, stations[0].target_lon);
+                startMarker.setPosition(startPos);
+                bounds.extend(startPos);
+            }
+
+            // ★ 목적지가 선택된 경우: 기존 주변 정류장 마커를 지우고, 가야 할 추천 정류장만 지도에 표시!
+            let targetStations = stations;
+            if (destName) {
+                const recList = stations.filter(s => s.has_recommended_bus);
+                if (recList.length > 0) {
+                    targetStations = [recList[0]];
+                }
+            }
+
+            targetStations.forEach((station) => {
+                if (!station.station_lat || !station.station_lon) return;
+                const pos = new naver.maps.LatLng(station.station_lat, station.station_lon);
+                bounds.extend(pos);
+
+                const isDest = Boolean(destName);
+                const bgColor = isDest ? '#005AAB' : '#03c75a';
+                const badgePrefix = isDest ? '🎯 승차정류장:' : '🚏';
+
+                const marker = new naver.maps.Marker({
+                    position: pos,
+                    map: map,
+                    icon: {
+                        content: `<div style="background:${bgColor}; color:white; padding:6px 10px; border-radius:14px; font-size:12px; font-weight:800; box-shadow:0 3px 8px rgba(0,0,0,0.25); white-space:nowrap; border:2px solid white;">
+                                    ${badgePrefix} ${station.station_name} (도보 ${station.walk_min}분)
+                                  </div>`,
+                        anchor: new naver.maps.Point(40, 15)
+                    }
+                });
+                stationMarkers.push(marker);
+            });
+
+            map.fitBounds(bounds, { top: 40, right: 40, bottom: 40, left: 40 });
+        }
+
         function findMyLocation() {
             if (navigator.geolocation) {
                 navigator.geolocation.watchPosition(function(position) {
                     currentLat = position.coords.latitude;
                     currentLon = position.coords.longitude;
-                }, function(error) {
-                    console.log("GPS 대기 중");
-                }, { enableHighAccuracy: true, maximumAge: 0, timeout: 5000 });
+                }, function(error) {}, { 
+                    enableHighAccuracy: false,
+                    maximumAge: 60000,
+                    timeout: 10000 
+                });
             }
+        }
+
+        function requestBusByCoords(lat, lon) {
+            lastSearchMode = 'gps';
+            currentLat = lat;
+            currentLon = lon;
+            document.getElementById('loading').style.display = 'block';
+            document.getElementById('loading').innerText = '🚌 정보를 불러오고 있습니다...';
+            
+            fetch('/get_route_info', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    lat: currentLat,
+                    lon: currentLon,
+                    location: '내 실시간 위치',
+                    dest_lat: destLat,
+                    dest_lon: destLon,
+                    dest_name: destName
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                drawStationMarkersOnMap(data);
+                renderResults(data);
+            })
+            .catch(error => {
+                document.getElementById('loading').style.display = 'none';
+                alert('데이터 통신에 실패했습니다.');
+            });
         }
 
         function findRoutesByGPS() {
             document.getElementById('loading').style.display = 'block';
-            document.getElementById('loading').innerText = '📍 실시간 위치를 파악 중입니다 (최대 10초 소요)...';
+            document.getElementById('loading').innerText = '📍 실시간 위치를 파악 중입니다...';
             document.getElementById('result-container').innerHTML = '';
+
+            if (currentLat && currentLon) {
+                requestBusByCoords(currentLat, currentLon);
+                return;
+            }
 
             navigator.geolocation.getCurrentPosition(
                 function(position) {
-                    currentLat = position.coords.latitude;
-                    currentLon = position.coords.longitude;
-                    
-                    const newLocation = new naver.maps.LatLng(currentLat, currentLon);
-                    map.panTo(newLocation);
-                    marker.setPosition(newLocation);
-
-                    document.getElementById('loading').innerText = '🚌 버스 도착 시간을 계산하고 있습니다...';
-                    
-                    fetch('/get_route_info', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ lat: currentLat, lon: currentLon })
-                    })
-                    .then(response => response.json())
-                    .then(data => renderResults(data))
-                    .catch(error => {
-                        document.getElementById('loading').style.display = 'none';
-                        alert('데이터 통신에 실패했습니다.');
-                    });
+                    requestBusByCoords(position.coords.latitude, position.coords.longitude);
                 },
                 function(error) {
-                    document.getElementById('loading').style.display = 'none';
-                    alert("GPS 신호가 약합니다. 아래의 '건물 직접 선택'을 이용해주세요.");
+                    if (error.code === 1) {
+                        document.getElementById('loading').style.display = 'none';
+                        alert("브라우저 위치 권한이 거부되어 있습니다. 사파리 상단 [설정 -> 웹사이트 -> 위치]에서 허용으로 바꿔주세요!");
+                        return;
+                    }
+                    navigator.geolocation.getCurrentPosition(
+                        function(pos2) {
+                            requestBusByCoords(pos2.coords.latitude, pos2.coords.longitude);
+                        },
+                        function(err2) {
+                            document.getElementById('loading').style.display = 'none';
+                            alert("현재 Wi-Fi 위치 신호를 잡지 못했습니다. 아래의 '선택한 건물에서 가까운 정류장'을 이용해주세요.");
+                        },
+                        { enableHighAccuracy: false, timeout: 10000, maximumAge: 300000 }
+                    );
                 },
-                { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+                { enableHighAccuracy: true, timeout: 4000, maximumAge: 60000 }
             );
         }
 
         function findRoutes() {
             const building = document.getElementById('building-select').value;
             if (!building) {
-                alert('건물을 먼저 선택해주세요!');
+                alert('출발 건물을 먼저 선택해주세요!');
                 return;
             }
 
+            lastSearchMode = 'building';
             document.getElementById('loading').style.display = 'block';
-            document.getElementById('loading').innerText = '🚌 선택한 건물 주변 버스를 찾고 있습니다...';
+            document.getElementById('loading').innerText = '🚌 정보를 불러오고 있습니다...';
             document.getElementById('result-container').innerHTML = '';
 
             fetch('/get_route_info', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ location: building, campus: selectedCampus })
+                body: JSON.stringify({
+                    location: building,
+                    campus: selectedCampus,
+                    dest_lat: destLat,
+                    dest_lon: destLon,
+                    dest_name: destName
+                })
             })
             .then(response => response.json())
             .then(data => {
-                if (data.length > 0 && data[0].target_lat) {
-                    const bLoc = new naver.maps.LatLng(data[0].target_lat, data[0].target_lon);
-                    map.panTo(bLoc);
-                    marker.setPosition(bLoc);
-                }
+                drawStationMarkersOnMap(data);
                 renderResults(data);
             })
             .catch(error => {
@@ -346,11 +674,161 @@
             document.getElementById('loading').style.display = 'none';
             const container = document.getElementById('result-container');
             
-            if(data.error) {
+            if (data.error) {
                 container.innerHTML = `<div class="result-card" style="text-align:center; color:#E53E3E; font-weight:bold;">${data.error}</div>`;
                 return;
             }
 
+            if (!data || data.length === 0) {
+                container.innerHTML = `<div class="result-card" style="text-align:center; color:#718096; font-weight:bold;">주변 정류장을 찾을 수 없습니다.</div>`;
+                return;
+            }
+
+            const isDestMode = Boolean(destName);
+
+            // =========================================================================
+            // ★ 모드 1: 목적지('어디로 가시나요?')를 선택한 경우
+            // -> 기존 주변 정류장 목록은 모두 숨기고, 하얀색 바탕의 네이버 지도 스타일 결과 카드만 출력!
+            // =========================================================================
+            if (isDestMode) {
+                const recStation = data.find(s => s.has_recommended_bus);
+                
+                if (!recStation) {
+                    container.innerHTML = `
+                    <div class="naver-white-card" style="border-color:#CBD5E0;">
+                        <div class="eta-badge-opt" style="background:#EDF2F7; color:#4A5568;">경로 안내</div>
+                        <div style="font-size:17px; font-weight:800; color:#1A202C;">
+                            주변 정류장에서 [${destName}]까지 한 번에 가는 직통 버스가 없습니다.
+                        </div>
+                        <div style="font-size:14px; color:#718096; margin-top:6px;">
+                            다른 목적지를 검색하시거나 '✕ 취소'를 눌러 주변 전체 정류장을 확인해 보세요.
+                        </div>
+                    </div>`;
+                    return;
+                }
+
+                const recNo = recStation.station_no ? `(${recStation.station_no})` : '';
+                const recBuses = recStation.buses.filter(b => b.is_recommended);
+                const liveRecBus = recBuses.find(b => b.status_type !== 'miss') || recBuses[0];
+                const fallbackRoute = recStation.matched_routes[0];
+
+                const walkMin = recStation.walk_min;
+                const rideMin = liveRecBus ? liveRecBus.ride_min : (fallbackRoute ? fallbackRoute.ride_min : 10);
+                const waitIncludeMin = liveRecBus ? Math.max(walkMin, liveRecBus.min_left) : walkMin;
+                const totalTripMin = waitIncludeMin + rideMin;
+
+                const now = new Date();
+                const arrivalDate = new Date(now.getTime() + totalTripMin * 60000);
+                const timeRangeStr = `${formatKoreanTime(now)} - ${formatKoreanTime(arrivalDate)}`;
+
+                const allRouteNames = recStation.matched_routes.map(r => `${r.route_no}번`).join(', ');
+                const alightStationName = liveRecBus ? liveRecBus.alighting_station : fallbackRoute.alighting_station;
+
+                const walkPct = Math.max(28, Math.min(68, Math.round((walkMin / (walkMin + rideMin)) * 100)));
+                const busPct = 100 - walkPct;
+
+                // 실시간 도착 버스 및 도보 여유시간 멘트 HTML 조립
+                let busDetailHtml = '';
+                if (recBuses.length > 0) {
+                    recBuses.forEach(bus => {
+                        let badgeStyle = '';
+                        let msgBoxStyle = '';
+                        let icon = '';
+
+                        if (bus.status_type === 'relax') {
+                            badgeStyle = 'border: 1.5px solid #03c75a; color: #03c75a; background: #F0FFF4;';
+                            msgBoxStyle = 'background: #F0FFF4; color: #276749; border-left: 3px solid #03c75a;';
+                            icon = '💡';
+                        } else if (bus.status_type === 'hurry') {
+                            badgeStyle = 'border: 1.5px solid #DD6B20; color: #DD6B20; background: #FFFAF0;';
+                            msgBoxStyle = 'background: #FFFAF0; color: #9C4221; border-left: 3px solid #DD6B20;';
+                            icon = '🏃';
+                        } else {
+                            badgeStyle = 'border: 1.5px solid #A0AEC0; color: #718096; background: #F7FAFC;';
+                            msgBoxStyle = 'background: #F7FAFC; color: #718096; border-left: 3px solid #CBD5E0;';
+                            icon = '⏳';
+                        }
+
+                        busDetailHtml += `
+                        <div style="background:#F8FAFC; border:1px solid #EDF2F7; border-radius:10px; padding:10px 12px; margin-top:8px;">
+                            <div class="bus-item" style="margin-bottom:6px;">
+                                <div style="display:flex; align-items:center; gap:6px;">
+                                    <span style="font-size:16px; font-weight:800; color:#03c75a;">🚌 ${bus.route}번</span>
+                                    <span style="font-size:12px; color:#718096; font-weight:600;">(${bus.destination})</span>
+                                </div>
+                                <div style="display:flex; align-items:center; gap:6px;">
+                                    <span style="color:#E53E3E; font-weight:800; font-size:16px;">${bus.min_left}분</span>
+                                    <span style="color:#718096; font-size:13px; font-weight:500;">${bus.prev_cnt}정류장</span>
+                                    <span style="font-size:11px; font-weight:700; padding:2px 6px; border-radius:4px; ${badgeStyle}">
+                                        ${bus.status_badge}
+                                    </span>
+                                </div>
+                            </div>
+                            <div style="font-size:13px; font-weight:600; padding:7px 10px; border-radius:6px; ${msgBoxStyle}">
+                                ${icon} <b>도보 ${bus.walk_min}분</b> 소요 · ${bus.guide_msg}
+                            </div>
+                        </div>`;
+                    });
+                } else {
+                    busDetailHtml = `
+                    <div style="background:#F8FAFC; border:1px solid #EDF2F7; border-radius:10px; padding:10px 12px; margin-top:8px; font-size:13px; color:#718096; font-weight:600;">
+                        💡 현재 도착 예정인 실시간 버스가 없습니다. 도보 ${walkMin}분 이동 후 다음 배차를 탑승하세요.
+                    </div>`;
+                }
+
+                container.innerHTML = `
+                <div class="naver-white-card">
+                    <div class="eta-badge-opt">🎯 최적 경로 · ${recStation.station_name} ${recNo} 이동 추천</div>
+                    
+                    <div style="display:flex; align-items:baseline; gap:10px; flex-wrap:wrap;">
+                        <span class="eta-big-time">${totalTripMin}<span style="font-size:20px; font-weight:700;">분</span></span>
+                        <span style="font-size:14px; color:#005AAB; font-weight:800;">
+                            🧭 도보 ${walkMin}분(${recStation.walk_dist}m) 거리의 『${recStation.station_name}』 정류장으로 가세요!
+                        </span>
+                    </div>
+
+                    <div class="eta-clock-range">
+                        ${timeRangeStr} <span style="color:#CBD5E0; margin:0 6px;">|</span> 카드 1,550원
+                    </div>
+
+                    <!-- 네이버 지도 스타일 가로 타임라인 바 (화이트 테마) -->
+                    <div class="eta-bar-track">
+                        <div class="eta-bar-walk" style="width:${walkPct}%;">🚶 도보 ${walkMin}분</div>
+                        <div class="eta-bar-bus" style="width:${busPct}%;">🚌 버스 ${rideMin}분</div>
+                    </div>
+
+                    <!-- 승차 정류장 및 실시간 버스 + 여유시간 멘트 -->
+                    <div class="eta-step-row">
+                        <div style="color:#03c75a; font-weight:800; font-size:15px; min-width:85px;">
+                            🚌 ${allRouteNames}
+                        </div>
+                        <div style="flex:1;">
+                            <div style="font-weight:800; font-size:16px; color:#1A202C;">
+                                ${recStation.station_name} <span style="font-size:14px; color:#718096; font-weight:500;">${recNo}</span>
+                            </div>
+                            <div style="font-size:13px; color:#03c75a; font-weight:700; margin-top:2px;">
+                                ➡️ ${recStation.direction}
+                            </div>
+                            ${busDetailHtml}
+                        </div>
+                    </div>
+
+                    <!-- 하차 정류장 -->
+                    <div class="eta-step-row" style="margin-top:14px;">
+                        <div style="color:#718096; font-weight:800; font-size:14px; min-width:85px;">⚪ 하차</div>
+                        <div>
+                            <div style="font-weight:800; font-size:16px; color:#1A202C;">${alightStationName} 정류장</div>
+                            <div style="font-size:13px; color:#005AAB; font-weight:700; margin-top:2px;">🎯 도착지: ${destName}</div>
+                        </div>
+                    </div>
+                </div>`;
+                return;
+            }
+
+            // =========================================================================
+            // ★ 모드 2: 목적지 없이 출발지만 선택한 경우
+            // -> 별다른 멘트 없이 깔끔하게 주변 정류장의 버스 도착 정보만 표시!
+            // =========================================================================
             let html = '';
             data.forEach(station => {
                 const sttnNoText = station.station_no ? `(${station.station_no})` : '';
@@ -364,26 +842,29 @@
                                 ➡️ ${station.direction}
                             </div>
                         </div>
-                        <span class="walk-time">도보 ${station.walk_min}분 (${station.walk_dist}m)</span>
+                        <span style="background: #EBF8FF; color: #005AAB; padding: 6px 12px; border-radius: 20px; font-size: 13px; font-weight: 800; white-space: nowrap;">
+                            🚶 도보 ${station.walk_min}분 (${station.walk_dist}m)
+                        </span>
                     </div>
                     <div class="bus-list">`;
                 
                 if (station.buses.length > 0) {
                     station.buses.forEach(bus => {
                         html += `
-                        <div class="bus-item">
-                            <div>
-                                <span class="bus-number">${bus.route}번</span>
-                                <span style="font-size: 14px; color: #4A5568; font-weight: 600; margin-left: 6px;">${bus.destination}</span>
+                        <div class="bus-item" style="padding: 10px 0; border-bottom: 1px solid #EDF2F7;">
+                            <div style="display: flex; align-items: center; gap: 6px;">
+                                <span style="color: #03c75a; font-size: 18px;">🚌</span>
+                                <span style="font-size: 17px; font-weight: 800; color: #1A202C;">${bus.route}번</span>
+                                <span style="font-size: 13px; color: #718096; font-weight: 600;">(${bus.destination})</span>
                             </div>
-                            <div style="text-align: right;">
-                                <span class="bus-time">${bus.min_left}분 후</span>
-                                <span style="font-size: 12px; color: #A0AEC0; display: block;">(${bus.prev_cnt}정류장 전)</span>
+                            <div style="display: flex; align-items: center; gap: 8px;">
+                                <span style="color: #E53E3E; font-weight: 800; font-size: 17px;">${bus.min_left}분</span>
+                                <span style="color: #718096; font-size: 14px; font-weight: 500;">${bus.prev_cnt}정류장</span>
                             </div>
                         </div>`;
                     });
                 } else {
-                    html += `<div style="text-align: center; color: #A0AEC0; padding: 10px 0; font-weight:600;">도착 예정 버스가 없습니다.</div>`;
+                    html += `<div style="text-align: center; color: #A0AEC0; padding: 12px 0; font-weight:600; font-size:14px;">도착 예정 버스가 없습니다.</div>`;
                 }
                 
                 html += `</div></div>`;
