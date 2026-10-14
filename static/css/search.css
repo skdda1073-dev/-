@@ -1,0 +1,47 @@
+/* 도착지 검색 및 자동완성 스타일 */
+.autocomplete-wrapper {
+    position: relative;
+}
+
+.autocomplete-list {
+    position: absolute;
+    top: 48px;
+    left: 0;
+    right: 0;
+    background: white;
+    border: 1.5px solid #CBD5E0;
+    border-radius: 12px;
+    box-shadow: 0 12px 24px rgba(0, 0, 0, 0.12);
+    z-index: 1000;
+    max-height: 220px;
+    overflow-y: auto;
+    display: none;
+}
+
+.autocomplete-item {
+    padding: 12px 14px;
+    border-bottom: 1px solid #EDF2F7;
+    cursor: pointer;
+}
+
+.autocomplete-item:last-child {
+    border-bottom: none;
+}
+
+.autocomplete-item:hover {
+    background-color: #F7FAFC;
+}
+
+.dest-selected-tag {
+    display: none;
+    align-items: center;
+    justify-content: space-between;
+    background: #EBF8FF;
+    border: 1.5px solid #90CDF4;
+    color: #005AAB;
+    padding: 11px 14px;
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: 800;
+}
+

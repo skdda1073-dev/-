@@ -1,0 +1,77 @@
+/* 목적지 설정 시 최적 추천 경로 카드 및 타임라인 바 스타일 */
+.naver-white-card {
+    background: #FFFFFF;
+    color: #1A202C;
+    padding: 24px;
+    border-radius: 20px;
+    margin-bottom: 16px;
+    border: 2px solid #005AAB;
+    box-shadow: 0 10px 30px rgba(0, 90, 171, 0.08);
+}
+
+.eta-badge-opt {
+    display: inline-block;
+    background: #EBF8FF;
+    color: #005AAB;
+    font-size: 13px;
+    font-weight: 800;
+    padding: 5px 10px;
+    border-radius: 8px;
+    margin-bottom: 10px;
+}
+
+.eta-big-time {
+    font-size: 36px;
+    font-weight: 800;
+    color: #1A202C;
+    letter-spacing: -1px;
+    line-height: 1.1;
+}
+
+.eta-clock-range {
+    font-size: 15px;
+    color: #4A5568;
+    font-weight: 600;
+    margin: 8px 0 16px 0;
+}
+
+.eta-bar-track {
+    display: flex;
+    align-items: center;
+    background: #EDF2F7;
+    border-radius: 20px;
+    height: 26px;
+    overflow: hidden;
+    margin-bottom: 20px;
+    font-size: 12px;
+    font-weight: 800;
+}
+
+.eta-bar-walk {
+    background: #E2E8F0;
+    color: #2D3748;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    min-width: 70px;
+}
+
+.eta-bar-bus {
+    background: #03c75a;
+    color: #FFFFFF;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    min-width: 80px;
+}
+
+.eta-step-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding-top: 14px;
+    border-top: 1px solid #EDF2F7;
+}
+
