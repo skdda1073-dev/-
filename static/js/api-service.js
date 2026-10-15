@@ -4,11 +4,11 @@
  */
 
 function requestBusByCoords(lat, lon) {
-    lastSearchMode = 'gps';
-    currentLat = lat;
-    currentLon = lon;
+    window.AppState.setLastSearchMode('gps');
+    window.AppState.setCurrentPosition(lat, lon);
     
     const loadingEl = document.getElementById('loading');
+    const destination = window.AppState.getDestination();
     loadingEl.style.display = 'block';
     loadingEl.innerText = '🚌 정보를 불러오고 있습니다...';
     
@@ -16,22 +16,20 @@ function requestBusByCoords(lat, lon) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-            lat: currentLat,
-            lon: currentLon,
+            lat: lat,
+            lon: lon,
             location: '내 실시간 위치',
-            dest_lat: destLat,
-            dest_lon: destLon,
-            dest_name: destName
+            dest_lat: destination.lat,
+            dest_lon: destination.lon,
+            dest_name: destination.name
         })
     })
     .then(response => response.json())
     .then(data => {
-        if (typeof drawStationMarkersOnMap === 'function') {
-            drawStationMarkersOnMap(data);
+        if (Array.isArray(data)) {
+            window.AppModules.map.drawStationMarkersOnMap(data);
         }
-        if (typeof renderResults === 'function') {
-            renderResults(data);
-        }
+        window.AppModules.renderer.renderResults(data);
     })
     .catch(error => {
         console.error('get_route_info 에러:', error);
@@ -48,9 +46,10 @@ function findRoutes() {
         return;
     }
 
-    lastSearchMode = 'building';
+    window.AppState.setLastSearchMode('building');
     const loadingEl = document.getElementById('loading');
     const resultContainer = document.getElementById('result-container');
+    const destination = window.AppState.getDestination();
 
     loadingEl.style.display = 'block';
     loadingEl.innerText = '🚌 정보를 불러오고 있습니다...';
@@ -61,20 +60,18 @@ function findRoutes() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
             location: building,
-            campus: selectedCampus,
-            dest_lat: destLat,
-            dest_lon: destLon,
-            dest_name: destName
+            campus: window.AppState.getSelectedCampus(),
+            dest_lat: destination.lat,
+            dest_lon: destination.lon,
+            dest_name: destination.name
         })
     })
     .then(response => response.json())
     .then(data => {
-        if (typeof drawStationMarkersOnMap === 'function') {
-            drawStationMarkersOnMap(data);
+        if (Array.isArray(data)) {
+            window.AppModules.map.drawStationMarkersOnMap(data);
         }
-        if (typeof renderResults === 'function') {
-            renderResults(data);
-        }
+        window.AppModules.renderer.renderResults(data);
     })
     .catch(error => {
         console.error('get_route_info 에러:', error);
@@ -83,6 +80,12 @@ function findRoutes() {
     });
 }
 
+window.AppModules.api = {
+    requestBusByCoords: requestBusByCoords,
+    findRoutes: findRoutes
+};
+
+// index.html의 기존 인라인 호출과의 호환성을 유지합니다.
 window.requestBusByCoords = requestBusByCoords;
 window.findRoutes = findRoutes;
 
