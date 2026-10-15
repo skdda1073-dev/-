@@ -1,49 +1,49 @@
 /**
  * main.js
- * 애플리케이션 진입점 및 전역 상태 초기화 모듈
+ * 애플리케이션 상태 소유, 모듈 연결 검증 및 초기화만 담당합니다.
  */
 
-// ==========================================
-// 🌐 전역 상태 변수 관리
-// ==========================================
-var selectedCampus = 'hallym';
-var lastSearchMode = null;
-var currentLat = null;
-var currentLon = null;
-var destLat = null;
-var destLon = null;
-var destName = '';
-var searchTimer = null;
-
-var map = null;
-var startMarker = null;
-var stationMarkers = [];
-
-var campusCenter = {
-    hallym: { lat: 37.8863, lon: 127.7381 },
-    knu: { lat: 37.8691, lon: 127.7442 }
+const appState = {
+    selectedCampus: 'hallym',
+    lastSearchMode: null,
+    currentPosition: { lat: null, lon: null },
+    destination: { name: '', lat: null, lon: null },
+    searchTimer: null,
+    campusCenter: {
+        hallym: { lat: 37.8863, lon: 127.7381 },
+        knu: { lat: 37.8691, lon: 127.7442 }
+    },
+    buildingData: window.BUILDING_DATA || { hallym: [], knu: [] }
 };
 
-// index.html에서 인라인으로 주입된 window.BUILDING_DATA 바인딩
-var buildingData = window.BUILDING_DATA || { hallym: [], knu: [] };
-
-// ==========================================
-// 🚀 앱 초기화 실행
-// ==========================================
-window.onload = function() {
-    // 1. 네이버 지도 초기화
-    if (typeof initMap === 'function') {
-        initMap();
-    }
-
-    // 2. 초기 한림대학교 건물 드롭다운 목록 구성
-    if (typeof updateBuildingSelect === 'function') {
-        updateBuildingSelect('hallym');
-    }
-
-    // 3. 브라우저 실시간 위치 추적 시작
-    if (typeof findMyLocation === 'function') {
-        findMyLocation();
-    }
+window.AppModules = window.AppModules || {};
+window.AppState = {
+    getSelectedCampus: () => appState.selectedCampus,
+    setSelectedCampus: (campus) => { appState.selectedCampus = campus; },
+    getLastSearchMode: () => appState.lastSearchMode,
+    setLastSearchMode: (mode) => { appState.lastSearchMode = mode; },
+    getCurrentPosition: () => ({ ...appState.currentPosition }),
+    setCurrentPosition: (lat, lon) => { appState.currentPosition = { lat, lon }; },
+    getDestination: () => ({ ...appState.destination }),
+    setDestination: (name, lat, lon) => { appState.destination = { name, lat, lon }; },
+    clearDestination: () => { appState.destination = { name: '', lat: null, lon: null }; },
+    getSearchTimer: () => appState.searchTimer,
+    setSearchTimer: (timer) => { appState.searchTimer = timer; },
+    getCampusCenter: (campus) => appState.campusCenter[campus] || appState.campusCenter.hallym,
+    getBuildingNames: (campus) => appState.buildingData[campus] || []
 };
+
+const requiredModules = ['map', 'gps', 'search', 'api', 'renderer'];
+
+window.addEventListener('load', function() {
+    const missingModules = requiredModules.filter((moduleName) => !window.AppModules[moduleName]);
+    if (missingModules.length > 0) {
+        console.error('필수 애플리케이션 모듈이 연결되지 않았습니다:', missingModules.join(', '));
+        return;
+    }
+
+    window.AppModules.map.initMap();
+    window.AppModules.search.updateBuildingSelect('hallym');
+    window.AppModules.gps.findMyLocation();
+});
 
