@@ -3,7 +3,24 @@
  * 학교 캠퍼스 전환, 출발 건물 드롭다운 및 도착지 자동완성 검색 제어 모듈
  */
 
+let poiRequestId = 0;
+let poiAbortController = null;
+
+function cancelPoiSearch() {
+    clearTimeout(window.AppState.getSearchTimer());
+    poiRequestId += 1;
+    if (poiAbortController) poiAbortController.abort();
+    poiAbortController = null;
+    const list = document.getElementById('autocomplete-list');
+    if (list) {
+        list.replaceChildren();
+        list.style.display = 'none';
+    }
+}
+
 function switchCampus(campus) {
+    cancelPoiSearch();
+    window.AppModules.api.cancelPendingRequests({ clearResults: true });
     window.AppState.setSelectedCampus(campus);
     document.getElementById('tab-hallym').classList.toggle('active', campus === 'hallym');
     document.getElementById('tab-knu').classList.toggle('active', campus === 'knu');
@@ -27,34 +44,42 @@ function updateBuildingSelect(campus) {
 }
 
 function onSearchDestination(keyword) {
-    clearTimeout(window.AppState.getSearchTimer());
+    cancelPoiSearch();
     const listEl = document.getElementById('autocomplete-list');
-    if (!keyword || keyword.trim().length < 1) {
-        listEl.style.display = 'none';
-        return;
-    }
+    const query = String(keyword || '').trim();
+    if (!query || !listEl) return;
+    const requestId = poiRequestId;
 
     const searchTimer = setTimeout(() => {
-        fetch(`/search_poi?q=${encodeURIComponent(keyword.trim())}`)
-        .then(res => res.json())
+        poiAbortController = new AbortController();
+        fetch(`/search_poi?q=${encodeURIComponent(query)}`, { signal: poiAbortController.signal })
+        .then(res => {
+            if (!res.ok) throw new Error('장소 검색 응답 오류');
+            return res.json();
+        })
         .then(items => {
-            if (!items || items.length === 0) {
-                listEl.style.display = 'none';
-                return;
-            }
-            let html = '';
+            if (requestId !== poiRequestId) return;
+            listEl.replaceChildren();
+            if (!Array.isArray(items) || items.length === 0) return;
             items.forEach(item => {
-                const safeName = item.name.replace(/'/g, "\\'");
-                html += `
-                <div class="autocomplete-item" onclick="selectDestination('${safeName}', ${item.lat}, ${item.lon})">
-                    <div style="font-size: 14px; font-weight: 700; color: #1A202C;">📍 ${item.name}</div>
-                    <div style="font-size: 12px; color: #718096; margin-top: 2px;">${item.sub}</div>
-                </div>`;
+                if (!item || item.lat === null || item.lon === null || item.lat === undefined || item.lon === undefined ||
+                    String(item.lat).trim() === '' || String(item.lon).trim() === '' ||
+                    !Number.isFinite(Number(item.lat)) || !Number.isFinite(Number(item.lon)) ||
+                    Math.abs(Number(item.lat)) > 90 || Math.abs(Number(item.lon)) > 180) return;
+                const option = document.createElement('div');
+                option.className = 'autocomplete-item';
+                const title = document.createElement('div');
+                title.textContent = `📍 ${item.name}`;
+                const address = document.createElement('div');
+                address.textContent = item.sub || '';
+                option.append(title, address);
+                option.addEventListener('click', () => selectDestination(item.name, Number(item.lat), Number(item.lon)));
+                listEl.appendChild(option);
             });
-            listEl.innerHTML = html;
-            listEl.style.display = 'block';
+            listEl.style.display = listEl.childElementCount ? 'block' : 'none';
         })
         .catch(err => {
+            if (err.name === 'AbortError' || requestId !== poiRequestId) return;
             console.error('POI 검색 실패:', err);
         });
     }, 250);
@@ -62,6 +87,8 @@ function onSearchDestination(keyword) {
 }
 
 function selectDestination(name, lat, lon) {
+    cancelPoiSearch();
+    window.AppModules.api.cancelPendingRequests({ clearResults: true });
     window.AppState.setDestination(name, lat, lon);
     document.getElementById('autocomplete-list').style.display = 'none';
     document.getElementById('dest-input').value = '';
@@ -81,6 +108,8 @@ function selectDestination(name, lat, lon) {
 }
 
 function clearDestination() {
+    cancelPoiSearch();
+    window.AppModules.api.cancelPendingRequests({ clearResults: true });
     window.AppState.clearDestination();
     document.getElementById('dest-selected-tag').style.display = 'none';
     document.getElementById('dest-input').style.display = 'block';

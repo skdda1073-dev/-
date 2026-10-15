@@ -23,16 +23,8 @@
     margin: 0;
 }
 
-.bus-list {
-    display: flex;
-    flex-direction: column;
-}
-
-.bus-item {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
+.bus-list { display: flex; flex-direction: column; }
+.bus-item { display: flex; justify-content: space-between; align-items: center; }
 
 .loading {
     text-align: center;
@@ -43,5 +35,60 @@
     background: white;
     border-radius: 16px;
     margin-bottom: 16px;
+}
+
+/* 직통·환승 후보: 시간의 추정/미확인 상태를 구분합니다. */
+.journey-introduction {
+    color: #1A202C;
+    font-weight: 800;
+    margin: 8px 0 16px;
+    overflow-wrap: anywhere;
+}
+
+.journey-card { border: 1px solid #CBD5E0; overflow-wrap: anywhere; }
+.journey-total { color: #1A202C; font-size: 24px; margin: 0 0 8px; line-height: 1.4; }
+.journey-summary, .journey-muted {
+    color: #718096;
+    font-size: 13px;
+    font-weight: 500;
+    line-height: 1.6;
+    margin: 6px 0;
+}
+
+.journey-walk-step {
+    color: #4A5568;
+    background: #F7FAFC;
+    padding: 10px 12px;
+    border-radius: 8px;
+    font-size: 14px;
+    margin: 10px 0;
+    line-height: 1.6;
+}
+
+.journey-leg { border-left: 3px solid #005AAB; padding: 4px 0 4px 12px; margin: 12px 0; }
+.journey-route { color: #005AAB; font-size: 16px; font-weight: 800; margin: 4px 0; }
+.journey-stops { color: #1A202C; font-weight: 700; line-height: 1.6; margin: 6px 0; }
+.journey-warnings {
+    color: #975A16;
+    background: #FFFAF0;
+    border-radius: 8px;
+    padding: 12px 12px 12px 30px;
+    margin: 10px 0;
+    font-size: 13px;
+    font-weight: 500;
+    line-height: 1.6;
+    overflow-wrap: anywhere;
+}
+
+.result-message { text-align: center; color: #718096; font-weight: 700; }
+.result-error { color: #C53030; }
+.nearby-walk { color: #005AAB; font-size: 13px; font-weight: 700; text-align: right; }
+.nearby-bus { gap: 12px; padding: 10px 0; border-bottom: 1px solid #EDF2F7; }
+.nearby-arrival { color: #C53030; font-weight: 700; font-size: 13px; }
+
+@media (max-width: 480px) {
+    .journey-total { font-size: 21px; }
+    .station-header, .nearby-bus { align-items: flex-start; gap: 10px; flex-wrap: wrap; }
+    .nearby-walk { text-align: left; }
 }
 

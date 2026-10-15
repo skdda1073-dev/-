@@ -1,6 +1,6 @@
 /**
  * ui-renderer.js
- * 시간 포맷 변환 및 결과 카드(최적 단일 카드 / 주변 정류장 목록) UI 렌더링 모듈
+ * 주변 정류장 정보와 직통·환승 경로 후보 UI를 담당합니다.
  */
 
 function formatKoreanTime(dateObj) {
@@ -13,222 +13,158 @@ function formatKoreanTime(dateObj) {
 }
 
 function format24Time(dateObj) {
-    const h = String(dateObj.getHours()).padStart(2, '0');
-    const m = String(dateObj.getMinutes()).padStart(2, '0');
-    return `${h}:${m}`;
+    return `${String(dateObj.getHours()).padStart(2, '0')}:${String(dateObj.getMinutes()).padStart(2, '0')}`;
+}
+
+function resultElement(tag, className, text) {
+    const element = document.createElement(tag);
+    if (className) element.className = className;
+    if (text !== undefined) element.textContent = String(text);
+    return element;
+}
+
+function resultMinutes(value) {
+    return typeof value === 'number' && Number.isFinite(value) && value >= 0 ? Math.ceil(value) : null;
+}
+
+function minuteLabel(value) {
+    const minutes = resultMinutes(value);
+    return minutes === null ? '시간 미확인' : `약 ${minutes}분`;
+}
+
+function walkLabel(walk) {
+    if (!walk) return '도보 시간 미확인';
+    const distance = typeof walk.distance_m === 'number' && Number.isFinite(walk.distance_m)
+        ? ` (${Math.round(walk.distance_m)}m)` : '';
+    return `도보 ${minuteLabel(walk.minutes)}${distance}`;
+}
+
+function resultMessage(container, text, isError) {
+    container.appendChild(resultElement('div', `result-card result-message${isError ? ' result-error' : ''}`, text));
+}
+
+function appendJourneyWarnings(parent, warnings) {
+    const messages = [...new Set((Array.isArray(warnings) ? warnings : []).filter(item => typeof item === 'string' && item))];
+    if (!messages.length) return;
+    const list = resultElement('ul', 'journey-warnings');
+    messages.forEach(message => list.appendChild(resultElement('li', '', message)));
+    parent.appendChild(list);
+}
+
+function renderJourneys(container, response) {
+    const journeys = Array.isArray(response.journeys) ? response.journeys.slice(0, 3) : [];
+    const origin = response.origin || {};
+    const destination = response.destination || {};
+    if (!journeys.length) {
+        resultMessage(container, '조회한 정류장 범위에서 직통·1회 환승 경로를 확인하지 못했습니다.');
+        appendJourneyWarnings(container, response.warnings);
+        return;
+    }
+
+    const introduction = resultElement('div', 'journey-introduction',
+        `${origin.name || '출발지'} → ${destination.name || '목적지'} · 경로 후보 ${journeys.length}개`);
+    introduction.appendChild(resultElement('p', 'journey-muted',
+        '버스 시간은 정류장 순서·거리 기반 추정입니다. 미확인 배차 대기는 총 소요 시간에 포함할 수 없습니다.'));
+    container.appendChild(introduction);
+    appendJourneyWarnings(container, response.warnings);
+
+    journeys.forEach((journey, index) => {
+        const legs = Array.isArray(journey.legs) ? journey.legs : [];
+        const transfers = resultMinutes(journey.transfer_count);
+        const total = resultMinutes(journey.total_min);
+        const known = resultMinutes(journey.known_min);
+        const card = resultElement('article', 'result-card journey-card');
+        card.appendChild(resultElement('div', 'eta-badge-opt',
+            `경로 후보 ${index + 1} · ${transfers === 0 ? '직통' : `${transfers === null ? Math.max(0, legs.length - 1) : transfers}회 환승`}`));
+        card.appendChild(resultElement('h3', 'journey-total', total === null
+            ? `이동 구간 ${known === null ? '시간 미확인' : `약 ${known}분`} + 배차 대기 미확인`
+            : `총 약 ${total}분`));
+        card.appendChild(resultElement('p', 'journey-summary',
+            `도보 ${minuteLabel(journey.walk_min)} · 버스 ${minuteLabel(journey.ride_min)} · 대기 ${journey.wait_min === null || journey.wait_min === undefined ? '미확인' : minuteLabel(journey.wait_min)}`));
+        card.appendChild(resultElement('div', 'journey-walk-step',
+            `🚶 ${origin.name || '출발지'} → ${legs[0] && legs[0].board ? legs[0].board.name : '승차 정류장'} · ${walkLabel(journey.access_walk)}`));
+
+        legs.forEach((leg, legIndex) => {
+            const board = leg.board || {};
+            const alight = leg.alight || {};
+            const step = resultElement('section', 'journey-leg');
+            step.appendChild(resultElement('h4', 'journey-route', `🚌 ${leg.route_no || '노선번호 미확인'}번 · ${leg.direction || '방향 미확인'}`));
+            step.appendChild(resultElement('p', 'journey-stops', `${board.name || '승차 정류장'} 승차 → ${alight.name || '하차 정류장'} 하차`));
+            const stopCount = resultMinutes(leg.stop_count);
+            step.appendChild(resultElement('p', 'journey-muted',
+                `${stopCount === null ? '정류장 수 미확인' : `${stopCount}개 정류장 구간`} · 버스 ${minuteLabel(leg.ride_min)}`));
+            const arrival = resultMinutes(leg.arrival_min);
+            const wait = resultMinutes(leg.wait_min);
+            step.appendChild(resultElement('p', 'journey-muted', arrival === null
+                ? '이 구간의 실시간 도착·배차 대기는 미확인입니다.'
+                : `조회 시점 버스 도착 약 ${arrival}분 후${wait === null ? ' · 탑승 대기 미확인' : ` · 정류장 도착 후 대기 약 ${wait}분`}`));
+            card.appendChild(step);
+            if (legIndex < legs.length - 1) {
+                const buffer = resultMinutes(journey.transfer_buffer_min);
+                card.appendChild(resultElement('div', 'journey-walk-step',
+                    `↔ 환승${buffer === null ? '' : ` 이동·승차 여유 약 ${buffer}분`} · 다음 버스 배차에 따라 시간이 늘어날 수 있습니다.`));
+            }
+        });
+
+        const lastLeg = legs[legs.length - 1];
+        card.appendChild(resultElement('div', 'journey-walk-step',
+            `🚶 ${lastLeg && lastLeg.alight ? lastLeg.alight.name : '하차 정류장'} → ${destination.name || '목적지'} · ${walkLabel(journey.egress_walk)}`));
+        card.appendChild(resultElement('p', 'journey-muted',
+            '예상 시간이며 실제 운행·신호·교통·보행 환경에 따라 달라집니다. 지도는 첫 번째 후보의 정류장을 표시합니다.'));
+        appendJourneyWarnings(card, journey.warnings);
+        container.appendChild(card);
+    });
+}
+
+function renderNearbyStations(container, stations) {
+    if (!stations.length) {
+        resultMessage(container, '주변 정류장을 찾을 수 없습니다.');
+        return;
+    }
+    stations.forEach(station => {
+        const card = resultElement('article', 'result-card');
+        const header = resultElement('div', 'station-header');
+        const heading = resultElement('div');
+        heading.appendChild(resultElement('h3', 'station-name', `🚏 ${station.station_name || '정류장'}${station.station_no ? ` (${station.station_no})` : ''}`));
+        heading.appendChild(resultElement('p', 'journey-muted', `➡ ${station.direction || '방향 미확인'}`));
+        header.appendChild(heading);
+        header.appendChild(resultElement('span', 'nearby-walk',
+            `🚶 도보 ${minuteLabel(station.walk_min)}${Number.isFinite(station.walk_dist) ? ` (${Math.round(station.walk_dist)}m)` : ''}`));
+        card.appendChild(header);
+        const buses = resultElement('div', 'bus-list');
+        const stationBuses = Array.isArray(station.buses) ? station.buses : [];
+        stationBuses.forEach(bus => {
+            const row = resultElement('div', 'bus-item nearby-bus');
+            row.appendChild(resultElement('span', 'journey-route', `🚌 ${bus.route || '노선번호 미확인'}번 (${bus.destination || '방향 미확인'})`));
+            row.appendChild(resultElement('span', 'nearby-arrival', `${minuteLabel(bus.min_left)} · ${bus.prev_cnt ?? '?'}정류장`));
+            buses.appendChild(row);
+        });
+        if (!stationBuses.length) buses.appendChild(resultElement('p', 'journey-muted', '도착 예정 버스가 없습니다.'));
+        card.appendChild(buses);
+        container.appendChild(card);
+    });
 }
 
 function renderResults(data) {
     const loadingEl = document.getElementById('loading');
     if (loadingEl) loadingEl.style.display = 'none';
-
     const container = document.getElementById('result-container');
     if (!container) return;
-    
-    if (data.error) {
-        container.innerHTML = `<div class="result-card" style="text-align:center; color:#E53E3E; font-weight:bold;">${data.error}</div>`;
-        return;
+    container.replaceChildren();
+    if (data && data.error) {
+        resultMessage(container, data.error, true);
+    } else if (data && data.notice) {
+        resultMessage(container, data.notice);
+    } else if (data && data.mode === 'journeys') {
+        renderJourneys(container, data);
+    } else if (Array.isArray(data)) {
+        renderNearbyStations(container, data);
+    } else {
+        resultMessage(container, '경로 정보를 확인할 수 없습니다. 잠시 후 다시 조회해 주세요.', true);
     }
-
-    if (!data || data.length === 0) {
-        container.innerHTML = `<div class="result-card" style="text-align:center; color:#718096; font-weight:bold;">주변 정류장을 찾을 수 없습니다.</div>`;
-        return;
-    }
-
-    const destination = window.AppState.getDestination();
-    const isDestMode = Boolean(destination.name);
-
-    // =========================================================================
-    // ★ 모드 1: 목적지('어디로 가시나요?')를 선택한 경우
-    // -> 기존 주변 정류장 목록은 모두 숨기고, 하얀색 바탕의 네이버 지도 스타일 결과 카드만 출력!
-    // =========================================================================
-    if (isDestMode) {
-        const recStation = data.find(s => s.has_recommended_bus);
-        
-        if (!recStation) {
-            container.innerHTML = `
-            <div class="naver-white-card" style="border-color:#CBD5E0;">
-                <div class="eta-badge-opt" style="background:#EDF2F7; color:#4A5568;">경로 안내</div>
-                <div style="font-size:17px; font-weight:800; color:#1A202C;">
-                    주변 정류장에서 [${destination.name}]까지 한 번에 가는 직통 버스가 없습니다.
-                </div>
-                <div style="font-size:14px; color:#718096; margin-top:6px;">
-                    다른 목적지를 검색하시거나 '✕ 취소'를 눌러 주변 전체 정류장을 확인해 보세요.
-                </div>
-            </div>`;
-            return;
-        }
-
-        const recNo = recStation.station_no ? `(${recStation.station_no})` : '';
-        const recBuses = recStation.buses.filter(b => b.is_recommended);
-        const liveRecBus = recBuses.find(b => b.status_type !== 'miss') || recBuses[0];
-        const fallbackRoute = recStation.matched_routes[0];
-
-        const walkMin = recStation.walk_min;
-        const rideMin = liveRecBus ? liveRecBus.ride_min : (fallbackRoute ? fallbackRoute.ride_min : 10);
-        const waitIncludeMin = liveRecBus ? Math.max(walkMin, liveRecBus.min_left) : walkMin;
-        const totalTripMin = waitIncludeMin + rideMin;
-
-        const now = new Date();
-        const arrivalDate = new Date(now.getTime() + totalTripMin * 60000);
-        const timeRangeStr = `${formatKoreanTime(now)} - ${formatKoreanTime(arrivalDate)}`;
-
-        const allRouteNames = recStation.matched_routes.map(r => `${r.route_no}번`).join(', ');
-        const alightStationName = liveRecBus ? liveRecBus.alighting_station : fallbackRoute.alighting_station;
-
-        const walkPct = Math.max(28, Math.min(68, Math.round((walkMin / (walkMin + rideMin)) * 100)));
-        const busPct = 100 - walkPct;
-
-        // 실시간 도착 버스 및 도보 여유시간 멘트 HTML 조립
-        let busDetailHtml = '';
-        if (recBuses.length > 0) {
-            recBuses.forEach(bus => {
-                let badgeStyle = '';
-                let msgBoxStyle = '';
-                let icon = '';
-
-                if (bus.status_type === 'relax') {
-                    badgeStyle = 'border: 1.5px solid #03c75a; color: #03c75a; background: #F0FFF4;';
-                    msgBoxStyle = 'background: #F0FFF4; color: #276749; border-left: 3px solid #03c75a;';
-                    icon = '💡';
-                } else if (bus.status_type === 'hurry') {
-                    badgeStyle = 'border: 1.5px solid #DD6B20; color: #DD6B20; background: #FFFAF0;';
-                    msgBoxStyle = 'background: #FFFAF0; color: #9C4221; border-left: 3px solid #DD6B20;';
-                    icon = '🏃';
-                } else {
-                    badgeStyle = 'border: 1.5px solid #A0AEC0; color: #718096; background: #F7FAFC;';
-                    msgBoxStyle = 'background: #F7FAFC; color: #718096; border-left: 3px solid #CBD5E0;';
-                    icon = '⏳';
-                }
-
-                busDetailHtml += `
-                <div style="background:#F8FAFC; border:1px solid #EDF2F7; border-radius:10px; padding:10px 12px; margin-top:8px;">
-                    <div class="bus-item" style="margin-bottom:6px;">
-                        <div style="display:flex; align-items:center; gap:6px;">
-                            <span style="font-size:16px; font-weight:800; color:#03c75a;">🚌 ${bus.route}번</span>
-                            <span style="font-size:12px; color:#718096; font-weight:600;">(${bus.destination})</span>
-                        </div>
-                        <div style="display:flex; align-items:center; gap:6px;">
-                            <span style="color:#E53E3E; font-weight:800; font-size:16px;">${bus.min_left}분</span>
-                            <span style="color:#718096; font-size:13px; font-weight:500;">${bus.prev_cnt}정류장</span>
-                            <span style="font-size:11px; font-weight:700; padding:2px 6px; border-radius:4px; ${badgeStyle}">
-                                ${bus.status_badge}
-                            </span>
-                        </div>
-                    </div>
-                    <div style="font-size:13px; font-weight:600; padding:7px 10px; border-radius:6px; ${msgBoxStyle}">
-                        ${icon} <b>도보 ${bus.walk_min}분</b> 소요 · ${bus.guide_msg}
-                    </div>
-                </div>`;
-            });
-        } else {
-            busDetailHtml = `
-            <div style="background:#F8FAFC; border:1px solid #EDF2F7; border-radius:10px; padding:10px 12px; margin-top:8px; font-size:13px; color:#718096; font-weight:600;">
-                💡 현재 도착 예정인 실시간 버스가 없습니다. 도보 ${walkMin}분 이동 후 다음 배차를 탑승하세요.
-            </div>`;
-        }
-
-        container.innerHTML = `
-        <div class="naver-white-card">
-            <div class="eta-badge-opt">🎯 최적 경로 · ${recStation.station_name} ${recNo} 이동 추천</div>
-            
-            <div style="display:flex; align-items:baseline; gap:10px; flex-wrap:wrap;">
-                <span class="eta-big-time">${totalTripMin}<span style="font-size:20px; font-weight:700;">분</span></span>
-                <span style="font-size:14px; color:#005AAB; font-weight:800;">
-                    🧭 도보 ${walkMin}분(${recStation.walk_dist}m) 거리의 『${recStation.station_name}』 정류장으로 가세요!
-                </span>
-            </div>
-
-            <div class="eta-clock-range">
-                ${timeRangeStr} <span style="color:#CBD5E0; margin:0 6px;">|</span> 카드 1,550원
-            </div>
-
-            <!-- 네이버 지도 스타일 가로 타임라인 바 (화이트 테마) -->
-            <div class="eta-bar-track">
-                <div class="eta-bar-walk" style="width:${walkPct}%;">🚶 도보 ${walkMin}분</div>
-                <div class="eta-bar-bus" style="width:${busPct}%;">🚌 버스 ${rideMin}분</div>
-            </div>
-
-            <!-- 승차 정류장 및 실시간 버스 + 여유시간 멘트 -->
-            <div class="eta-step-row">
-                <div style="color:#03c75a; font-weight:800; font-size:15px; min-width:85px;">
-                    🚌 ${allRouteNames}
-                </div>
-                <div style="flex:1;">
-                    <div style="font-weight:800; font-size:16px; color:#1A202C;">
-                        ${recStation.station_name} <span style="font-size:14px; color:#718096; font-weight:500;">${recNo}</span>
-                    </div>
-                    <div style="font-size:13px; color:#03c75a; font-weight:700; margin-top:2px;">
-                        ➡️ ${recStation.direction}
-                    </div>
-                    ${busDetailHtml}
-                </div>
-            </div>
-
-            <!-- 하차 정류장 -->
-            <div class="eta-step-row" style="margin-top:14px;">
-                <div style="color:#718096; font-weight:800; font-size:14px; min-width:85px;">⚪ 하차</div>
-                <div>
-                    <div style="font-weight:800; font-size:16px; color:#1A202C;">${alightStationName} 정류장</div>
-                    <div style="font-size:13px; color:#005AAB; font-weight:700; margin-top:2px;">🎯 도착지: ${destination.name}</div>
-                </div>
-            </div>
-        </div>`;
-        return;
-    }
-
-    // =========================================================================
-    // ★ 모드 2: 목적지 없이 출발지만 선택한 경우
-    // -> 별다른 멘트 없이 깔끔하게 주변 정류장의 버스 도착 정보만 표시!
-    // =========================================================================
-    let html = '';
-    data.forEach(station => {
-        const sttnNoText = station.station_no ? `(${station.station_no})` : '';
-        
-        html += `
-        <div class="result-card">
-            <div class="station-header">
-                <div>
-                    <h3 class="station-name">🚏 ${station.station_name} <span style="font-size:14px; color:#718096; font-weight:500;">${sttnNoText}</span></h3>
-                    <div style="font-size: 13px; color: #03c75a; font-weight: 700; margin-top: 4px;">
-                        ➡️ ${station.direction}
-                    </div>
-                </div>
-                <span style="background: #EBF8FF; color: #005AAB; padding: 6px 12px; border-radius: 20px; font-size: 13px; font-weight: 800; white-space: nowrap;">
-                    🚶 도보 ${station.walk_min}분 (${station.walk_dist}m)
-                </span>
-            </div>
-            <div class="bus-list">`;
-        
-        if (station.buses.length > 0) {
-            station.buses.forEach(bus => {
-                html += `
-                <div class="bus-item" style="padding: 10px 0; border-bottom: 1px solid #EDF2F7;">
-                    <div style="display: flex; align-items: center; gap: 6px;">
-                        <span style="color: #03c75a; font-size: 18px;">🚌</span>
-                        <span style="font-size: 17px; font-weight: 800; color: #1A202C;">${bus.route}번</span>
-                        <span style="font-size: 13px; color: #718096; font-weight: 600;">(${bus.destination})</span>
-                    </div>
-                    <div style="display: flex; align-items: center; gap: 8px;">
-                        <span style="color: #E53E3E; font-weight: 800; font-size: 17px;">${bus.min_left}분</span>
-                        <span style="color: #718096; font-size: 14px; font-weight: 500;">${bus.prev_cnt}정류장</span>
-                    </div>
-                </div>`;
-            });
-        } else {
-            html += `<div style="text-align: center; color: #A0AEC0; padding: 12px 0; font-weight:600; font-size:14px;">도착 예정 버스가 없습니다.</div>`;
-        }
-        
-        html += `</div></div>`;
-    });
-    container.innerHTML = html;
 }
 
-window.AppModules.renderer = {
-    renderResults: renderResults
-};
-
-// 기존 전역 호출과의 호환성을 유지합니다.
+window.AppModules.renderer = { renderResults: renderResults };
 window.formatKoreanTime = formatKoreanTime;
 window.format24Time = format24Time;
 window.renderResults = renderResults;

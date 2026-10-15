@@ -14,14 +14,14 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/result-card.css') }}">
 
     <!-- 네이버 지도 SDK -->
-    <script src="https://oapi.map.naver.com/openapi/v3/maps.js?ncpKeyId=gthv6ddfee"></script>
+    <script src="https://oapi.map.naver.com/openapi/v3/maps.js?ncpKeyId={{ naver_map_client_id | urlencode }}"></script>
 </head>
 <body>
     <div class="container">
         <!-- 상단 헤더 -->
         <div class="header">
             <h1>🚌 통학 마스터</h1>
-            <p>한림대 · 강원대 실시간 최단 경로 버스 안내</p>
+            <p>한림대 · 강원대 정류장 순서 기반 버스 경로 안내</p>
         </div>
 
         <div class="search-box">
