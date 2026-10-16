@@ -1,0 +1,47 @@
+/* 일반 주변 정류장 결과 카드 및 버스 리스트 스타일 */
+.result-card {
+    background: white;
+    padding: 22px;
+    border-radius: 20px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.03);
+    margin-bottom: 16px;
+}
+
+.station-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid #EDF2F7;
+}
+
+.station-name {
+    font-size: 18px;
+    font-weight: 800;
+    color: #1A202C;
+    margin: 0;
+}
+
+.bus-list {
+    display: flex;
+    flex-direction: column;
+}
+
+.bus-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.loading {
+    text-align: center;
+    display: none;
+    padding: 26px;
+    color: #005AAB;
+    font-weight: 700;
+    background: white;
+    border-radius: 16px;
+    margin-bottom: 16px;
+}
+
