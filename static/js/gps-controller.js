@@ -6,10 +6,8 @@
 function findMyLocation() {
     if (navigator.geolocation) {
         navigator.geolocation.watchPosition(function(position) {
-            window.AppState.setCurrentPosition(
-                position.coords.latitude,
-                position.coords.longitude
-            );
+            currentLat = position.coords.latitude;
+            currentLon = position.coords.longitude;
         }, function(error) {}, { 
             enableHighAccuracy: false,
             maximumAge: 60000,
@@ -26,15 +24,14 @@ function findRoutesByGPS() {
     loadingEl.innerText = '📍 실시간 위치를 파악 중입니다...';
     resultContainer.innerHTML = '';
 
-    const currentPosition = window.AppState.getCurrentPosition();
-    if (currentPosition.lat && currentPosition.lon) {
-        window.AppModules.api.requestBusByCoords(currentPosition.lat, currentPosition.lon);
+    if (currentLat && currentLon) {
+        requestBusByCoords(currentLat, currentLon);
         return;
     }
 
     navigator.geolocation.getCurrentPosition(
         function(position) {
-            window.AppModules.api.requestBusByCoords(position.coords.latitude, position.coords.longitude);
+            requestBusByCoords(position.coords.latitude, position.coords.longitude);
         },
         function(error) {
             if (error.code === 1) {
@@ -44,7 +41,7 @@ function findRoutesByGPS() {
             }
             navigator.geolocation.getCurrentPosition(
                 function(pos2) {
-                    window.AppModules.api.requestBusByCoords(pos2.coords.latitude, pos2.coords.longitude);
+                    requestBusByCoords(pos2.coords.latitude, pos2.coords.longitude);
                 },
                 function(err2) {
                     loadingEl.style.display = 'none';
@@ -57,12 +54,6 @@ function findRoutesByGPS() {
     );
 }
 
-window.AppModules.gps = {
-    findMyLocation: findMyLocation,
-    findRoutesByGPS: findRoutesByGPS
-};
-
-// index.html의 기존 인라인 호출과의 호환성을 유지합니다.
 window.findMyLocation = findMyLocation;
 window.findRoutesByGPS = findRoutesByGPS;
 

@@ -35,8 +35,7 @@ function renderResults(data) {
         return;
     }
 
-    const destination = window.AppState.getDestination();
-    const isDestMode = Boolean(destination.name);
+    const isDestMode = Boolean(destName);
 
     // =========================================================================
     // ★ 모드 1: 목적지('어디로 가시나요?')를 선택한 경우
@@ -50,7 +49,7 @@ function renderResults(data) {
             <div class="naver-white-card" style="border-color:#CBD5E0;">
                 <div class="eta-badge-opt" style="background:#EDF2F7; color:#4A5568;">경로 안내</div>
                 <div style="font-size:17px; font-weight:800; color:#1A202C;">
-                    주변 정류장에서 [${destination.name}]까지 한 번에 가는 직통 버스가 없습니다.
+                    주변 정류장에서 [${destName}]까지 한 번에 가는 직통 버스가 없습니다.
                 </div>
                 <div style="font-size:14px; color:#718096; margin-top:6px;">
                     다른 목적지를 검색하시거나 '✕ 취소'를 눌러 주변 전체 정류장을 확인해 보세요.
@@ -170,7 +169,7 @@ function renderResults(data) {
                 <div style="color:#718096; font-weight:800; font-size:14px; min-width:85px;">⚪ 하차</div>
                 <div>
                     <div style="font-weight:800; font-size:16px; color:#1A202C;">${alightStationName} 정류장</div>
-                    <div style="font-size:13px; color:#005AAB; font-weight:700; margin-top:2px;">🎯 도착지: ${destination.name}</div>
+                    <div style="font-size:13px; color:#005AAB; font-weight:700; margin-top:2px;">🎯 도착지: ${destName}</div>
                 </div>
             </div>
         </div>`;
@@ -224,11 +223,6 @@ function renderResults(data) {
     container.innerHTML = html;
 }
 
-window.AppModules.renderer = {
-    renderResults: renderResults
-};
-
-// 기존 전역 호출과의 호환성을 유지합니다.
 window.formatKoreanTime = formatKoreanTime;
 window.format24Time = format24Time;
 window.renderResults = renderResults;
