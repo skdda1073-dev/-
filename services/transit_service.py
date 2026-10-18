@@ -12,13 +12,14 @@ class TransitService:
     MAX_STOPS = 8
     MAX_ROUTES = 32
 
-    def __init__(self, client, walking_time, topology_repository=None):
+    def __init__(self, client, walking_time, topology_repository=None, shuttle_service=None):
         self.client = client
         # 노선망은 로컬 CSV, 실시간 도착만 외부 API를 사용한다.
         # 주입하지 않은 기존 호출자는 API 어댑터와 호환된다.
         self.topology = topology_repository if topology_repository is not None else client
         self.csv_mode = topology_repository is not None
         self.walking_time = walking_time
+        self.shuttle_service = shuttle_service
 
     @staticmethod
     def _collect(keys, function):
@@ -122,6 +123,86 @@ class TransitService:
         return sorted(result, key=lambda stop: stop["walk_min"])
 
     def plan(self, origin, destination):
+        """두 공급자를 독립 조회한다. 셔틀 미주입 호출의 기존 계약은 유지한다."""
+        if self.shuttle_service is None:
+            return self._plan_city(origin, destination)
+
+        city_status = {"status": "ok", "code": None}
+        try:
+            response = self._plan_city(origin, destination, journey_limit=None)
+        except Exception as error:
+            safe_codes = {"CSV_DATA", "WALK_UNAVAILABLE", "ROUTE_PERMISSION", "NETWORK", "INCOMPLETE"}
+            code = getattr(error, "code", None)
+            city_status = {"status": "error", "code": code if code in safe_codes else "CITY_UNAVAILABLE"}
+            response = {
+                "mode": "journeys", "origin": origin, "destination": destination,
+                "journeys": [], "source": {"source": "unavailable"}, "search": {},
+                "warnings": ["시내버스 경로를 조회하지 못했습니다. 셔틀 조회 결과는 별도로 확인하세요."],
+            }
+
+        try:
+            shuttle = self.shuttle_service.plan(origin, destination)
+        except Exception as error:
+            code = "SHUTTLE_DATA" if getattr(error, "code", None) == "SHUTTLE_DATA" else "SHUTTLE_UNAVAILABLE"
+            shuttle = {
+                "journeys": [], "status": "error", "code": code,
+                "warnings": ["셔틀 데이터를 조회하지 못했습니다. 시내버스 조회 결과는 별도로 확인하세요."],
+            }
+        city = response["journeys"]
+        for journey in city:
+            journey["transport_type"] = "city_bus"
+            journey["time_basis"] = "realtime_estimate" if journey.get("has_live_departure") else "estimate"
+            journey["realtime"] = bool(journey.get("has_live_departure"))
+            for leg in journey.get("legs", []):
+                leg["transport_type"] = "city_bus"
+        response["journeys"] = self._merge_journeys(city, shuttle.get("journeys", []))
+        response["shuttle"] = {key: value for key, value in shuttle.items() if key != "journeys"}
+        response["providers"] = {
+            "city_bus": city_status,
+            "shuttle": {"status": shuttle["status"], "code": shuttle.get("code")},
+        }
+        response["warnings"].extend(shuttle.get("warnings", []))
+        response["search"].update({
+            "max_journeys": 3,
+            "selection_policy": "transport_diversity_then_confirmed_total",
+            "shuttle_max_transfers": 0,
+        })
+        if city_status["status"] == "error" and not response["journeys"]:
+            # 대체 후보도 없으면 기존 실패와 '경로 없음'을 구분한다.
+            # 셔틀 메타데이터는 오류 응답에도 남겨 로컬 조회 상태를 보존한다.
+            response.update({
+                "error": "시내버스 경로를 조회하지 못했고 연결 가능한 셔틀 후보도 없습니다. 공급자별 상태를 확인하세요.",
+                "code": city_status["code"],
+            })
+        return response
+
+    @staticmethod
+    def _merge_journeys(city, shuttle, limit=3):
+        """완전한 총시간만 수단 간 비교하고, 각 수단의 첫 후보를 보존한다.
+
+        미확인 후보는 수단별 기존 순서를 유지한다. known_min은 서로 비교하지
+        않는다. 이 표시용 선택은 전체 최단 경로 또는 탑승 가능 확정이 아니다.
+        """
+        groups = [city, shuttle]
+        ranked = []
+        for group_index, group in enumerate(groups):
+            for position, journey in enumerate(group):
+                total = journey.get("total_min")
+                confirmed = (isinstance(total, (int, float)) and not isinstance(total, bool)
+                             and isfinite(total) and total >= 0)
+                ranked.append(((not confirmed, total if confirmed else 0, position, group_index), journey))
+        ranked.sort(key=lambda pair: pair[0])
+        required = {id(group[0]) for group in groups if group}
+        selected = [pair for pair in ranked if id(pair[1]) in required]
+        for pair in ranked:
+            if len(selected) >= limit:
+                break
+            if id(pair[1]) not in required:
+                selected.append(pair)
+        selected.sort(key=lambda pair: pair[0])
+        return [journey for _, journey in selected[:limit]]
+
+    def _plan_city(self, origin, destination, journey_limit=3):
         warnings = [
             "출발·목적지 반경 500m 정류장 기준, 동일 정류장 내 1회 환승까지 검색합니다.",
             "버스 이동시간은 경유 정류장 좌표와 평균속도로 추정하며 실시간 교통·시간표를 반영하지 못합니다.",
@@ -268,6 +349,7 @@ class TransitService:
         response["journeys"] = plan_journeys(
             origin, destination, valid_origins, valid_destinations,
             routes, arrivals, walking_time, max_transfers=1, use_transfer_arrivals=False,
+            limit=journey_limit,
         )
         warnings.append("후보 경로는 도보·버스 이동구간 추정으로 80개까지 비교합니다. CSV 후보의 배차·전체 도착시간은 확정하지 않습니다." if self.csv_mode
                         else "후보 경로는 이동시간 추정으로 80개까지 비교하며, 확인된 배차가 있는 경로를 먼저 표시합니다.")
