@@ -1,199 +1,207 @@
-/**
- * api-service.js
- * 경로 요청, 최신 요청 보장, 지도·결과 화면 전달을 담당합니다.
- */
+/** Route requests, cancellation, and delivery to the independent map/result modules. */
+(function() {
+    let latestRequest = 0;
+    let routeController = null;
 
-let latestRouteRequest = 0;
-let routeAbortController = null;
-
-function setRouteLoading(visible) {
-    const loading = document.getElementById('loading');
-    if (!loading) return;
-    loading.style.display = visible ? 'block' : 'none';
-    if (visible) loading.textContent = '🚌 정류장 순서와 경로를 확인하고 있습니다...';
-}
-
-function requestBusByCoords(lat, lon) {
-    window.AppState.setLastSearchMode('gps');
-    window.AppState.setCurrentPosition(lat, lon);
-    
-    const loadingEl = document.getElementById('loading');
-    const destination = window.AppState.getDestination();
-    loadingEl.style.display = 'block';
-    loadingEl.innerText = '🚌 정보를 불러오고 있습니다...';
-    
-    fetch('/get_route_info', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-            lat: lat,
-            lon: lon,
-            location: '내 실시간 위치',
-            dest_lat: destination.lat,
-            dest_lon: destination.lon,
-            dest_name: destination.name
-        })
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (Array.isArray(data)) {
-            window.AppModules.map.drawStationMarkersOnMap(data);
+    function setRouteLoading(visible, message) {
+        const loading = document.getElementById('loading');
+        const text = document.getElementById('loading-text');
+        const submit = document.getElementById('route-submit');
+        const label = document.getElementById('route-submit-label');
+        const results = document.getElementById('results-section');
+        if (loading) {
+            loading.hidden = !visible;
+            loading.style.display = visible ? 'flex' : 'none';
         }
-        window.AppModules.renderer.renderResults(data);
-    })
-    .catch(error => {
-        console.error('get_route_info 에러:', error);
-        loadingEl.style.display = 'none';
-        alert('데이터 통신에 실패했습니다.');
-    });
-}
-function drawRouteResult(data) {
-    // 지도 SDK가 실패해도 결과 카드와 오류 안내는 표시합니다.
-    try {
-        const map = window.AppModules.map;
-        if (map && typeof map.drawStationMarkersOnMap === 'function') map.drawStationMarkersOnMap(data);
-    } catch (error) {
-        console.error('지도 결과 표시 실패:', error);
+        if (text && visible) text.textContent = message || '정류장과 이동 경로를 확인하고 있어요…';
+        if (submit) {
+            submit.disabled = visible;
+            submit.setAttribute('aria-busy', String(visible));
+            submit.classList.toggle('is-loading', visible);
+        }
+        if (label && visible) label.textContent = '찾는 중…';
+        if (results) results.setAttribute('aria-busy', String(visible));
+        if (visible) {
+            const initial = document.getElementById('initial-state');
+            if (initial) initial.hidden = true;
+        } else if (window.AppModules.ui) {
+            window.AppModules.ui.sync();
+        }
     }
-    window.AppModules.renderer.renderResults(data);
-}
 
-function cancelPendingRequests(options = {}) {
-    const gps = window.AppModules.gps;
-    if (gps && typeof gps.cancelPendingLocation === 'function') gps.cancelPendingLocation();
-    latestRouteRequest += 1;
-    if (routeAbortController) routeAbortController.abort();
-    routeAbortController = null;
-    setRouteLoading(false);
-    if (options.clearResults !== false) {
+    function clearResults() {
         const container = document.getElementById('result-container');
+        const initial = document.getElementById('initial-state');
+        const count = document.getElementById('result-count');
+        const heading = document.getElementById('results-heading');
         if (container) container.replaceChildren();
+        if (initial) initial.hidden = false;
+        if (count) {
+            count.textContent = '';
+            count.hidden = true;
+        }
+        if (heading) heading.textContent = '나의 이동';
+        if (window.AppModules.map) window.AppModules.map.clearStationMarkers();
+    }
+
+    function cancelPendingRequests(options) {
+        options = options || {};
+        latestRequest += 1;
+        if (routeController) routeController.abort();
+        routeController = null;
+        if (options.cancelLocation !== false && window.AppModules.gps) {
+            window.AppModules.gps.cancelPendingLocation();
+        }
+        setRouteLoading(false);
+        if (options.clearResults !== false) clearResults();
+    }
+
+    function drawRouteResult(data) {
         try {
-            if (window.AppModules.map) window.AppModules.map.clearStationMarkers();
+            if (window.AppModules.map) window.AppModules.map.drawStationMarkersOnMap(data);
         } catch (error) {
-            console.error('이전 지도 결과 제거 실패:', error);
+            console.error('지도 결과 표시 실패:', error);
+        }
+        const renderer = window.renderResults || (window.AppModules.renderer && window.AppModules.renderer.renderResults);
+        if (typeof renderer === 'function') {
+            renderer(data);
+            return;
+        }
+        const container = document.getElementById('result-container');
+        if (container) {
+            const message = document.createElement('div');
+            message.className = 'result-card status-error';
+            message.textContent = data && (data.error || data.notice)
+                ? String(data.error || data.notice) : '결과 화면을 불러오지 못했어요. 새로고침 후 다시 시도해 주세요.';
+            container.replaceChildren(message);
         }
     }
-}
 
-ㅋfunction routeStateSnapshot(mode) {
-    const destination = window.AppState.getDestination();
-    const building = document.getElementById('building-select');
-    return JSON.stringify({
-        mode: window.AppState.getLastSearchMode(),
-        campus: window.AppState.getSelectedCampus(),
-        building: mode === 'building' && building ? building.value : null,
-        // GPS는 위치 획득 완료 후 이 요청을 시작합니다.
-        destination: { name: destination.name, lat: destination.lat, lon: destination.lon }
-    });
-}
-
-async function requestRoute(payload, mode) {
-    cancelPendingRequests();
-    const requestId = latestRouteRequest;
-    const snapshot = routeStateSnapshot(mode);
-    const controller = typeof AbortController === 'function' ? new AbortController() : null;
-    routeAbortController = controller;
-    setRouteLoading(true);
-    const container = document.getElementById('result-container');
-    if (container) container.replaceChildren();
-
-    const isCurrent = () => requestId === latestRouteRequest && snapshot === routeStateSnapshot(mode);
-    try {
-        const response = await fetch('/get_route_info', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload),
-            ...(controller ? { signal: controller.signal } : {})
+    function stateSnapshot(mode) {
+        const building = document.getElementById('building-select');
+        const position = window.AppState.getCurrentPosition();
+        return JSON.stringify({
+            mode: mode,
+            selectedMode: window.AppState.getOriginMode(),
+            campus: selectedCampus,
+            building: mode === 'building' && building ? building.value : null,
+            position: mode === 'gps' && position ? [position.lat, position.lon] : null,
+            destination: window.AppState.getDestination()
         });
-        let data;
+    }
+
+    async function requestRoute(payload, mode) {
+        cancelPendingRequests();
+        const requestId = latestRequest;
+        const snapshot = stateSnapshot(mode);
+        const controller = typeof AbortController === 'function' ? new AbortController() : null;
+        routeController = controller;
+        const isCurrent = function() {
+            return requestId === latestRequest && snapshot === stateSnapshot(mode);
+        };
+        setRouteLoading(true);
+        let timeout;
         try {
-            data = await response.json();
+            const response = await Promise.race([
+                fetch('/get_route_info', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload),
+                    ...(controller ? { signal: controller.signal } : {})
+                }),
+                new Promise(function(resolve, reject) {
+                    timeout = setTimeout(function() {
+                        reject(new Error('경로 조회가 오래 걸리고 있어요. 잠시 후 다시 찾아보세요.'));
+                        if (controller) controller.abort();
+                    }, 45000);
+                })
+            ]);
+            let data;
+            try {
+                data = await response.json();
+            } catch (error) {
+                throw new Error('서버 응답을 읽지 못했어요. 잠시 후 다시 시도해 주세요.');
+            }
+            if (!isCurrent()) return;
+            if (!response.ok && !(data && data.error)) {
+                data = { error: '경로를 불러오지 못했어요. 잠시 후 다시 시도해 주세요.' };
+            }
+            drawRouteResult(data);
         } catch (error) {
-            throw new Error('서버의 경로 응답을 읽을 수 없습니다. 잠시 후 다시 조회해 주세요.');
-        }
-        if (!isCurrent()) return;
-        if (!response.ok && !(data && data.error)) {
-            data = { error: `경로 조회에 실패했습니다. (HTTP ${response.status})` };
-        }
-        drawRouteResult(data);
-    } catch (error) {
-        if (!isCurrent() || error.name === 'AbortError') return;
-    fetch('/get_route_info', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-            location: building,
-            campus: window.AppState.getSelectedCampus(),
-            dest_lat: destination.lat,
-            dest_lon: destination.lon,
-            dest_name: destination.name
-        })
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (Array.isArray(data)) {
-            window.AppModules.map.drawStationMarkersOnMap(data);
-        }
-        window.AppModules.renderer.renderResults(data);
-    })
-    .catch(error => {
-        console.error('get_route_info 에러:', error);
-        drawRouteResult({ error: error.message || '데이터 통신에 실패했습니다. 잠시 후 다시 조회해 주세요.' });
-    } finally {
-        if (requestId === latestRouteRequest) {
-            routeAbortController = null;
-            setRouteLoading(false);
+            if (!isCurrent() || error.name === 'AbortError') return;
+            drawRouteResult({
+                error: error instanceof TypeError
+                    ? '서버에 연결하지 못했어요. 연결 상태를 확인하고 다시 찾아보세요.'
+                    : error.message || '경로를 불러오지 못했어요. 다시 시도해 주세요.'
+            });
+        } finally {
+            clearTimeout(timeout);
+            if (requestId === latestRequest) {
+                routeController = null;
+                setRouteLoading(false);
+            }
         }
     }
-}
 
-function requestBusByCoords(lat, lon) {
-    window.AppState.setLastSearchMode('gps');
-    window.AppState.setCurrentPosition(lat, lon);
-    const originStatus = document.getElementById('origin-status');
-    if (originStatus) originStatus.textContent = '현재 위치에서 출발합니다.';
-    const destination = window.AppState.getDestination();
-    return requestRoute({
-        lat: lat,
-        lon: lon,
-        location: '내 실시간 위치',
-        dest_lat: destination.lat,
-        dest_lon: destination.lon,
-        dest_name: destination.name
-    }, 'gps');
-}
-
-function findRoutes() {
-    window.AppState.setLastSearchMode('building');
-    const buildingSelect = document.getElementById('building-select');
-    const building = buildingSelect ? buildingSelect.value : '';
-    if (!building) {
-        cancelPendingRequests({ clearResults: true });
-        drawRouteResult({ notice: '출발 건물을 먼저 선택해 주세요.' });
-        return;
+    function requestBusByCoords(lat, lon) {
+        if (!window.AppState.isValidPosition(lat, lon)) {
+            cancelPendingRequests();
+            drawRouteResult({ notice: '현재 위치를 확인하지 못했어요. 다시 확인하거나 교내 건물을 선택해 주세요.' });
+            return Promise.resolve();
+        }
+        const previous = window.AppState.getCurrentPosition();
+        if (!previous || previous.lat !== Number(lat) || previous.lon !== Number(lon)) {
+            window.AppState.setCurrentPosition(lat, lon);
+        }
+        window.AppState.setOriginMode('gps');
+        window.AppState.setLastSearchMode('gps');
+        const destination = window.AppState.getDestination();
+        const status = document.getElementById('origin-status');
+        if (status) {
+            status.textContent = '현재 위치에서 출발해요.';
+            status.classList.remove('status-error');
+        }
+        return requestRoute({
+            lat: Number(lat), lon: Number(lon), location: '내 실시간 위치', campus: selectedCampus,
+            dest_lat: destination.lat, dest_lon: destination.lon, dest_name: destination.name
+        }, 'gps');
     }
-    const originStatus = document.getElementById('origin-status');
-    if (originStatus) originStatus.textContent = `${building}에서 출발합니다.`;
-    const destination = window.AppState.getDestination();
-    return requestRoute({
-        location: building,
-        campus: window.AppState.getSelectedCampus(),
-        dest_lat: destination.lat,
-        dest_lon: destination.lon,
-        dest_name: destination.name
-    }, 'building');
-}
 
-window.AppModules.api = {
-    requestBusByCoords: requestBusByCoords,
-window.AppModules.api = {
-    requestBusByCoords: requestBusByCoords,
-    findRoutes: findRoutes,
-    cancelPendingRequests: cancelPendingRequests
-};
+    function findRoutes() {
+        if (window.selectOriginMode) window.selectOriginMode('building', { focus: false });
+        window.AppState.setOriginMode('building');
+        window.AppState.setLastSearchMode('building');
+        const select = document.getElementById('building-select');
+        const building = select ? select.value : '';
+        const status = document.getElementById('origin-status');
+        if (!building) {
+            cancelPendingRequests();
+            if (status) {
+                status.textContent = '출발 건물을 먼저 선택해 주세요.';
+                status.classList.add('status-error');
+            }
+            if (select) {
+                select.setAttribute('aria-invalid', 'true');
+                select.focus();
+            }
+            return Promise.resolve();
+        }
+        if (select) select.removeAttribute('aria-invalid');
+        if (status) {
+            status.textContent = building + '에서 출발해요.';
+            status.classList.remove('status-error');
+        }
+        const destination = window.AppState.getDestination();
+        return requestRoute({
+            location: building, campus: selectedCampus,
+            dest_lat: destination.lat, dest_lon: destination.lon, dest_name: destination.name
+        }, 'building');
+    }
 
-// index.html의 기존 인라인 호출과의 호환성을 유지합니다.
-window.requestBusByCoords = requestBusByCoords;
-window.findRoutes = findRoutes;
+    window.AppModules.api = { requestBusByCoords, findRoutes, cancelPendingRequests, setRouteLoading, drawRouteResult };
+    window.requestBusByCoords = requestBusByCoords;
+    window.findRoutes = findRoutes;
+    window.cancelPendingRequests = cancelPendingRequests;
+    window.setRouteLoading = setRouteLoading;
+})();
 

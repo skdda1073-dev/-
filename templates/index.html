@@ -2,97 +2,128 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>춘천 대학생 통학 마스터</title>
-    <!-- 웹 폰트 -->
-    <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css" />
-
-    <!-- 1파일 1기능 분리된 CSS 모듈 (Flask url_for 적용) -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="theme-color" content="#2ba331">
+    <meta name="description" content="한림대와 강원대, 교내 건물에서 정류장까지. 춘천 대학생을 위한 통학 경로 안내.">
+    <title>통학 마스터 · 춘천 캠퍼스 길찾기</title>
+    <link rel="stylesheet" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/search.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/timeline.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/result-card.css') }}">
-
-    <!-- 네이버 지도 SDK -->
-    <script src="https://oapi.map.naver.com/openapi/v3/maps.js?ncpKeyId=gthv6ddfee"></script>
 </head>
 <body>
-    <div class="container">
-        <!-- 상단 헤더 -->
-        <div class="header">
-            <h1>🚌 통학 마스터</h1>
-            <p>한림대 · 강원대 실시간 최단 경로 버스 안내</p>
-        </div>
-
-        <div class="search-box">
-            <!-- 학교 전환 탭 -->
-            <div class="campus-tabs">
-                <button id="tab-hallym" class="campus-tab active" onclick="switchCampus('hallym')">🏫 한림대학교</button>
-                <button id="tab-knu" class="campus-tab" onclick="switchCampus('knu')">🏫 강원대학교</button>
+    <a class="skip-link" href="#dest-input">길찾기 검색으로 이동</a>
+    <svg class="icon-sprite" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <defs>
+            <symbol id="icon-bus" viewBox="0 0 24 24"><rect x="5" y="3" width="14" height="16" rx="4"/><path d="M5 11h14M8 19v2m8-2v2M9 6h6"/><circle cx="8.5" cy="15" r=".8" fill="currentColor" stroke="none"/><circle cx="15.5" cy="15" r=".8" fill="currentColor" stroke="none"/></symbol>
+            <symbol id="icon-search" viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 5 5"/></symbol>
+            <symbol id="icon-home" viewBox="0 0 24 24"><path d="m3 11 9-8 9 8M5 10v11h5v-7h4v7h5V10"/></symbol>
+            <symbol id="icon-pin" viewBox="0 0 24 24"><path d="M19 10c0 5-7 11-7 11S5 15 5 10a7 7 0 1 1 14 0Z"/><circle cx="12" cy="10" r="2.5"/></symbol>
+            <symbol id="icon-school" viewBox="0 0 24 24"><path d="m2 8 10-5 10 5-10 5L2 8Zm4 2v6c3 3 9 3 12 0v-6m4-2v8"/></symbol>
+            <symbol id="icon-arrow-right" viewBox="0 0 24 24"><path d="M4 12h16m-6-6 6 6-6 6"/></symbol>
+            <symbol id="icon-arrow-up-right" viewBox="0 0 24 24"><path d="M6 18 18 6M6 6h12v12"/></symbol>
+            <symbol id="icon-target" viewBox="0 0 24 24"><circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="2.5"/><path d="M12 2v3m0 14v3M2 12h3m14 0h3"/></symbol>
+            <symbol id="icon-walk" viewBox="0 0 24 24"><circle cx="14" cy="3.5" r="1.5"/><path d="m7 11 3-3 4 1 2 4 4 1m-8-5-2 7-5 5m5-5 5 2 1 4"/></symbol>
+            <symbol id="icon-map" viewBox="0 0 24 24"><path d="m3 5 6-2 6 2 6-2v16l-6 2-6-2-6 2V5Zm6-2v16m6-14v16"/></symbol>
+            <symbol id="icon-chevron-down" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
+            <symbol id="icon-chevron-up" viewBox="0 0 24 24"><path d="m6 15 6-6 6 6"/></symbol>
+            <symbol id="icon-close" viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18"/></symbol>
+            <symbol id="icon-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
+            <symbol id="icon-swap" viewBox="0 0 24 24"><path d="M4 7h15l-4-4m5 14H5l4 4M4 7l4 4m12 6-4-4"/></symbol>
+            <symbol id="icon-check" viewBox="0 0 24 24"><path d="m5 12 4 4L19 6"/></symbol>
+            <symbol id="icon-warning" viewBox="0 0 24 24"><path d="m10 4-8 14a2 2 0 0 0 2 3h16a2 2 0 0 0 2-3L14 4a2.3 2.3 0 0 0-4 0Z"/><path d="M12 9v5m0 3v.1"/></symbol>
+            <symbol id="icon-route" viewBox="0 0 24 24"><circle cx="5" cy="6" r="2"/><circle cx="19" cy="18" r="2"/><path d="M7 6h10a4 4 0 0 1 0 8H7a2 2 0 0 0 0 4h10"/></symbol>
+            <symbol id="icon-location" viewBox="0 0 24 24"><path d="m21 3-7 18-3-8-8-3L21 3Z"/></symbol>
+            <symbol id="icon-train" viewBox="0 0 24 24"><rect x="5" y="2" width="14" height="17" rx="4"/><path d="M5 10h14M8 19l-2 3m10-3 2 3M8 6h8"/><circle cx="9" cy="15" r="1" fill="currentColor"/><circle cx="15" cy="15" r="1" fill="currentColor"/></symbol>
+        </defs>
+    </svg>
+    <div class="app-shell">
+        <section class="map-stage" aria-label="캠퍼스와 주변 정류장 지도">
+            <div id="map" class="map-canvas"{% if naver_map_client_id %} data-sdk-src="https://oapi.map.naver.com/openapi/v3/maps.js?ncpKeyId={{ naver_map_client_id | urlencode }}&amp;callback=initMap"{% endif %}></div>
+            <div id="map-status" class="map-status" role="status">
+                <span class="map-status-icon"><svg class="icon" aria-hidden="true"><use href="#icon-map"></use></svg></span>
+                <strong>캠퍼스 지도를 준비하고 있어요</strong>
+                <p data-map-status-text>아래에서 출발지와 목적지를 선택해 보세요.</p>
             </div>
-
-            <!-- 출발 위치 선택 -->
-            <div class="step-block">
-                <div class="step-label">
-                    <span class="step-badge">출발</span> 어디서 출발하시나요?
-                </div>
-                
-                <button class="btn-gps" onclick="findRoutesByGPS()">
-                    📍 내 실시간 위치에서 가까운 버스 정류장
-                </button>
-
-                <div class="divider-text">또는 교내 건물에서 출발</div>
-
-                <select id="building-select">
-                    <option value="">출발 건물을 선택하세요</option>
-                </select>
-                <button class="btn-building" onclick="findRoutes()">
-                    🏢 선택한 건물에서 가까운 정류장
-                </button>
+            <header class="map-header">
+                <a class="brand" href="/" aria-label="통학 마스터 홈">
+                    <span class="brand-icon"><svg class="icon" aria-hidden="true"><use href="#icon-bus"></use></svg></span>
+                    <span>통학<span class="brand-light">마스터</span><small>CHUNCHEON CAMPUS</small></span>
+                </a>
+                <span class="city-badge"><span class="status-dot"></span> 춘천</span>
+            </header>
+            <div class="map-tools">
+                <button type="button" class="map-fab" onclick="findMyLocation()" aria-label="지도에 내 위치 표시" title="내 위치 표시"><svg class="icon" aria-hidden="true"><use href="#icon-target"></use></svg></button>
             </div>
-
-            <!-- 목적지 선택 (어디로 가시나요?) -->
-            <div class="step-block" style="margin-bottom: 16px;">
-                <div class="step-label">
-                    <span class="step-badge" style="background:#03c75a;">도착</span> 🎯 어디로 가시나요? <span style="font-weight:500; color:#718096; font-size:12px;">(선택 시 맞춤 경로로 전환)</span>
-                </div>
-                <div class="autocomplete-wrapper">
-                    <input type="text" id="dest-input" class="dest-input" placeholder="목적지 입력 (예: 남춘천역, 한림, 롯데시네마, 명동)" autocomplete="off" oninput="onSearchDestination(this.value)">
-                    <div id="autocomplete-list" class="autocomplete-list"></div>
-                </div>
-                <div id="dest-selected-tag" class="dest-selected-tag">
-                    <span id="dest-selected-text">🎯 도착지: </span>
-                    <span style="cursor:pointer; font-weight:800; padding: 0 4px;" onclick="clearDestination()">✕ 취소</span>
-                </div>
+        </section>
+        <main id="planner-panel" class="planner-panel">
+            <button id="panel-toggle" class="panel-handle" type="button" onclick="togglePlanner()" aria-expanded="true" aria-controls="planner-body" aria-label="검색 패널 접고 지도 크게 보기"><span class="handle-bar"></span><svg class="icon" aria-hidden="true"><use href="#icon-chevron-down"></use></svg></button>
+            <div class="panel-heading">
+                <div><p class="eyebrow">나의 캠퍼스, 나의 길</p><h1>어디로 갈까요?</h1></div>
+                <span class="heading-icon"><svg class="icon" aria-hidden="true"><use href="#icon-arrow-up-right"></use></svg></span>
             </div>
-
-            <!-- 네이버 지도 -->
-            <div id="map" style="width:100%; height:240px; border-radius: 14px;"></div>
-        </div>
-
-        <!-- 로딩 인디케이터 -->
-        <div id="loading" class="loading">
-            실시간 버스 정보를 불러오는 중입니다... 🏃‍♂️
-        </div>
-
-        <!-- 결과 카드 렌더링 컨테이너 -->
-        <div id="result-container"></div>
+            <div id="planner-body" class="planner-body">
+                <section class="journey-form" aria-label="통학 경로 검색">
+                    <div class="destination-field">
+                        <span class="field-icon"><svg class="icon" aria-hidden="true"><use href="#icon-search"></use></svg></span>
+                        <div class="destination-control autocomplete-wrapper">
+                            <label for="dest-input">도착할 장소</label>
+                            <input type="text" id="dest-input" class="dest-input" placeholder="역, 건물, 장소를 검색하세요" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="autocomplete-list" aria-describedby="search-status" oninput="onSearchDestination(this.value)">
+                            <div id="autocomplete-list" class="autocomplete-list" role="listbox" aria-label="목적지 검색 결과" hidden></div>
+                        </div>
+                    </div>
+                    <div id="dest-selected-tag" class="dest-selected-tag" hidden>
+                        <svg class="icon" aria-hidden="true"><use href="#icon-pin"></use></svg><span id="dest-selected-text"></span>
+                        <button type="button" class="clear-destination" onclick="clearDestination()" aria-label="선택한 목적지 취소"><svg class="icon" aria-hidden="true"><use href="#icon-close"></use></svg></button>
+                    </div>
+                    <p id="search-status" class="search-status" role="status" aria-live="polite">목적지 없이 가까운 정류장만 찾아도 좋아요.</p>
+                    <div class="origin-section">
+                        <div class="section-label"><span>출발 캠퍼스</span><span class="label-hint">학교를 선택하세요</span></div>
+                        <div class="campus-tabs" role="group" aria-label="출발 캠퍼스">
+                            <button id="tab-hallym" class="campus-tab active is-active" type="button" onclick="switchCampus('hallym')" aria-pressed="true"><svg class="icon" aria-hidden="true"><use href="#icon-school"></use></svg>한림대학교</button>
+                            <button id="tab-knu" class="campus-tab" type="button" onclick="switchCampus('knu')" aria-pressed="false"><svg class="icon" aria-hidden="true"><use href="#icon-school"></use></svg>강원대학교</button>
+                        </div>
+                        <div class="origin-options" role="group" aria-label="출발 위치 선택">
+                            <button id="origin-gps" type="button" class="origin-option is-active" onclick="selectOriginMode('gps')" aria-pressed="true"><span class="radio-mark"></span>현재 위치</button>
+                            <button id="origin-building" type="button" class="origin-option" onclick="selectOriginMode('building')" aria-pressed="false"><span class="radio-mark"></span>교내 건물</button>
+                        </div>
+                        <div id="building-field" class="building-field" hidden>
+                            <label class="sr-only" for="building-select">출발 건물</label><svg class="icon" aria-hidden="true"><use href="#icon-school"></use></svg>
+                            <select id="building-select"><option value="">출발 건물을 선택하세요</option></select>
+                            <svg class="icon select-chevron" aria-hidden="true"><use href="#icon-chevron-down"></use></svg>
+                        </div>
+                        <p id="origin-status" class="origin-status" role="status">조회할 때 현재 위치를 확인합니다.</p>
+                        <button id="route-submit" class="btn-route" type="button" onclick="searchJourney()"><svg class="icon" aria-hidden="true"><use href="#icon-route"></use></svg><span id="route-submit-label">가까운 정류장 찾기</span><svg class="icon arrow" aria-hidden="true"><use href="#icon-arrow-right"></use></svg></button>
+                    </div>
+                </section>
+                <nav class="quick-actions" aria-label="빠른 기능">
+                    <button type="button" onclick="focusDestination()"><span class="quick-icon"><svg class="icon" aria-hidden="true"><use href="#icon-search"></use></svg></span><span>목적지 검색</span></button>
+                    <button type="button" onclick="selectOriginMode('gps'); findRoutesByGPS()"><span class="quick-icon"><svg class="icon" aria-hidden="true"><use href="#icon-location"></use></svg></span><span>내 주변</span></button>
+                    <button type="button" onclick="focusBuildings()"><span class="quick-icon"><svg class="icon" aria-hidden="true"><use href="#icon-school"></use></svg></span><span>교내 건물</span></button>
+                    <button type="button" onclick="focusMap()"><span class="quick-icon"><svg class="icon" aria-hidden="true"><use href="#icon-map"></use></svg></span><span>지도 보기</span></button>
+                </nav>
+                <div id="app-status" class="app-status" role="status" aria-live="polite"></div>
+                <section id="results-section" class="results-section" aria-labelledby="results-heading">
+                    <div class="results-header"><h2 id="results-heading">나의 이동 안내</h2><span id="result-count" class="result-count"></span></div>
+                    <div id="loading" class="loading" role="status" aria-live="polite" hidden><span class="loading-spinner" aria-hidden="true"></span><span id="loading-text">통학 경로를 찾고 있어요.</span></div>
+                    <div id="initial-state" class="initial-state">
+                        <span class="initial-icon"><svg class="icon" aria-hidden="true"><use href="#icon-bus"></use></svg></span>
+                        <div><h3>강의실에서 정류장까지</h3><p>출발지를 선택하면 가까운 정류장과<br>이용할 수 있는 버스를 안내해 드려요.</p></div>
+                    </div>
+                    <div id="result-container" aria-live="polite" aria-atomic="false"></div>
+                </section>
+                <footer class="panel-footer"><span class="footer-dot"></span><span>한림대 · 강원대 학생을 위한 통학 도우미</span><svg class="icon" aria-hidden="true"><use href="#icon-walk"></use></svg></footer>
+            </div>
+        </main>
     </div>
-
-    <!-- 백엔드 Jinja2 데이터 주입 (정적 JS 파일과 연계) -->
-    <script>
-        window.BUILDING_DATA = {
-            hallym: JSON.parse('{{ hallym_buildings | tojson | safe }}'),
-            knu: JSON.parse('{{ knu_buildings | tojson | safe }}')
-        };
-    </script>
-
-    <!-- 1파일 1기능 분리된 프론트엔드 모듈 스크립트 (Flask url_for 적용) -->
-    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
-    <script src="{{ url_for('static', filename='js/map-controller.js') }}"></script>
-    <script src="{{ url_for('static', filename='js/gps-controller.js') }}"></script>
-    <script src="{{ url_for('static', filename='js/search-controller.js') }}"></script>
-    <script src="{{ url_for('static', filename='js/api-service.js') }}"></script>
-    <script src="{{ url_for('static', filename='js/ui-renderer.js') }}"></script>
+    <script id="campus-building-data" type="application/json">{{ {'hallym': hallym_buildings, 'knu': knu_buildings} | tojson }}</script>
+    <script src="{{ url_for('static', filename='js/main.js') }}" defer></script>
+    <script src="{{ url_for('static', filename='js/map-controller.js') }}" defer></script>
+    <script src="{{ url_for('static', filename='js/gps-controller.js') }}" defer></script>
+    <script src="{{ url_for('static', filename='js/search-controller.js') }}" defer></script>
+    <script src="{{ url_for('static', filename='js/api-service.js') }}" defer></script>
+    <script src="{{ url_for('static', filename='js/ui-renderer.js') }}" defer></script>
+    <script src="{{ url_for('static', filename='js/ui-controller.js') }}" defer></script>
 </body>
 </html>
