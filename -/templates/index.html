@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>춘천 대학생 통학 마스터</title>
+    <!-- 웹 폰트 -->
+    <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css" />
+
+    <!-- 1파일 1기능 분리된 CSS 모듈 (Flask url_for 적용) -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/search.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/timeline.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/result-card.css') }}">
+
+    <!-- 네이버 지도 SDK -->
+    <script src="https://oapi.map.naver.com/openapi/v3/maps.js?ncpKeyId=gthv6ddfee"></script>
+</head>
+<body>
+    <div class="container">
+        <!-- 상단 헤더 -->
+        <div class="header">
+            <h1>🚌 통학 마스터</h1>
+            <p>한림대 · 강원대 실시간 최단 경로 버스 안내</p>
+        </div>
+
+        <div class="search-box">
+            <!-- 학교 전환 탭 -->
+            <div class="campus-tabs">
+                <button id="tab-hallym" class="campus-tab active" onclick="switchCampus('hallym')">🏫 한림대학교</button>
+                <button id="tab-knu" class="campus-tab" onclick="switchCampus('knu')">🏫 강원대학교</button>
+            </div>
+
+            <!-- 출발 위치 선택 -->
+            <div class="step-block">
+                <div class="step-label">
+                    <span class="step-badge">출발</span> 어디서 출발하시나요?
+                </div>
+                
+                <button class="btn-gps" onclick="findRoutesByGPS()">
+                    📍 내 실시간 위치에서 가까운 버스 정류장
+                </button>
+
+                <div class="divider-text">또는 교내 건물에서 출발</div>
+
+                <select id="building-select">
+                    <option value="">출발 건물을 선택하세요</option>
+                </select>
+                <button class="btn-building" onclick="findRoutes()">
+                    🏢 선택한 건물에서 가까운 정류장
+                </button>
+            </div>
+
+            <!-- 목적지 선택 (어디로 가시나요?) -->
+            <div class="step-block" style="margin-bottom: 16px;">
+                <div class="step-label">
+                    <span class="step-badge" style="background:#03c75a;">도착</span> 🎯 어디로 가시나요? <span style="font-weight:500; color:#718096; font-size:12px;">(선택 시 맞춤 경로로 전환)</span>
+                </div>
+                <div class="autocomplete-wrapper">
+                    <input type="text" id="dest-input" class="dest-input" placeholder="목적지 입력 (예: 남춘천역, 한림, 롯데시네마, 명동)" autocomplete="off" oninput="onSearchDestination(this.value)">
+                    <div id="autocomplete-list" class="autocomplete-list"></div>
+                </div>
+                <div id="dest-selected-tag" class="dest-selected-tag">
+                    <span id="dest-selected-text">🎯 도착지: </span>
+                    <span style="cursor:pointer; font-weight:800; padding: 0 4px;" onclick="clearDestination()">✕ 취소</span>
+                </div>
+            </div>
+
+            <!-- 네이버 지도 -->
+            <div id="map" style="width:100%; height:240px; border-radius: 14px;"></div>
+        </div>
+
+        <!-- 로딩 인디케이터 -->
+        <div id="loading" class="loading">
+            실시간 버스 정보를 불러오는 중입니다... 🏃‍♂️
+        </div>
+
+        <!-- 결과 카드 렌더링 컨테이너 -->
+        <div id="result-container"></div>
+    </div>
+
+    <!-- 백엔드 Jinja2 데이터 주입 (정적 JS 파일과 연계) -->
+    <script>
+        window.BUILDING_DATA = {
+            hallym: JSON.parse('{{ hallym_buildings | tojson | safe }}'),
+            knu: JSON.parse('{{ knu_buildings | tojson | safe }}')
+        };
+    </script>
+
+    <!-- 1파일 1기능 분리된 프론트엔드 모듈 스크립트 (Flask url_for 적용) -->
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/map-controller.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/gps-controller.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/search-controller.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/api-service.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/ui-renderer.js') }}"></script>
+</body>
+</html>
