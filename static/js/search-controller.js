@@ -4,14 +4,12 @@
  */
 
 function switchCampus(campus) {
-    selectedCampus = campus;
+    window.AppState.setSelectedCampus(campus);
     document.getElementById('tab-hallym').classList.toggle('active', campus === 'hallym');
     document.getElementById('tab-knu').classList.toggle('active', campus === 'knu');
     updateBuildingSelect(campus);
 
-    if (typeof panToCampus === 'function') {
-        panToCampus(campus);
-    }
+    window.AppModules.map.panToCampus(campus);
 }
 
 function updateBuildingSelect(campus) {
@@ -20,25 +18,23 @@ function updateBuildingSelect(campus) {
     const schoolName = campus === 'hallym' ? '한림대' : '강원대';
     selectEl.innerHTML = `<option value="">[${schoolName}] 출발 건물을 선택하세요</option>`;
     
-    if (buildingData && buildingData[campus]) {
-        buildingData[campus].forEach(name => {
-            const opt = document.createElement('option');
-            opt.value = name;
-            opt.textContent = name;
-            selectEl.appendChild(opt);
-        });
-    }
+    window.AppState.getBuildingNames(campus).forEach(name => {
+        const opt = document.createElement('option');
+        opt.value = name;
+        opt.textContent = name;
+        selectEl.appendChild(opt);
+    });
 }
 
 function onSearchDestination(keyword) {
-    clearTimeout(searchTimer);
+    clearTimeout(window.AppState.getSearchTimer());
     const listEl = document.getElementById('autocomplete-list');
     if (!keyword || keyword.trim().length < 1) {
         listEl.style.display = 'none';
         return;
     }
 
-    searchTimer = setTimeout(() => {
+    const searchTimer = setTimeout(() => {
         fetch(`/search_poi?q=${encodeURIComponent(keyword.trim())}`)
         .then(res => res.json())
         .then(items => {
@@ -62,12 +58,11 @@ function onSearchDestination(keyword) {
             console.error('POI 검색 실패:', err);
         });
     }, 250);
+    window.AppState.setSearchTimer(searchTimer);
 }
 
 function selectDestination(name, lat, lon) {
-    destName = name;
-    destLat = lat;
-    destLon = lon;
+    window.AppState.setDestination(name, lat, lon);
     document.getElementById('autocomplete-list').style.display = 'none';
     document.getElementById('dest-input').value = '';
     document.getElementById('dest-input').style.display = 'none';
@@ -77,28 +72,37 @@ function selectDestination(name, lat, lon) {
     tagEl.style.display = 'flex';
 
     const building = document.getElementById('building-select').value;
-    if (lastSearchMode === 'gps' && currentLat && currentLon) {
-        requestBusByCoords(currentLat, currentLon);
+    const currentPosition = window.AppState.getCurrentPosition();
+    if (window.AppState.getLastSearchMode() === 'gps' && currentPosition.lat && currentPosition.lon) {
+        window.AppModules.api.requestBusByCoords(currentPosition.lat, currentPosition.lon);
     } else if (building) {
-        findRoutes();
+        window.AppModules.api.findRoutes();
     }
 }
 
 function clearDestination() {
-    destName = '';
-    destLat = null;
-    destLon = null;
+    window.AppState.clearDestination();
     document.getElementById('dest-selected-tag').style.display = 'none';
     document.getElementById('dest-input').style.display = 'block';
 
     const building = document.getElementById('building-select').value;
-    if (lastSearchMode === 'gps' && currentLat && currentLon) {
-        requestBusByCoords(currentLat, currentLon);
+    const currentPosition = window.AppState.getCurrentPosition();
+    if (window.AppState.getLastSearchMode() === 'gps' && currentPosition.lat && currentPosition.lon) {
+        window.AppModules.api.requestBusByCoords(currentPosition.lat, currentPosition.lon);
     } else if (building) {
-        findRoutes();
+        window.AppModules.api.findRoutes();
     }
 }
 
+window.AppModules.search = {
+    switchCampus: switchCampus,
+    updateBuildingSelect: updateBuildingSelect,
+    onSearchDestination: onSearchDestination,
+    selectDestination: selectDestination,
+    clearDestination: clearDestination
+};
+
+// index.html과 자동완성 항목의 기존 인라인 호출과의 호환성을 유지합니다.
 window.switchCampus = switchCampus;
 window.updateBuildingSelect = updateBuildingSelect;
 window.onSearchDestination = onSearchDestination;

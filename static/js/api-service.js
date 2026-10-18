@@ -13,6 +13,40 @@ function setRouteLoading(visible) {
     if (visible) loading.textContent = '🚌 정류장 순서와 경로를 확인하고 있습니다...';
 }
 
+function requestBusByCoords(lat, lon) {
+    window.AppState.setLastSearchMode('gps');
+    window.AppState.setCurrentPosition(lat, lon);
+    
+    const loadingEl = document.getElementById('loading');
+    const destination = window.AppState.getDestination();
+    loadingEl.style.display = 'block';
+    loadingEl.innerText = '🚌 정보를 불러오고 있습니다...';
+    
+    fetch('/get_route_info', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            lat: lat,
+            lon: lon,
+            location: '내 실시간 위치',
+            dest_lat: destination.lat,
+            dest_lon: destination.lon,
+            dest_name: destination.name
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (Array.isArray(data)) {
+            window.AppModules.map.drawStationMarkersOnMap(data);
+        }
+        window.AppModules.renderer.renderResults(data);
+    })
+    .catch(error => {
+        console.error('get_route_info 에러:', error);
+        loadingEl.style.display = 'none';
+        alert('데이터 통신에 실패했습니다.');
+    });
+}
 function drawRouteResult(data) {
     // 지도 SDK가 실패해도 결과 카드와 오류 안내는 표시합니다.
     try {
@@ -42,7 +76,7 @@ function cancelPendingRequests(options = {}) {
     }
 }
 
-function routeStateSnapshot(mode) {
+ㅋfunction routeStateSnapshot(mode) {
     const destination = window.AppState.getDestination();
     const building = document.getElementById('building-select');
     return JSON.stringify({
@@ -85,6 +119,25 @@ async function requestRoute(payload, mode) {
         drawRouteResult(data);
     } catch (error) {
         if (!isCurrent() || error.name === 'AbortError') return;
+    fetch('/get_route_info', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            location: building,
+            campus: window.AppState.getSelectedCampus(),
+            dest_lat: destination.lat,
+            dest_lon: destination.lon,
+            dest_name: destination.name
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (Array.isArray(data)) {
+            window.AppModules.map.drawStationMarkersOnMap(data);
+        }
+        window.AppModules.renderer.renderResults(data);
+    })
+    .catch(error => {
         console.error('get_route_info 에러:', error);
         drawRouteResult({ error: error.message || '데이터 통신에 실패했습니다. 잠시 후 다시 조회해 주세요.' });
     } finally {
@@ -134,9 +187,13 @@ function findRoutes() {
 
 window.AppModules.api = {
     requestBusByCoords: requestBusByCoords,
+window.AppModules.api = {
+    requestBusByCoords: requestBusByCoords,
     findRoutes: findRoutes,
     cancelPendingRequests: cancelPendingRequests
 };
+
+// index.html의 기존 인라인 호출과의 호환성을 유지합니다.
 window.requestBusByCoords = requestBusByCoords;
 window.findRoutes = findRoutes;
 
