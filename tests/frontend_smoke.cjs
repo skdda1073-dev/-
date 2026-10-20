@@ -173,6 +173,17 @@ const MAP_SDK = String.raw`(() => {
         } } };
 })();`;
 
+// Explicit test-only entry point; the default page never activates live mobility.
+async function activateRealMobility(page) {
+    const sources = await page.evaluate(() => {
+        const template = document.getElementById('real-mobility-template');
+        document.getElementById('transport-demo').hidden = true;
+        template.before(template.content.cloneNode(true));
+        return [template.dataset.taxiSrc, template.dataset.roomSrc];
+    });
+    for (const src of sources) await page.addScriptTag({ url: src });
+}
+
 async function openApp(browser, options = {}) {
     const previewFontCSS = await loadPreviewFontCSS();
     const context = await browser.newContext({
@@ -243,6 +254,11 @@ async function openApp(browser, options = {}) {
     try {
         await page.goto(BASE_URL, { waitUntil: options.mapSDKGate ? 'domcontentloaded' : 'networkidle' });
         await page.locator('#route-submit').waitFor({ state: 'visible' });
+        if (options.realMobility) {
+            // Preserve live UI regression coverage using inert production markup and mocked APIs.
+            await activateRealMobility(page);
+        }
+
         assert.deepEqual(await page.evaluate(() => window.__testGPSCalls), [], 'Loading the app must not request GPS permission');
         assert.deepEqual(errors, [], 'App startup has no unhandled JavaScript errors');
     } catch (error) {
@@ -567,6 +583,6 @@ async function run() {
     if (failures.length) process.exitCode = 1;
 }
 
-module.exports = { openApp, chooseBuilding, selectDestination, clearDestination, noOverflow, resultContains,
+module.exports = { openApp, activateRealMobility, chooseBuilding, selectDestination, clearDestination, noOverflow, resultContains,
     taxiFixture, journeyFixture, nearbyFixture, DESTINATION, INJECTION, BASE_URL };
 if (require.main === module) run().catch(error => { console.error(error.stack || error); process.exitCode = 1; });

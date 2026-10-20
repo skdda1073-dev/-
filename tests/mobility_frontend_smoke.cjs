@@ -4,8 +4,11 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs/promises');
 const path = require('node:path');
 const { chromium } = require('playwright');
-const { openApp, chooseBuilding, selectDestination, clearDestination, noOverflow, resultContains,
+const { openApp: openBaseApp, activateRealMobility, chooseBuilding, selectDestination, clearDestination, noOverflow, resultContains,
     taxiFixture, journeyFixture, DESTINATION, INJECTION, BASE_URL } = require('./frontend_smoke.cjs');
+
+// These checks deliberately activate preserved live markup, with provider requests mocked.
+const openApp = (browser, options = {}) => openBaseApp(browser, { ...options, realMobility: true });
 
 const tests = [];
 const test = (name, run) => tests.push({ name, run });
@@ -433,6 +436,7 @@ if (process.env.CAPSTONE_LIVE_ROOM_TESTS === '1') test('two isolated browsers us
         await preview(page, 'mobile-shared-ride-test-preview.png');
         hostTab = await first.context.newPage();
         await hostTab.goto(BASE_URL);
+        await activateRealMobility(hostTab);
         await hostTab.locator('#room-open-list').click();
         await hostTab.locator('#room-list .room-card').filter({ hasText: title }).locator('button').click();
         await visibleText(hostTab, '#room-detail-count', '현재 4명');

@@ -99,7 +99,7 @@
     }
 
     async function requestTaxiEstimate(context) {
-        if (!context || !context.isCurrent()) return;
+        if (!window.AppModules.taxi || !context || !context.isCurrent()) return;
         taxiVersion += 1;
         const version = taxiVersion;
         if (taxiController) taxiController.abort();
