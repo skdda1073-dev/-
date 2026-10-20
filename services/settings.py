@@ -18,6 +18,13 @@ class Settings:
     naver_map_client_id: str = field(default="", repr=False)
     debug: bool = False
     port: int = 5000
+    flask_secret_key: str = field(default="", repr=False)
+    ride_room_db_path: str = field(default="", repr=False)
+    session_cookie_secure: bool = True
+    taxi_cache_ttl_seconds: int = 60
+    taxi_cache_max_entries: int = 512
+    ride_room_message_rate_per_minute: int = 15
+    ride_room_create_rate_per_hour: int = 3
 
     def configured(self):
         """존재 여부만 반환한다. 발급·권한·외부 연결 성공을 뜻하지 않는다."""
@@ -45,6 +52,21 @@ def load_settings(base_dir, environ=None):
         raw = environment.get(name, file_values.get(name, default))
         return default if raw is None else str(raw).strip()
 
+    def integer(name, default, lower, upper):
+        try:
+            parsed = int(value(name, str(default)))
+            if not lower <= parsed <= upper:
+                raise ValueError("range")
+            return parsed
+        except (ValueError, OverflowError):
+            raise ConfigurationError(f"{name} 설정 범위를 확인하세요.") from None
+
+    def boolean(name, default):
+        text = value(name, "true" if default else "false").lower()
+        if text not in {"true", "false", "1", "0", "yes", "no"}:
+            raise ConfigurationError(f"{name}는 true 또는 false로 설정하세요.")
+        return text in {"true", "1", "yes"}
+
     debug_text = value("APP_DEBUG", "false").lower()
     if debug_text not in {"true", "false", "1", "0", "yes", "no"}:
         raise ConfigurationError("APP_DEBUG는 true 또는 false로 설정하세요.")
@@ -59,4 +81,11 @@ def load_settings(base_dir, environ=None):
         public_data_key=value("PUBLIC_DATA_KEY"),
         naver_map_client_id=value("NAVER_MAP_CLIENT_ID"),
         debug=debug_text in {"true", "1", "yes"}, port=port,
+        flask_secret_key=value("FLASK_SECRET_KEY"),
+        ride_room_db_path=value("RIDE_ROOM_DB_PATH", str(Path(base_dir) / "instance" / "ride_rooms.sqlite3")),
+        session_cookie_secure=boolean("SESSION_COOKIE_SECURE", True),
+        taxi_cache_ttl_seconds=integer("TAXI_CACHE_TTL_SECONDS", 60, 1, 300),
+        taxi_cache_max_entries=integer("TAXI_CACHE_MAX_ENTRIES", 512, 1, 4096),
+        ride_room_message_rate_per_minute=integer("RIDE_ROOM_MESSAGE_RATE_PER_MINUTE", 15, 1, 120),
+        ride_room_create_rate_per_hour=integer("RIDE_ROOM_CREATE_RATE_PER_HOUR", 3, 1, 30),
     )

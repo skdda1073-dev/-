@@ -36,7 +36,7 @@ a { color: inherit; }
 .icon { display: inline-block; width: 24px; height: 24px; flex: 0 0 auto; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; vertical-align: middle; }
 
 .map-stage { position: fixed; inset: 0 0 auto; height: 54svh; min-height: 280px; z-index: 0; overflow: hidden; background: #eef1ec; transition: height .25s ease; }
-.map-canvas { position: absolute; inset: 0; background-color: #edf1ec; background-image: linear-gradient(120deg, transparent 49.8%, #e1e8df 50%, transparent 50.3%), linear-gradient(30deg, transparent 49.7%, #e1e8df 50%, transparent 50.3%); background-size: 140px 140px, 220px 220px; }
+.map-canvas { position: absolute; inset: 0; width: 100%; height: 100%; background-color: #edf1ec; background-image: linear-gradient(120deg, transparent 49.8%, #e1e8df 50%, transparent 50.3%), linear-gradient(30deg, transparent 49.7%, #e1e8df 50%, transparent 50.3%); background-size: 140px 140px, 220px 220px; }
 .map-canvas.is-ready { background-image: none; }
 .map-header { position: absolute; top: max(16px, env(safe-area-inset-top)); left: 18px; right: 18px; display: flex; justify-content: space-between; align-items: center; gap: 12px; pointer-events: none; z-index: 3; }
 .brand { display: flex; align-items: center; gap: 9px; padding: 10px 13px 10px 10px; border-radius: 16px; background: white; color: var(--ink); box-shadow: 0 4px 18px rgba(18,56,32,.13); text-decoration: none; font-size: 17px; font-weight: 900; line-height: 1.1; pointer-events: auto; letter-spacing: -.7px; }

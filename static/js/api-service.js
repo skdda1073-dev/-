@@ -2,6 +2,9 @@
 (function() {
     let latestRequest = 0;
     let routeController = null;
+    let taxiController = null;
+    let taxiVersion = 0;
+    let taxiContext = null;
 
     function setRouteLoading(visible, message) {
         const loading = document.getElementById('loading');
@@ -49,6 +52,11 @@
         latestRequest += 1;
         if (routeController) routeController.abort();
         routeController = null;
+        taxiVersion += 1;
+        if (taxiController) taxiController.abort();
+        taxiController = null;
+        taxiContext = null;
+        if (window.AppModules.taxi) window.AppModules.taxi.reset();
         if (options.cancelLocation !== false && window.AppModules.gps) {
             window.AppModules.gps.cancelPendingLocation();
         }
@@ -90,6 +98,52 @@
         });
     }
 
+    async function requestTaxiEstimate(context) {
+        if (!context || !context.isCurrent()) return;
+        taxiVersion += 1;
+        const version = taxiVersion;
+        if (taxiController) taxiController.abort();
+        const controller = typeof AbortController === 'function' ? new AbortController() : null;
+        taxiController = controller;
+        const current = function() { return version === taxiVersion && context.isCurrent(); };
+        const taxi = window.AppModules.taxi;
+        if (taxi) taxi.loading(context);
+        let timeout;
+        try {
+            const response = await Promise.race([
+                fetch('/api/taxi/estimate', {
+                    method: 'POST', credentials: 'same-origin',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(context.payload),
+                    ...(controller ? { signal: controller.signal } : {})
+                }),
+                new Promise(function(resolve, reject) {
+                    timeout = setTimeout(function() {
+                        reject(new Error('택시 조회가 늦어지고 있어요. 잠시 후 갱신해 주세요.'));
+                        if (controller) controller.abort();
+                    }, 15000);
+                })
+            ]);
+            const data = await response.json();
+            if (!current()) return;
+            if (!response.ok) throw new Error(data && typeof data.error === 'string'
+                ? data.error : '택시 정보를 불러오지 못했어요.');
+            if (!data || typeof data !== 'object' || Array.isArray(data)) throw new Error('택시 응답을 확인할 수 없어요.');
+            if (taxi) taxi.render(data, context);
+        } catch (error) {
+            if (!current() || error.name === 'AbortError') return;
+            if (taxi) taxi.failed(error instanceof TypeError || error instanceof SyntaxError
+                ? '택시 서버에 연결하지 못했어요. 잠시 후 갱신해 주세요.' : error.message, context);
+        } finally {
+            clearTimeout(timeout);
+            if (version === taxiVersion) taxiController = null;
+        }
+    }
+
+    function refreshTaxi() {
+        return requestTaxiEstimate(taxiContext);
+    }
+
     async function requestRoute(payload, mode) {
         cancelPendingRequests();
         const requestId = latestRequest;
@@ -99,6 +153,11 @@
         const isCurrent = function() {
             return requestId === latestRequest && snapshot === stateSnapshot(mode);
         };
+        if (payload.dest_name && window.AppState.isValidPosition(payload.dest_lat, payload.dest_lon)) {
+            taxiContext = { payload: { ...payload }, mode: mode, isCurrent: isCurrent };
+            // Independent requests: transit failure and completion do not affect the taxi card.
+            requestTaxiEstimate(taxiContext);
+        }
         setRouteLoading(true);
         let timeout;
         try {
@@ -198,7 +257,7 @@
         }, 'building');
     }
 
-    window.AppModules.api = { requestBusByCoords, findRoutes, cancelPendingRequests, setRouteLoading, drawRouteResult };
+    window.AppModules.api = { requestBusByCoords, findRoutes, cancelPendingRequests, setRouteLoading, drawRouteResult, refreshTaxi };
     window.requestBusByCoords = requestBusByCoords;
     window.findRoutes = findRoutes;
     window.cancelPendingRequests = cancelPendingRequests;

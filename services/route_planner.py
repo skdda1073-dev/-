@@ -228,8 +228,9 @@ def _arrival_for(leg, ready_min, records):
 
 
 def plan_journeys(origin, destination, origin_stops, destination_stops, routes,
-                  arrivals, walking_time, max_transfers=1, use_transfer_arrivals=True):
-    """Return the best three candidates, preserving unknown waits as ``None``.
+                  arrivals, walking_time, max_transfers=1, use_transfer_arrivals=True,
+                  limit=3):
+    """Return bounded candidates, preserving unknown waits as ``None``.
 
     Points are {name, lat, lon}; stops use TAGO keys; routes is
     {route_id: {route_no, end_node, stops}}. All observed ETAs must share one
@@ -339,4 +340,5 @@ def plan_journeys(origin, destination, origin_stops, destination_stops, routes,
                                     sum(leg.get("route_number_verified") is False for leg in item["legs"]),
                                     tuple((leg["route_id"], leg["board"]["id"], leg["alight"]["id"])
                                           for leg in item["legs"])))
-    return journeys[:3]
+    # 통합 서비스는 교통수단을 합친 뒤 최종 제한한다. 기존 호출은 3개 유지.
+    return journeys if limit is None else journeys[:limit]

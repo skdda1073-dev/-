@@ -11,6 +11,8 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/search.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/timeline.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/result-card.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/taxi.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/ride-room.css') }}">
 </head>
 <body>
     <a class="skip-link" href="#dest-input">길찾기 검색으로 이동</a>
@@ -113,6 +115,75 @@
                     </div>
                     <div id="result-container" aria-live="polite" aria-atomic="false"></div>
                 </section>
+                <section id="taxi-section" class="taxi-section" aria-labelledby="taxi-heading" hidden>
+                    <div class="taxi-card">
+                        <div class="taxi-top"><h2 id="taxi-heading">택시 예상 이동</h2><button id="taxi-refresh" class="taxi-button taxi-button--secondary" type="button">견적 갱신</button></div>
+                        <p id="taxi-route" class="taxi-route"></p>
+                        <div id="taxi-content" aria-live="polite"></div>
+                        <p class="taxi-caption">택시 대기시간 제외 · 실제 미터요금은 달라질 수 있어요.</p>
+                        <div class="taxi-actions"><button id="taxi-find-room" class="taxi-button taxi-button--secondary" type="button">같이 탈 사람 찾기</button><button id="taxi-create-room" class="taxi-button" type="button">모집방 만들기</button></div>
+                    </div>
+                </section>
+                <section id="ride-room-section" class="ride-rooms" aria-labelledby="ride-room-heading">
+                    <h2 id="ride-room-heading" tabindex="-1">택시 동승 모집</h2>
+                    <p class="room-caption">같은 택시를 탈 사람과 웹 안에서 대화해 보세요. 참가 버튼은 탑승 의사를 등록해요.</p>
+                    <button id="room-open-list" class="room-button" type="button">동승 모집 보기</button>
+                    <p id="room-status" class="room-status" role="status" aria-live="polite"></p>
+                    <div id="room-panel" hidden>
+                        <div class="room-actions"><button id="room-create-current" class="room-button" type="button">현재 목적지로 방 만들기</button><button id="room-hide" class="room-button room-button--secondary" type="button">모집 화면 닫기</button></div>
+                        <div id="room-list-view">
+                            <h3 tabindex="-1" id="room-list-heading">모집 목록</h3>
+                            <form id="room-filter-form">
+                                <label class="room-field" for="room-filter-q">목적지 검색어<input id="room-filter-q" type="search" maxlength="100" placeholder="예: 남춘천역"></label>
+                                <label class="room-field" for="room-filter-from">출발 구간 시작 · 한국 시간<input id="room-filter-from" type="datetime-local"></label>
+                                <label class="room-field" for="room-filter-to">출발 구간 끝 · 한국 시간<input id="room-filter-to" type="datetime-local"></label>
+                                <label class="room-field" for="room-filter-status">모집 상태<select id="room-filter-status"><option value="">모든 상태</option><option value="open">모집 중</option><option value="full">정원 마감</option><option value="closed">방 종료</option><option value="expired">출발시각 지남</option></select></label>
+                                <button class="room-button" type="submit">조건으로 찾기</button>
+                            </form>
+                            <div id="room-list" aria-live="polite"></div>
+                            <button id="room-load-more" class="room-button room-button--secondary" type="button" hidden>모집 목록 더 보기</button>
+                        </div>
+                        <div id="room-create-view" hidden>
+                            <h3 tabindex="-1" id="room-create-heading">모집방 만들기</h3>
+                            <p class="room-caption">공개 집결 장소와 목적지가 다른 참가자에게 보여요. 현재 GPS는 자동으로 공개하지 않아요.</p>
+                            <p id="room-create-context" class="room-status" role="status"></p>
+                            <form id="room-create-form">
+                                <label class="room-field" for="room-title">방 제목<input id="room-title" type="text" maxlength="60" required></label>
+                                <label class="room-field" for="room-create-nickname">내 닉네임<input id="room-create-nickname" type="text" maxlength="20" required autocomplete="nickname"></label>
+                                <label class="room-field" for="room-meeting-query">공개할 만날 장소 검색<input id="room-meeting-query" type="search" maxlength="100" autocomplete="off" placeholder="정문, 역, 건물 등 공개 장소" aria-describedby="room-meeting-status"></label>
+                                <p id="room-meeting-status" class="room-caption" role="status"></p>
+                                <div id="room-meeting-options" class="room-place-options" role="group" aria-label="공개 집결 장소 검색 결과"></div>
+                                <p id="room-meeting-selected" class="room-selected-place" hidden></p>
+                                <label class="room-check"><input id="room-meeting-confirm" type="checkbox" required disabled><span>선택한 장소를 공개 집결지로 사용할게요.</span></label>
+                                <p id="room-create-destination" class="room-caption"></p>
+                                <label class="room-field" for="room-departure">출발 예정 시각 · 한국 시간<input id="room-departure" type="datetime-local" required></label>
+                                <p class="room-caption">현재 이후부터 24시간 이내만 모집할 수 있어요.</p>
+                                <label class="room-field" for="room-capacity">총 정원 · 방장 포함<select id="room-capacity"><option value="2">2명</option><option value="3">3명</option><option value="4">4명</option></select></label>
+                                <div class="room-actions"><button id="room-create-submit" class="room-button" type="submit" disabled>모집방 만들기</button><button id="room-create-cancel" class="room-button room-button--secondary" type="button">취소</button></div>
+                            </form>
+                        </div>
+                        <div id="room-detail-view" hidden>
+                            <button id="room-detail-back" class="room-button room-button--secondary" type="button">목록으로</button>
+                            <h3 id="room-detail-title" tabindex="-1"></h3>
+                            <p id="room-detail-route" class="room-caption"></p>
+                            <p id="room-detail-time" class="room-caption"></p>
+                            <p id="room-detail-state" class="room-state"></p>
+                            <p id="room-detail-count" class="room-caption"></p>
+                            <ul id="room-members" class="room-members" aria-label="현재 참가자"></ul>
+                            <form id="room-join-form" hidden><label class="room-field" for="room-join-nickname">참가할 닉네임<input id="room-join-nickname" maxlength="20" required autocomplete="nickname"></label><button id="room-join-submit" class="room-button" type="submit">참가하기 · 탑승 의사 등록</button></form>
+                            <p id="room-visitor-note" class="room-caption"></p>
+                            <div id="room-member-content" hidden>
+                                <div class="room-quote"><h4>현재 조회 기준 예상</h4><div id="room-estimate-content" aria-live="polite"></div><button id="room-estimate-refresh" class="room-button room-button--secondary" type="button">이 방의 견적 갱신</button><p class="room-caption">택시 대기시간 제외 · 실제 미터요금은 달라질 수 있어요. 예약 출발시각의 교통 예측은 제공하지 않아요.</p></div>
+                                <h4>참가자 채팅</h4><div id="room-messages" class="room-message-list" role="log" aria-live="polite" aria-relevant="additions" aria-label="방 대화"></div>
+                                <p id="room-chat-status" class="room-caption" role="status"></p>
+                                <form id="room-message-form"><label class="room-field" for="room-message-body">메시지<textarea id="room-message-body" maxlength="500" required rows="3"></textarea></label><button id="room-message-send" class="room-button" type="submit">보내기</button></form>
+                                <div class="room-actions"><button id="room-leave" class="room-button room-button--secondary" type="button">방 나가기</button><button id="room-close" class="room-button room-button--danger" type="button">방 종료</button></div>
+                                <div id="room-close-confirm" class="room-close-confirm" hidden><p>방을 종료하면 새 참가와 메시지 전송이 중단돼요.</p><div class="room-actions"><button id="room-close-yes" class="room-button room-button--danger" type="button">방 종료 확인</button><button id="room-close-no" class="room-button room-button--secondary" type="button">취소</button></div></div>
+                            </div>
+                        </div>
+                    </div>
+                    <details class="room-help"><summary>닉네임 세션과 이용 안내</summary><p>닉네임은 대학생·실명 인증이 아니에요. 쿠키를 삭제하거나 다른 기기를 사용하면 참가 권한이 이어지지 않아요.</p><p>방을 닫거나 연결이 끊겨도 참가 인원은 자동으로 줄지 않아요. 일반 참가자는 나가기를, 방장은 방 종료를 눌러 주세요.</p><p>출발시각이 지나면 새 참가와 메시지 전송이 멈춰요. 방과 대화는 출발시각 이후 24시간이 지난 뒤 정리 대상이 돼요. 결제·정산 기능은 제공하지 않아요.</p></details>
+                </section>
                 <footer class="panel-footer"><span class="footer-dot"></span><span>한림대 · 강원대 학생을 위한 통학 도우미</span><svg class="icon" aria-hidden="true"><use href="#icon-walk"></use></svg></footer>
             </div>
         </main>
@@ -125,5 +196,7 @@
     <script src="{{ url_for('static', filename='js/api-service.js') }}" defer></script>
     <script src="{{ url_for('static', filename='js/ui-renderer.js') }}" defer></script>
     <script src="{{ url_for('static', filename='js/ui-controller.js') }}" defer></script>
+    <script src="{{ url_for('static', filename='js/taxi-controller.js') }}" defer></script>
+    <script src="{{ url_for('static', filename='js/ride-room-controller.js') }}" defer></script>
 </body>
 </html>

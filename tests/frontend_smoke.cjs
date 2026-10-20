@@ -91,6 +91,25 @@ function nearbyFixture(payload = {}) {
     }];
 }
 
+function taxiFixture(payload = {}, options = {}) {
+    const amount = options.amount === undefined ? 10001 : options.amount;
+    const at = options.at || Date.now();
+    return {
+        status: amount === null ? 'partial' : 'ok', code: null,
+        origin: { name: payload.location || '테스트 공개 장소', lat: payload.lat || 37.88695, lon: payload.lon || 127.73585 },
+        destination: { name: payload.dest_name || DESTINATION.name, lat: payload.dest_lat || DESTINATION.lat, lon: payload.dest_lon || DESTINATION.lon },
+        ride_duration_seconds: 600, distance_m: 2500,
+        fare: { amount_krw: amount, basis: 'provider_estimate', provider_total_fare_krw: 0,
+            toll_included: null, surcharge_included: null, call_fee_included: null },
+        pickup_wait_seconds: null, door_to_door_seconds: null,
+        fetched_at: new Date(at).toISOString(), provider_data_at: null,
+        expires_at: new Date(at + (options.ttl || 60) * 1000).toISOString(), cache_ttl_seconds: options.ttl || 60,
+        from_cache: false, cache_age_seconds: 0, warnings: ['자동화 검증용 견적이며 실제 춘천 운임이 아닙니다.'],
+        split_preview: [1, 2, 3, 4].map(count => ({ count, amounts_krw: amount === null ? null
+            : Array.from({ length: count }, (_, index) => Math.floor(amount / count) + (index < amount % count ? 1 : 0)) })),
+    };
+}
+
 // This illustration only exists inside the test SDK. It is deliberately
 // labelled a preview, and contains no external tiles or claimed real geography.
 const MAP_SDK = String.raw`(() => {
@@ -158,9 +177,9 @@ async function openApp(browser, options = {}) {
     const previewFontCSS = await loadPreviewFontCSS();
     const context = await browser.newContext({
         viewport: options.viewport || { width: 390, height: 844 },
-        deviceScaleFactor: 1, reducedMotion: 'reduce', locale: 'ko-KR', timezoneId: 'Asia/Seoul',
+        deviceScaleFactor: 1, reducedMotion: 'reduce', locale: 'ko-KR', timezoneId: options.timezoneId || 'Asia/Seoul',
     });
-    const requests = [], searches = [], errors = [], blocked = [];
+    const requests = [], searches = [], taxiRequests = [], roomRequests = [], errors = [], blocked = [];
     await context.addInitScript(({ denyGPS }) => {
         window.__testGPSCalls = [];
         window.__injected = false;
@@ -203,6 +222,18 @@ async function openApp(browser, options = {}) {
             if (options.routeHandler) return options.routeHandler(route, payload, requests.length);
             return route.fulfill({ json: payload.dest_name ? journeyFixture(payload, !!options.unknownWait) : nearbyFixture(payload) });
         }
+        if (url.pathname === '/api/taxi/estimate') {
+            const payload = request.postDataJSON();
+            taxiRequests.push(payload);
+            if (options.taxiHandler) return options.taxiHandler(route, payload, taxiRequests.length);
+            return route.fulfill({ json: taxiFixture(payload) });
+        }
+        if (url.pathname.startsWith('/api/ride-rooms')) {
+            roomRequests.push({ method: request.method(), pathname: url.pathname, query: url.search,
+                body: request.method() === 'POST' ? request.postDataJSON() : null, headers: request.headers() });
+            if (options.roomHandler) return options.roomHandler(route, url, roomRequests.at(-1), roomRequests.length);
+            if (!options.liveRooms) return route.fulfill({ status: 503, json: { code: 'CHAT_DISABLED', error: '자동화 검증에서 채팅 기능을 사용하지 않아요.' } });
+        }
         return route.continue();
     });
     const page = await context.newPage();
@@ -218,7 +249,7 @@ async function openApp(browser, options = {}) {
         await context.close();
         throw error;
     }
-    return { page, requests, searches, errors, blocked, async close() {
+    return { page, context, requests, searches, taxiRequests, roomRequests, errors, blocked, async close() {
         const captured = [...errors];
         await context.close();
         assert.deepEqual(captured, [], 'No unhandled JavaScript errors or blocking dialogs');
@@ -228,7 +259,7 @@ async function openApp(browser, options = {}) {
 async function noOverflow(page) {
     const result = await page.evaluate(() => {
         const width = document.documentElement.clientWidth;
-        const outside = [...document.querySelectorAll('#planner-panel input, #planner-panel select, #planner-panel button, #result-container button, #result-container summary')]
+        const outside = [...document.querySelectorAll('#planner-panel input, #planner-panel textarea, #planner-panel select, #planner-panel button, #result-container button, #result-container summary')]
             .filter(el => el.getClientRects().length && (el.getBoundingClientRect().left < -1 || el.getBoundingClientRect().right > width + 1))
             .map(el => el.id || el.textContent.trim().slice(0, 80));
         return { scrollWidth: document.documentElement.scrollWidth, viewport: window.innerWidth, outside };
@@ -515,7 +546,7 @@ test('an older autocomplete response cannot replace the newest search', async br
     } finally { releaseOld(); await app.close(); }
 });
 
-(async () => {
+async function run() {
     const browser = await chromium.launch({ headless: true,
         ...(process.env.CAPSTONE_BROWSER_EXECUTABLE ? { executablePath: process.env.CAPSTONE_BROWSER_EXECUTABLE } : {}),
     });
@@ -534,4 +565,8 @@ test('an older autocomplete response cannot replace the newest search', async br
     console.log(`\n${tests.length - failures.length}/${tests.length} browser smoke checks passed. External transit, POI, GPS and map services were mocked.`);
     if (SCREENSHOT_DIR) console.log(`Preview screenshots: ${SCREENSHOT_DIR}`);
     if (failures.length) process.exitCode = 1;
-})().catch(error => { console.error(error.stack || error); process.exitCode = 1; });
+}
+
+module.exports = { openApp, chooseBuilding, selectDestination, clearDestination, noOverflow, resultContains,
+    taxiFixture, journeyFixture, nearbyFixture, DESTINATION, INJECTION, BASE_URL };
+if (require.main === module) run().catch(error => { console.error(error.stack || error); process.exitCode = 1; });

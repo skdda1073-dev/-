@@ -211,6 +211,11 @@ class CsvTransitRepository:
         nearby.sort(key=lambda stop: (stop["distance"], stop["nodeid"]))
         return nearby
 
+    def stop(self, node_id):
+        """검증된 정확 ID의 좌표만 조회한다. 이름 유사성으로 연결하지 않는다."""
+        self._load()
+        return deepcopy(self._stops.get(self._identifier(node_id), {}))
+
     def station_routes(self, node_id):
         self._load()
         return deepcopy(self._station_routes.get(self._identifier(node_id), []))
