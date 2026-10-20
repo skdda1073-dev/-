@@ -8,10 +8,6 @@
 
 공식 자료에 있는 제5노선은 직원 노선이므로 이번 학생 통학 조회 범위에서 제외한다. HTML·CSS·프론트엔드 동작은 변경하지 않는다.
 
-이 문서는 **백엔드 PR의 API 계약과 고경완 UI 담당자의 인수 문서**다. 게시 기준 `main`의 `ui-renderer.js`는 정류장 배열의 `find`·`forEach`를 사용하는 화면이며 `mode: "journeys"` 객체를 처리하지 않는다. 이는 이 셔틀 변경 전부터 존재한 `main`의 목적지 경로 API와 화면 사이의 불일치다. 백엔드 PR의 14개 파일에 UI 수정은 포함하지 않으며, 최신 디자인을 유지한 응답 분기·표시 어댑터를 별도 UI PR로 연결해야 한다. 현재 상태를 사이트 전체 연동 완료로 해석하면 안 된다.
-
-모든 파일 경로와 아래 명령은 **저장소 루트** 기준이다. 먼저 `git rev-parse --show-toplevel`로 작업 위치를 확인하고, 저장소 안의 `-/` 등 예전 복제 폴더를 수정하지 않는다.
-
 ## 실제 원본과 파생 구조
 
 사용하는 원본은 프로젝트 루트의 `한림대_셔틀버스.csv`다. 파일은 UTF-8이며 헤더를 제외한 데이터 196행, 원문 정류장명 31개를 담고 있다. 헤더를 포함한 파일 행 수는 197행이다. 열은 아래 네 개이며 좌표·정류장 ID·운행일 열은 없다.
@@ -28,8 +24,6 @@
 원본을 새 파일 형식으로 변환하거나 내용을 덮어쓰지 않는다. 저장소 모듈이 원문 행·행 번호를 보존한 채 런타임 메모리에 노선, 방향, 회차, 회차 안의 정류장 순서, 시각을 파생한다. `data/hallym_shuttle_profile.json`은 원본을 대체하는 시간표가 아니라 공식 근거·운행 규칙·대표점 대응을 담은 별도 보완 자료다. `services/shuttle_profile.py`가 프로필을 검증해 메모리상의 원본 스냅샷에 적용한다. 생성한 내부 ID는 원문 데이터의 공식 ID가 아니다.
 
 검증 시 원본 SHA-256은 `7755f5982aa671785e59ea5b528b12048bcb9210b715ba3e4dc13d0f18d9f03d`다. 인코딩·해시·행 수를 응답의 `source`에 제공한다. `route_id`는 노선명·방면, `trip_id`(원시 회차의 `id`)는 노선명·방면·시작 행, `stop_id`는 노선명·방면·정류장명을 각각 구분해 만든 안정적인 내부 ID다. 같은 회차의 출발·종착에 같은 `stop_id`가 나타나도 원문 방문 행을 모두 보존한다. 저장소는 최초 조회 후 메모리에 캐시하므로 원본을 교체한 뒤에는 서비스를 재시작해야 한다.
-
-원본 CSV는 **UTF-8·LF 줄바꿈과 바이트 내용을 그대로 보존**해야 한다. 스프레드시트에서 다시 저장하거나 에디터·체크아웃 과정에서 CRLF로 바꾸는 것만으로도 해시가 달라져 공식 프로필이 적용되지 않는다. macOS/Linux에서는 `shasum -a 256 "한림대_셔틀버스.csv"`로 위 해시와 비교할 수 있다. 해시 불일치를 없애려고 프로필의 해시만 임의로 고치지 말고 인코딩·줄바꿈·데이터 변경 원인을 먼저 확인한다.
 
 | 노선 | 원본 구조 | 메모리에서 다루는 단위 | 원본에서 확인되는 한계 |
 | --- | --- | --- | --- |
@@ -63,7 +57,7 @@
 | --- | --- |
 | [한림대학교 셔틀버스 안내](https://www.hallym.ac.kr/hallym/442/subview.do) | 제1노선의 출발·상대 종점·CLC 승차 안내, 금요일 예외 및 운행 조건 |
 | [2026학년도 한림대학교 대학안내책자](https://www.hallym.ac.kr/sites/cge/files/%5B%ED%95%9C%EB%A6%BC%EB%8C%80%ED%95%99%EA%B5%90%5D%202026%ED%95%99%EB%85%84%EB%8F%84%20%EB%8C%80%ED%95%99%EC%95%88%EB%82%B4%EC%B1%85%EC%9E%90.pdf) | 2026년 1·2학기 기간 |
-| [한국천문연구원 2026년 월력요항](https://astro.kasi.re.kr/kor/life/post/calendarData?search_year=2026) | 2026년 공휴일·대체공휴일의 기준 자료 |
+| [한국천문연구원 2026년 월력요항](https://www.kasi.re.kr/kor/post/newsMaterial/32031) | 2026년 공휴일·대체공휴일의 기준 자료 |
 | [인사혁신처 공휴일 추가 안내](https://www.mpm.go.kr/mpm/comm/newsPress/newsPressRelease/?boardId=bbs_0000000000000029&category=&cntId=4250&mode=view&pageIdx=7) | 기존 월력 자료 이후의 5월 1일·7월 17일 추가 내용 보완 |
 | [중앙선거관리위원회 지방선거 안내](https://www.nec.go.kr/site/lvt/main.do) | 2026년 6월 3일 선거일 확인 |
 
@@ -111,7 +105,7 @@
 | --- | --- |
 | `location_basis` | 건물·시내버스 정류장 등의 대표점 사용 근거 |
 | `reference_name` | 실제 도보 계산에 사용한 대표 장소명 |
-| `official_stop_name` | 공식 안내명 또는 CSV 원문 명칭. 교외에는 원문 정류장명도 들어가므로 필드명만으로 공식 승강장 검증을 뜻하지 않음 |
+| `official_stop_name` | 공식 자료로 확인한 승차 위치 명칭. 확인되지 않은 노선에 확대 적용하지 않음 |
 | `is_approximate` | 정확한 셔틀 승강장이 아닌 대표좌표인지 여부 |
 | `stop_location_verified` | 정확한 셔틀 승강장 위치 검증 여부. 대표점 연결은 `false` |
 
@@ -220,55 +214,6 @@ wait_min = scheduled_stop_at - ready_at
 | 2026-07-01 | 확인한 학기 기간 밖으로 제외 |
 | 2027년 조회 | 2026년 규칙을 반복하지 않고 운행 조건 미확인 |
 
-### 시간표 요청·응답 예시
-
-아래는 공식 프로필을 적용한 월요일 시간표 계약 예시다. URL은 `URLSearchParams`로 만들면 한국어·공백과 offset의 `+`가 안전하게 인코딩된다. 주소에 직접 쓰는 경우 `+09:00`의 `+`를 `%2B`로 인코딩해야 한다.
-
-```javascript
-const query = new URLSearchParams({
-  route: "제1노선",
-  direction: "춘천역 방면 (등교)",
-  board: "춘천역",
-  alight: "대학교",
-  at: "2026-10-19T07:50:00+09:00"
-});
-fetch(`/shuttle_timetable?${query}`);
-```
-
-첫 후보의 핵심 필드만 발췌하면 아래와 같다. `timetable_candidates`는 도보를 계산하지 않으므로 대기는 `null`이다. 날짜별 운행 조건이 확인되어도 실제 탑승은 확정하지 않는다.
-
-```json
-{
-  "mode": "shuttle_timetable",
-  "status": "ok",
-  "query_at": "2026-10-19T07:50:00+09:00",
-  "timezone": "Asia/Seoul",
-  "time_basis": "schedule",
-  "realtime": false,
-  "timetable_candidates": [{
-    "transport_type": "shuttle",
-    "route_name": "제1노선",
-    "direction": "춘천역 방면 (등교)",
-    "service_date": "2026-10-19",
-    "service_date_confirmed": true,
-    "scheduled_stop_at": "2026-10-19T08:05:00+09:00",
-    "scheduled_departure_at": "2026-10-19T08:05:00+09:00",
-    "scheduled_alight_stop_at": null,
-    "scheduled_arrival_at": null,
-    "scheduled_segment_min": null,
-    "board": {"name": "춘천역", "scheduled_time": "08:05"},
-    "alight": {"name": "대학교", "scheduled_time": null},
-    "wait_min": null,
-    "ride_min": null,
-    "total_min": null,
-    "arrival_min": null,
-    "has_live_departure": false,
-    "availability_confirmed": false,
-    "selection_basis": "timetable_only_without_access_walk"
-  }]
-}
-```
-
 ### 기존 경로 조회와의 연결
 
 기존 `POST /get_route_info`의 목적지 있는 응답은 `mode: "journeys"`, 출발·도착 정보, `journeys`, 기존 시내버스 필드·`source`를 유지한다. `shuttle`에 셔틀 서비스 응답 중 `journeys`를 제외한 조회 상태·출처·진단 메타데이터를 추가한다. 실제 후보는 공통 `journeys`에 통합한다. 목적지 없는 기존 주변 정류장 배열과 입력 오류 계약, 셔틀 서비스를 주입하지 않은 기존 `TransitService` 호출의 동작도 유지한다.
@@ -315,139 +260,19 @@ fetch(`/shuttle_timetable?${query}`);
 | `location_is_approximate`, `path_basis` | 후보의 대표좌표 사용 여부와 지도 연결선의 `"reference_points"` 기준 |
 | `warnings` | 미확인 운행 조건·시각 의미·좌표·데이터 오류 등을 사용자에게 설명 |
 
-### 경로 요청·응답 예시
-
-현재 화면은 선택한 출발·목적지 좌표를 아래처럼 보낸다. 이 예시의 춘천역 좌표는 프로필이 지정한 기존 시내 정류장 `CCB250001357`의 장소 대표점이고, 도착은 기존 CLC 건물 대표점이다. 정확한 승강장 좌표를 입력한 예시가 아니다.
-
-```javascript
-fetch("/get_route_info", {
-  method: "POST",
-  headers: {"Content-Type": "application/json"},
-  body: JSON.stringify({
-    lat: 37.88529,
-    lon: 127.71803,
-    location: "춘천역 대표점",
-    campus: "hallym",
-    dest_lat: 37.88632,
-    dest_lon: 127.73812,
-    dest_name: "Campus Life Center"
-  })
-});
-```
-
-`POST /get_route_info`는 서버의 현재 시각을 사용하며 **요청 본문의 `at`을 지원하지 않는다**. 아래 발췌는 서버의 셔틀 시계를 `2026-10-19T07:50:00+09:00`로 고정하고 양 끝을 대표좌표와 일치시킨 회귀 조건의 첫 셔틀 후보다. UI를 현재 시각에 실행했을 때 늘 같은 편이 반환되는 예시가 아니다. 시내버스 후보·내부 ID·출처·경고 등 다른 필드는 생략했다.
-
-```json
-{
-  "mode": "journeys",
-  "shuttle": {"status": "ok", "calendar_status": "verified"},
-  "journeys": [{
-    "transport_type": "shuttle",
-    "route_name": "제1노선",
-    "direction": "춘천역 방면 (등교)",
-    "time_basis": "schedule",
-    "realtime": false,
-    "service_date": "2026-10-19",
-    "service_date_confirmed": true,
-    "query_at": "2026-10-19T07:50:00+09:00",
-    "ready_at": "2026-10-19T07:51:00+09:00",
-    "boarding_margin_min": 1,
-    "scheduled_departure_at": "2026-10-19T08:05:00+09:00",
-    "scheduled_arrival_at": null,
-    "wait_min": 14,
-    "ride_min": null,
-    "total_min": null,
-    "known_min": 15,
-    "known_min_complete": false,
-    "location_is_approximate": true,
-    "path_basis": "reference_points",
-    "availability_confirmed": false,
-    "has_live_departure": false,
-    "access_walk": {
-      "minutes": 0,
-      "distance_m": 0,
-      "location_basis": "place_representative",
-      "reference_name": "춘천역",
-      "official_stop_name": "춘천역",
-      "is_approximate": true,
-      "stop_location_verified": false
-    },
-    "egress_walk": {
-      "minutes": 0,
-      "distance_m": 0,
-      "location_basis": "building_reference",
-      "reference_name": "Campus Life Center",
-      "official_stop_name": "CLC(희망터) 앞",
-      "is_approximate": true,
-      "stop_location_verified": false
-    },
-    "legs": [{
-      "transport_type": "shuttle",
-      "board": {"name": "춘천역", "lat": 37.88529, "lon": 127.71803, "is_approximate": true, "stop_location_verified": false},
-      "alight": {"name": "대학교", "lat": 37.88632, "lon": 127.73812, "official_stop_name": "CLC(희망터) 앞", "is_approximate": true, "stop_location_verified": false},
-      "arrival_min": null,
-      "wait_min": 14,
-      "ride_min": null
-    }]
-  }]
-}
-```
-
-`known_min: 15`는 대표점 도보 0분·앱 여유 1분·시간표 대기 14분의 부분 합계다. 차량 이동시간과 실제 승강장까지의 차이가 빠져 있으므로 총 15분 도착이라고 표시하면 안 된다. 실제 보행이 필요한 다른 출발·목적지에서는 기존 TMAP 도보 계산이 필요하며, 그 실패를 0분으로 바꾸지 않는다.
-
 ## 경완이에게 전달할 화면 연결 항목
 
-게시 기준 `main`의 화면은 배열 응답만 지원한다. 목적지가 있으면 `data.find(...)`, 주변 목록에는 `data.forEach(...)`를 사용하므로 `journeys` 객체를 그대로 넘기면 정상 렌더링할 수 없다. 서버의 기존 목적지 API도 이미 객체를 반환하던 상태이므로 셔틀 필드만 몇 개 추가하는 것으로 해결되지 않는다. 백엔드 PR에서는 이 UI를 덮어쓰지 않는다.
+이번 범위에서는 HTML·CSS·프론트엔드 파일을 바꾸지 않는다. 현재 화면은 기존 후보 구조를 렌더링하고 `null` 시간도 처리하지만 셔틀 필드를 읽지 않아 정확한 시간표 안내에는 추가 작업이 필요하다.
 
-고경완은 최신 HTML·CSS·화면 디자인을 유지하면서 다음 분기와 필드 어댑터를 별도 PR로 추가한다. 원래 작업폴더의 이전 UI 파일 전체를 복사해서 최신 디자인을 교체하지 않는다.
-
-| 응답 | 화면 처리 |
-| --- | --- |
-| 최상위 `error` | 오류 메시지 표시 |
-| `Array.isArray(data)` | 목적지 없는 기존 주변 정류장 배열 화면 유지 |
-| `data.mode === "journeys"` | `data.journeys`를 후보 카드로 전달하는 새 분기. 시내버스·셔틀 공통 구조 사용 |
-| `data.mode === "shuttle_timetable"` | 별도 시간표 화면을 만들 때 사용하는 계약. 일반 경로 카드로 자동 취급하지 않음 |
-
-화면 표시 어댑터는 아래 내용을 지켜야 한다.
-
-1. `journeys`의 `legs`, `access_walk`, `egress_walk`, `transfer_count`를 사용한다. 기존 배열 전용 `has_recommended_bus`·`matched_routes` 필드를 셔틀 후보에서 찾지 않는다. `static/js/api-service.js`와 지도 전달부에도 배열 전용 가정이 남았는지 확인한다.
-2. 교통수단을 `transport_type`으로 구분하고, 셔틀에는 시간표 기반·실시간 아님을 표시한다. `arrival_min`이나 `has_live_departure`를 시간표 값으로 채워 실시간처럼 표현하지 않는다.
-3. `scheduled_stop_at`, `service_date`, 운행일 확인 여부를 함께 표시한다. 제1노선은 공식 확인된 `scheduled_departure_at`을 시간표 출발로 표시하고, 제2~4노선은 정류장 시간표 시각으로 표시한다. 브라우저의 시간대와 무관하게 `Asia/Seoul` 기준으로 날짜·시각을 표시한다.
-4. `scheduled_departure_at: null`·상대 종점 `time: null`을 0분이나 현재 출발·도착으로 해석하지 않는다. 시간표 정류장 시각·확인된 출발·미확인 도착을 구분한다. `ride_min`·`total_min`이 `null`이면 도착시각이나 총시간을 프론트에서 임의 계산하지 않는다. `Number(null)`이 0이 되는 변환도 피한다.
-5. 시간표 대기 `wait_min`과 실시간 도착을 분리한다. `arrival_min: null`이어도 시간표 대기는 있을 수 있다. `known_min`은 미확인 차량 시간이 빠진 부분 합계이므로 “총 소요시간”이나 “최단 경로”로 표시하지 않는다.
-6. 셔틀 노선명에 자동으로 `번`을 붙이지 않고 이름·방향을 표시한다. 시간표와 거리 추정 등 후보별 근거를 구분한다.
-7. `location_basis`·`reference_name`·`official_stop_name`·`is_approximate`·`stop_location_verified`로 “정확한 승강장이 아닌 대표점”임을 안내한다. 교외의 `official_stop_name`은 원문 명칭일 수 있다. 제1노선 공식 CLC 안내를 제2~4노선의 승강장 확인으로 확대하지 않는다. 대표점까지 도보 0분을 실제 승강장까지 0분으로 표시하지 않는다.
-8. API가 선택한 최대 3개 후보와 그 순서를 유지한다. 지도는 `legs[].board`·`alight`·`path`를 읽는 객체 분기가 필요하다. `path: []`이면 노선을 만들어 그리지 않고 `path_basis: "reference_points"` 연결선을 실제 도로·셔틀 궤적으로 표시하지 않는다.
-9. 한쪽 공급자가 실패해도 다른 후보가 있으면 `providers`·`warnings`를 함께 안내한다. `shuttle.status`의 `not_operating`·`no_departures_remaining`·`unmatched`·미확인 운행일을 구분한다. **2026-10-18은 일요일이므로 프로필상 셔틀 후보가 없는 것이 정상**이며 다음 날 편을 오늘의 다음 차로 표시하지 않는다.
-10. 2027년 등 운행일 근거 범위 밖, 프로필 해시 불일치와 `profile_status`, 데이터 오류를 표시한다. 수동 바인딩에 없는 정류장을 비슷한 정류장으로 대신 연결하지 않는다.
-
-UI PR에서는 최신 디자인 유지, 목적지 유무에 따른 배열·객체 분기, 시내버스와 셔틀이 함께 있는 응답, `null` 시간, 일요일 빈 후보, 공급자 일부 실패, 지도 실패 중 카드 표시를 검증한다. 게시 기준 `main`의 `tests/frontend_smoke.cjs`는 **0바이트 빈 파일**이어서 Node 실행이 성공해도 아무 항목도 검증하지 않는다. 별도 UI PR에서 실제 내용이 있는 화면 테스트와 브라우저 확인을 마련해야 한다.
-
-### 백엔드 병합 후 UI 작업을 받는 순서
-
-이 절차는 백엔드 PR이 `main`에 병합된 **뒤** 고경완이 자신의 작업 사본에서 수행하는 안내다. 지금의 게시용 작업폴더나 다른 사람의 미커밋 파일에 실행하는 명령이 아니다. 먼저 `git branch --show-current`·`git status --short`·`git diff`로 본인 작업인지 확인하고, 수정 중인 본인 UI 파일만 골라 커밋해 보존한다. 아래 파일 경로는 예시이므로 실제 수정한 본인 파일만 선택한다.
-
-```bash
-git branch --show-current
-git status --short
-git diff
-git add static/js/ui-renderer.js static/js/map-controller.js
-git diff --cached
-git commit -m "wip(ui): 진행 중 화면 작업 보존"
-```
-
-남은 변경이 있거나 작성자를 모르는 파일이 있으면 다음 단계로 넘어가지 않는다. 작업트리가 깨끗해진 뒤 자기 이름 브랜치의 원격 변경과 `main`의 백엔드를 받는다. 로컬 `main`을 기준으로 삼지 않는다.
-
-```bash
-git fetch origin
-git switch 고경완
-git pull --ff-only origin 고경완
-git merge origin/main
-```
-
-로컬 `고경완` 브랜치가 **없는 경우에만** 두 번째 줄 대신 `git switch --track -c 고경완 origin/고경완`을 사용한다. switch가 실패했다고 무조건 이 명령을 실행하지 않는다. `pull --ff-only`가 분기 때문에 거절되거나 merge 충돌이 있으면 현재 이력을 보존하고 담당자와 해결한다. 강제 push·`reset --hard`·일괄 덮어쓰기를 사용하지 않는다.
-
-최신 백엔드를 받은 뒤 위 필드 어댑터를 연결하고 검증한다. 완성한 본인 UI 파일만 선택해 커밋한 다음 `git push origin 고경완`으로 올리고, GitHub에서 **base `main` / compare `고경완`**인 별도 UI PR을 만든다. PR 본문에는 배열·`journeys` 객체 분기, 셔틀 시간표·대표좌표·미확인 시간 표시와 검증 내용을 적는다. API 필드 변경이 필요하면 이준엽과 먼저 협의하며, `git pull origin 고경완`만으로 `main`의 백엔드가 자동 반영된다고 생각하면 안 된다.
+1. 교통수단을 `transport_type`으로 구분하고, 셔틀에는 시간표 기반·실시간 아님을 표시한다.
+2. `scheduled_stop_at`, `service_date`, 운행일 확인 여부를 함께 표시한다. 제1노선은 공식 확인된 `scheduled_departure_at`을 시간표 출발로 표시할 수 있고, 제2~4노선은 정류장 시간표 시각으로 표시한다. 실시간 출발로 표시하지 않는다.
+3. `scheduled_departure_at: null`·상대 종점 `time: null`을 0분이나 현재 출발·도착으로 해석하지 않는다. 시간표 정류장 시각·확인된 출발·미확인 도착을 구분한다.
+4. 시간표 대기와 실시간 도착을 분리한다. `arrival_min: null`이어도 시간표 대기값은 있을 수 있다.
+5. 총시간 미확인 사유를 표시한다. 현재 카드가 공통으로 쓰는 “배차 대기 미확인” 문구는 대기는 계산됐지만 차량 이동시간이 없는 경우를 설명하지 못한다.
+6. 셔틀 노선명에 자동으로 `번`을 붙이지 않고 이름·방향을 표시한다. 시내버스 전용 “정류장 거리 기반 추정” 안내도 후보 유형별로 나눈다.
+7. `location_basis`·`reference_name`·`official_stop_name`·`is_approximate`·`stop_location_verified`를 사용해 “정확한 승강장이 아닌 대표점”임을 안내한다. 제1노선의 공식 CLC 안내를 제2~4노선의 승강장 확인으로 확대하지 않는다. 대표점까지의 도보 0분을 실제 승강장까지 0분으로 표시하지 않는다.
+8. 카드가 세 개만 표시되는 현재 제약과 첫 후보만 지도에 표시되는 동작을 고려한다. 지도상의 정류장 연결선은 실제 주행 경로가 아니다.
+9. 좌표 미연결, 2027년 등 운행일 미확인, 학기 밖·휴일·금요일 제외, 오늘의 남은 시간표 없음, 프로필 해시 불일치·데이터 오류를 구분한다. 수동 바인딩에 없는 정류장을 화면에서 임의의 비슷한 정류장으로 대신 표시하지 않는다.
 
 ## 검증
 
@@ -456,6 +281,7 @@ git merge origin/main
 ```bash
 PYTHONDONTWRITEBYTECODE=1 .venv/bin/python -m unittest discover -s tests -p 'test_shuttle*.py'
 PYTHONDONTWRITEBYTECODE=1 .venv/bin/python -m unittest discover -s tests
+node tests/frontend_smoke.cjs
 git diff --check
 ```
 
@@ -465,9 +291,7 @@ git diff --check
 
 현재 운영 설정은 공식 프로필과 사용자가 승인한 실제 자료의 대표점 바인딩을 주입한다. 연결 가능한 구간에는 후보를 반환하며, 검증되지 않은 정류장 연결은 계속 제외한다. 실제 프로필·대표점으로 조회한 고정 시각의 API 사례와 테스트 결과는 이번 단계의 최종 검증 후 별도 기록한다.
 
-공식 자료 읽기와 API 실호출 검증은 구분한다. 실제 TMAP/TAGO API·브라우저·현장 승차 위치 검증은 이 오프라인 절차에 포함되지 않으며, 화면 후속 작업까지 완료됐다는 뜻도 아니다. 정확한 셔틀 승강장, 미확인 명칭의 대응, 도착시간·차량 이동시간, 근거 기간 밖의 운행 조건은 추가 자료가 필요하다. 원본과 관련 없는 기존 작업을 보존하고 의존성을 임의 설치하지 않는다.
-
-이전 구현 단계는 Git 추가·커밋·push·브랜치 변경·PR 작업을 하지 않는 보호 조건으로 진행했다. 이후 사용자가 별도로 승인한 **게시 단계**는 최신 `main`에서 분리한 작업폴더의 백엔드·데이터·테스트·이 문서 등 허용된 14개 파일만 대상으로 한다. 원래 작업폴더의 미커밋 변경과 최신 UI를 옮기거나 덮어쓰지 않고 게시 담당자가 별도 검증·PR 절차를 수행한다. 이전 단계의 Git 제한을 승인된 게시 작업의 실행 결과와 혼동하지 않는다.
+공식 자료 읽기와 API 실호출 검증은 구분한다. 실제 TMAP/TAGO API·브라우저·현장 승차 위치 검증은 이 오프라인 절차에 포함되지 않으며, 화면 후속 작업까지 완료됐다는 뜻도 아니다. 정확한 셔틀 승강장, 미확인 명칭의 대응, 도착시간·차량 이동시간, 근거 기간 밖의 운행 조건은 추가 자료가 필요하다. 원본과 관련 없는 기존 작업을 보존하고, 의존성 설치·Git 추가·커밋·push·브랜치 변경·PR 작업은 하지 않는다.
 
 2026-10-18 **이전 단계**의 오프라인 검증 결과다. 공식 프로필·대표점 확장을 포함한 현재 단계의 결과를 뜻하지 않는다.
 
@@ -475,19 +299,19 @@ git diff --check
 | --- | --- |
 | `test_shuttle*.py` | 63개 통과: 저장소 20, 서비스 26, API·통합 17 |
 | 전체 `unittest discover -s tests` | 209개 통과 |
-| 원래 작업폴더의 프론트 smoke | 내용이 있는 29,514바이트 파일을 Node VM에서 실행한 이전 검증. 게시 기준 `main`의 빈 파일 검증과 다름 |
+| 기존 `tests/frontend_smoke.cjs` | 제공된 Node 런타임의 VM에서 원본 파일 실행 통과. 터미널의 `node` 명령은 PATH에 없어 직접 명령 실행은 불가 |
 | `git diff --check` | 통과 |
 | 원본·기존 작업 보호 | 원본 해시 일치. 작업 전 해시 기준 승인 대상 기존 3개 파일 외 변경 없음 |
 
 초기 막차 테스트 1건은 기준시각을 잘못 더해 다음 날을 조회한 fixture 오류였으며 같은 날 23:59로 수정한 뒤 통과했다. 프론트 VM 실행은 실제 브라우저 검증이 아니다. 테스트 중 외부 TMAP/TAGO API를 호출하거나 의존성을 설치하지 않았다.
 
-2026-10-18 **원래 작업폴더의 공식 프로필·대표점 확장 단계** 결과다. 이 작업폴더의 프론트 검증을 최신 `main`의 UI에 대한 검증으로 해석하면 안 된다.
+2026-10-18 **공식 프로필·대표점 확장 단계** 최종 결과:
 
 | 검증 | 결과 |
 | --- | --- |
 | `test_shuttle*.py` | 93개 통과: 원본 저장소 20, 계산 서비스 29, 공식 프로필 15, Flask·통합 29 |
 | 전체 `unittest discover -s tests` | 239개 통과 |
-| 원래 작업폴더의 프론트 smoke | 29,514바이트의 내용이 있는 파일을 Node VM에서 실행한 이전 검증. 실제 브라우저 검증은 아님 |
+| 기존 프론트 smoke | 제공된 Node 런타임의 VM에서 원본 파일 실행 통과. 실제 브라우저 검증은 아님 |
 | `git diff --check` 및 Python 구문 검사 | 통과 |
 | 원본·기존 작업 보호 | 원본 셔틀·건물·시내버스 CSV 해시 유지. 이번 승인 대상 기존 6개 파일 외 변경 없음 |
 
@@ -501,18 +325,3 @@ git diff --check
 | 2026-10-18 일요일 07:50, 춘천역 대표점→CLC | `not_operating`, 셔틀 후보 없음 |
 
 위 후보는 모두 `location_is_approximate: true`, `availability_confirmed: false`, `realtime: false`이며 도착·차량 이동·전체시간은 `null`이다. 제2~4노선의 원문 시각은 확정 출발시각으로 바꾸지 않는다. 모든 보행 작업이 끝난 뒤 현재 시각으로 이미 선택한 후보까지 다시 검증하므로, 뒤 후보의 보행 응답을 기다리는 동안 놓친 앞 편도 제외한다. 명시적 조회시각은 계속 고정된다.
-
-### 최신 main 기준 게시 단계의 검증
-
-게시 기준은 `main`의 `df80c95`이며 백엔드 PR에 허용된 14개 파일만 분리해 검증했다. 아래 결과는 게시 담당자가 확인한 내용이다.
-
-| 검증 | 결과 |
-| --- | --- |
-| 셔틀 `test_shuttle*.py` | 93개 통과 |
-| 전체 `unittest discover -s tests` | 239개 통과 |
-| `git diff --check` | 통과 |
-| 게시 기준 프론트 smoke | `tests/frontend_smoke.cjs`가 0바이트이므로 검증 불가. 빈 파일의 VM 실행 종료 코드 0을 통과로 세지 않음 |
-| 브라우저·지도 SDK·실제 보행/도착 API | 실행하지 않음 |
-| 원래 작업폴더·원본 해시·게시 파일 범위 | 게시 준비 전 원래 작업폴더의 61개 파일 해시와 모두 일치. 원본 셔틀 해시 유지, 게시 변경은 14개 파일 한정, HTML·CSS·프론트 JS 변경 없음 |
-
-최신 UI의 배열·객체 계약 불일치는 위 Python 테스트 통과로 해결되지 않는다. 후속 UI PR에서 `mode: "journeys"` 분기와 셔틀 표시를 연결하고 화면 검증을 완료해야 한다.

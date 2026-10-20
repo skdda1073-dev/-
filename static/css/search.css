@@ -1,47 +1,32 @@
-/* 도착지 검색 및 자동완성 스타일 */
-.autocomplete-wrapper {
-    position: relative;
-}
-
-.autocomplete-list {
-    position: absolute;
-    top: 48px;
-    left: 0;
-    right: 0;
-    background: white;
-    border: 1.5px solid #CBD5E0;
-    border-radius: 12px;
-    box-shadow: 0 12px 24px rgba(0, 0, 0, 0.12);
-    z-index: 1000;
-    max-height: 220px;
-    overflow-y: auto;
-    display: none;
-}
-
-.autocomplete-item {
-    padding: 12px 14px;
-    border-bottom: 1px solid #EDF2F7;
-    cursor: pointer;
-}
-
-.autocomplete-item:last-child {
-    border-bottom: none;
-}
-
-.autocomplete-item:hover {
-    background-color: #F7FAFC;
-}
-
-.dest-selected-tag {
-    display: none;
-    align-items: center;
-    justify-content: space-between;
-    background: #EBF8FF;
-    border: 1.5px solid #90CDF4;
-    color: #005AAB;
-    padding: 11px 14px;
-    border-radius: 10px;
-    font-size: 14px;
-    font-weight: 800;
+.destination-field { display: flex; align-items: center; gap: 13px; }
+.field-icon { display: grid; place-items: center; flex: 0 0 auto; width: 42px; height: 42px; border-radius: 50%; color: white; background: #367e94; }
+.field-icon .icon { width: 23px; height: 23px; stroke-width: 2.5; }
+.destination-control { flex: 1; min-width: 0; }
+.destination-control label { display: block; color: var(--muted); font-size: 10px; font-weight: 600; margin-bottom: 2px; }
+.dest-input { width: 100%; min-height: 35px; padding: 4px 1px; background: transparent; color: var(--ink); border: 0; border-radius: 4px; font-size: 16px; font-weight: 750; letter-spacing: -.5px; text-overflow: ellipsis; }
+.dest-input::placeholder { color: #6d7c72; font-size: 14px; font-weight: 650; opacity: 1; }
+.dest-input:focus-visible { outline-offset: 3px; outline-width: 2px; }
+.autocomplete-wrapper { position: relative; }
+.autocomplete-list { position: absolute; top: calc(100% + 9px); left: -55px; right: 0; z-index: 20; overflow-y: auto; overscroll-behavior: contain; max-height: 280px; background: #fff; border: 1px solid #d8e5d8; border-radius: 14px; box-shadow: 0 14px 35px rgba(20,55,32,.2); }
+.autocomplete-item { display: block; width: 100%; min-height: 57px; padding: 11px 14px; cursor: pointer; color: var(--ink); border: 0; border-bottom: 1px solid var(--line); text-align: left; background: white; overflow-wrap: anywhere; }
+.autocomplete-item:last-child { border-bottom: 0; }
+.autocomplete-item:hover, .autocomplete-item.is-highlighted, .autocomplete-item[aria-selected='true'] { background: #edf8eb; }
+.autocomplete-name { display: block; font-size: 13px; font-weight: 750; }
+.autocomplete-sub { display: block; font-size: 10px; margin-top: 3px; color: var(--muted); font-weight: 400; }
+.search-status { margin: 9px 0 14px; color: #6a786e; font-size: 10px; min-height: 15px; overflow-wrap: anywhere; }
+.search-status.status-error { color: #b63b24; }
+.dest-selected-tag { display: flex; align-items: center; gap: 7px; min-height: 35px; padding: 3px 3px 3px 10px; margin-top: 9px; border-radius: 9px; background: var(--green-soft); color: var(--green-dark); font-size: 12px; font-weight: 700; }
+.dest-selected-tag > .icon { width: 16px; height: 16px; }
+#dest-selected-text { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.clear-destination { flex: 0 0 auto; display: grid; place-items: center; width: 36px; height: 36px; padding: 5px; background: none; color: var(--green-dark); border-radius: 7px; }
+.clear-destination:hover { background: #d6efd8; }
+.clear-destination .icon { width: 16px; height: 16px; }
+.search-empty { padding: 17px 14px; color: var(--muted); font-size: 12px; }
+@media (min-width: 800px) {
+    .destination-control label { font-size: 11px; }
+    .dest-input { font-size: 17px; }
+    .dest-input::placeholder { font-size: 15px; }
+    .search-status { font-size: 11px; margin-bottom: 16px; }
+    .field-icon { width: 45px; height: 45px; }
 }
 

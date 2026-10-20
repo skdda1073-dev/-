@@ -63,6 +63,36 @@ class SettingsTests(unittest.TestCase):
         self.assertTrue(settings.debug)
         self.assertEqual(settings.port, 5050)
 
+    def test_chat_defaults_preserve_existing_readiness_contract(self):
+        settings = load_settings(self.root, environ={})
+        self.assertEqual(settings.flask_secret_key, "")
+        self.assertTrue(settings.session_cookie_secure)
+        self.assertEqual(settings.ride_room_db_path, str(self.root / "instance" / "ride_rooms.sqlite3"))
+        self.assertEqual(settings.taxi_cache_ttl_seconds, 60)
+        self.assertEqual(settings.taxi_cache_max_entries, 512)
+        self.assertEqual(settings.ride_room_message_rate_per_minute, 15)
+        self.assertEqual(settings.ride_room_create_rate_per_hour, 3)
+        self.assertEqual(len(settings.configured()), 3)
+        self.assertFalse((self.root / "instance").exists())
+
+    def test_chat_secrets_are_literal_private_and_environment_wins(self):
+        self.write_env("FLASK_SECRET_KEY='fake-${UNEXPANDED}-%%-long-file-secret'\n")
+        secret = "fake-${UNEXPANDED}-%%-long-env-secret"
+        settings = load_settings(self.root, environ={"FLASK_SECRET_KEY": secret, "SESSION_COOKIE_SECURE": "false"})
+        self.assertEqual(settings.flask_secret_key, secret)
+        self.assertNotIn(secret, repr(settings))
+        self.assertFalse(settings.session_cookie_secure)
+
+    def test_mobility_setting_bounds_have_sanitized_errors(self):
+        for name, bad in (("SESSION_COOKIE_SECURE", "private-value"),
+                          ("TAXI_CACHE_TTL_SECONDS", "0"), ("TAXI_CACHE_MAX_ENTRIES", "4097"),
+                          ("RIDE_ROOM_MESSAGE_RATE_PER_MINUTE", "-1"),
+                          ("RIDE_ROOM_CREATE_RATE_PER_HOUR", "private-value")):
+            with self.subTest(name=name):
+                with self.assertRaises(ConfigurationError) as raised:
+                    load_settings(self.root, environ={name: bad})
+                self.assertNotIn(bad, str(raised.exception))
+
 
 if __name__ == "__main__":
     unittest.main()
