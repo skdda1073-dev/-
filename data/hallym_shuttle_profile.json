@@ -17,10 +17,7 @@
       "id": "hallym_academic_calendar_2026",
       "url": "https://www.hallym.ac.kr/sites/cge/files/%5B%ED%95%9C%EB%A6%BC%EB%8C%80%ED%95%99%EA%B5%90%5D%202026%ED%95%99%EB%85%84%EB%8F%84%20%EB%8C%80%ED%95%99%EC%95%88%EB%82%B4%EC%B1%85%EC%9E%90.pdf",
       "checked_on": "2026-10-18",
-      "pdf_pages": [
-        6,
-        7
-      ],
+      "pdf_pages": [6, 7],
       "scope": "2026 정규학기 개강일과 종강일, 방학 시작일. 계절학기를 셔틀 운행학기로 확대하지 않음"
     },
     {
@@ -44,48 +41,20 @@
     }
   ],
   "calendar": {
-    "weekdays": [
-      0,
-      1,
-      2,
-      3,
-      4
-    ],
+    "weekdays": [0, 1, 2, 3, 4],
     "excluded_dates": [
-      "2026-01-01",
-      "2026-02-16",
-      "2026-02-17",
-      "2026-02-18",
-      "2026-03-01",
-      "2026-03-02",
-      "2026-05-01",
-      "2026-05-05",
-      "2026-05-24",
-      "2026-05-25",
-      "2026-06-03",
-      "2026-06-06",
-      "2026-07-17",
-      "2026-08-15",
-      "2026-08-17",
-      "2026-09-24",
-      "2026-09-25",
-      "2026-09-26",
-      "2026-10-03",
-      "2026-10-05",
-      "2026-10-09",
-      "2026-12-25"
+      "2026-01-01", "2026-02-16", "2026-02-17", "2026-02-18",
+      "2026-03-01", "2026-03-02", "2026-05-01", "2026-05-05",
+      "2026-05-24", "2026-05-25", "2026-06-03", "2026-06-06",
+      "2026-07-17", "2026-08-15", "2026-08-17", "2026-09-24",
+      "2026-09-25", "2026-09-26", "2026-10-03", "2026-10-05",
+      "2026-10-09", "2026-12-25"
     ],
     "coverage_start": "2026-01-01",
     "coverage_end": "2026-12-31",
     "term_ranges": [
-      {
-        "start": "2026-03-03",
-        "end": "2026-06-22"
-      },
-      {
-        "start": "2026-09-01",
-        "end": "2026-12-21"
-      }
+      {"start": "2026-03-03", "end": "2026-06-22"},
+      {"start": "2026-09-01", "end": "2026-12-21"}
     ],
     "evidence": "한림대학교 공식 셔틀 안내와 2026 대학안내책자 학사일정(인쇄 6~7쪽), KASI 2026 월력요항, 인사혁신처 2026-04-29 공휴일 추가 안내, NEC 제9회 지방선거. sources의 URL 참조. 2026년 범위만 검증했으며 추후 임시 운휴·운행 변경은 미확인."
   },
@@ -101,11 +70,7 @@
       "춘천역 방면 (등교)": {
         "origin": "춘천역",
         "destination": "대학교",
-        "friday_excluded_departures": [
-          "09:15",
-          "10:00",
-          "10:15"
-        ]
+        "friday_excluded_departures": ["09:15", "10:00", "10:15"]
       },
       "춘천역 방면 (하교)": {
         "origin": "대학교",
@@ -120,212 +85,105 @@
     "coordinate_rule": "좌표를 평균·추정·생성하지 않고 지정한 기존 자료 행의 실재 좌표만 사용한다. 대표점은 정확한 셔틀 승강장 좌표가 아니다.",
     "campus_rule": "제1노선은 공식 CLC 설명을 따르며, 제2~4노선은 사용자가 승인한 CLC 교내 계산 기준점이다. 동일 승강장이라는 확인이 아니다.",
     "city_source_filename": "chuncheon_bus_routes_20260326.csv",
-    "city_source_sha256": "06678d23e59c6e8595bcc38763371a62195e4d8436ca69aa3a3b6abc4015f4cc"
+    "city_source_sha256": "68676665e73872b7e0cde412e4edc93f1f7685eeb56044cf9ad7dfb267db470f"
   },
   "representatives": {
     "campus_clc": {
-      "kind": "campus",
-      "school": "한림대학교",
-      "building": "Campus Life Center",
+      "kind": "campus", "school": "한림대학교", "building": "Campus Life Center",
       "source_line": 10,
       "evidence": "한림대학교 건물별 좌표.csv 10행의 한림대학교 Campus Life Center 실제 건물 좌표. 공식 제1노선 설명은 CLC(희망터) 앞이며, 다른 노선의 대학교도 사용자 승인에 따라 이 건물을 교내 계산 기준점으로 사용한다."
     },
     "chuncheon_station": {
-      "kind": "city_stop",
-      "source_stop_id": "CCB250001357",
-      "expected_name": "춘천역",
-      "source_line": 1875,
-      "alternative_source_stop_ids": [
-        "CCB250026552"
-      ],
-      "evidence": "동명 춘천역 기존 지점 중 최소 ID를 대표점으로 지정. 승강장·출입구·도로 방향은 미확인."
+      "kind": "city_stop", "source_stop_id": "CCB250001357", "expected_name": "춘천역", "source_line": 1875,
+      "alternative_source_stop_ids": ["CCB250026552"], "evidence": "동명 춘천역 기존 지점 중 최소 ID를 대표점으로 지정. 승강장·출입구·도로 방향은 미확인."
     },
     "onuigeumho": {
-      "kind": "city_stop",
-      "source_stop_id": "CCB250001988",
-      "expected_name": "온의금호1차",
-      "source_line": 253,
-      "alternative_source_stop_ids": [
-        "CCB250001989"
-      ],
-      "evidence": "온의금호1차 장소의 동명 기존 지점 중 최소 ID. 실제 셔틀 승강장 방향은 미확인."
+      "kind": "city_stop", "source_stop_id": "CCB250001988", "expected_name": "온의금호1차", "source_line": 253,
+      "alternative_source_stop_ids": ["CCB250001989"], "evidence": "온의금호1차 장소의 동명 기존 지점 중 최소 ID. 실제 셔틀 승강장 방향은 미확인."
     },
     "ktng": {
-      "kind": "city_stop",
-      "source_stop_id": "CCB250026537",
-      "expected_name": "케이티앤지",
-      "source_line": 2763,
-      "alternative_source_stop_ids": [
-        "CCB250026582"
-      ],
-      "evidence": "케이티앤지/KT&G 표기는 수동 화이트리스트로 같은 이름의 장소 대표점에 연결. 시내버스·셔틀 승강장이 같다고 확정하지 않음."
+      "kind": "city_stop", "source_stop_id": "CCB250026537", "expected_name": "케이티앤지", "source_line": 2763,
+      "alternative_source_stop_ids": ["CCB250026582"], "evidence": "케이티앤지/KT&G 표기는 수동 화이트리스트로 같은 이름의 장소 대표점에 연결. 시내버스·셔틀 승강장이 같다고 확정하지 않음."
     },
     "toegye_useong": {
-      "kind": "city_stop",
-      "source_stop_id": "CCB250001171",
-      "expected_name": "퇴계우성A",
-      "source_line": 410,
-      "alternative_source_stop_ids": [
-        "CCB250001325"
-      ],
-      "evidence": "퇴계우성A 장소의 동명 기존 지점 중 최소 ID. 입구/승강장 위치를 검증한 좌표가 아님."
+      "kind": "city_stop", "source_stop_id": "CCB250001171", "expected_name": "퇴계우성A", "source_line": 410,
+      "alternative_source_stop_ids": ["CCB250001325"], "evidence": "퇴계우성A 장소의 동명 기존 지점 중 최소 ID. 입구/승강장 위치를 검증한 좌표가 아님."
     },
     "human_town": {
-      "kind": "city_stop",
-      "source_stop_id": "CCB250001317",
-      "expected_name": "휴먼타운A",
-      "source_line": 3111,
-      "alternative_source_stop_ids": [],
-      "evidence": "휴먼타운A의 기존 지점. 아파트 장소 대표점이며 505동 앞 승강장의 정확한 좌표는 미확인."
+      "kind": "city_stop", "source_stop_id": "CCB250001317", "expected_name": "휴먼타운A", "source_line": 3111,
+      "alternative_source_stop_ids": [], "evidence": "휴먼타운A의 기존 지점. 아파트 장소 대표점이며 505동 앞 승강장의 정확한 좌표는 미확인."
     },
     "seoksa_samik": {
-      "kind": "city_stop",
-      "source_stop_id": "CCB250002138",
-      "expected_name": "석사삼익A",
-      "source_line": 39,
-      "alternative_source_stop_ids": [],
-      "evidence": "석사삼익A의 기존 지점. 아파트 장소 대표점이며 다리입구 좌표는 미확인."
+      "kind": "city_stop", "source_stop_id": "CCB250002138", "expected_name": "석사삼익A", "source_line": 39,
+      "alternative_source_stop_ids": [], "evidence": "석사삼익A의 기존 지점. 아파트 장소 대표점이며 다리입구 좌표는 미확인."
     },
     "education_university": {
-      "kind": "city_stop",
-      "source_stop_id": "CCB250001385",
-      "expected_name": "교육대학교",
-      "source_line": 63,
-      "alternative_source_stop_ids": [
-        "CCB250001386"
-      ],
-      "evidence": "교육대학교/교대 명칭을 수동으로 연결한 장소 대표점. 동명 기존 지점 중 최소 ID이며 도로 방향은 미확인."
+      "kind": "city_stop", "source_stop_id": "CCB250001385", "expected_name": "교육대학교", "source_line": 63,
+      "alternative_source_stop_ids": ["CCB250001386"], "evidence": "교육대학교/교대 명칭을 수동으로 연결한 장소 대표점. 동명 기존 지점 중 최소 ID이며 도로 방향은 미확인."
     },
     "seoksa_apartment": {
-      "kind": "city_stop",
-      "source_stop_id": "CCB250002136",
-      "expected_name": "석사A",
-      "source_line": 34,
-      "alternative_source_stop_ids": [
-        "CCB250002137"
-      ],
-      "evidence": "석사A 장소의 동명 기존 지점 중 최소 ID. 공식 설명의 건너편 위치를 구현한 좌표가 아님."
+      "kind": "city_stop", "source_stop_id": "CCB250002136", "expected_name": "석사A", "source_line": 34,
+      "alternative_source_stop_ids": ["CCB250002137"], "evidence": "석사A 장소의 동명 기존 지점 중 최소 ID. 공식 설명의 건너편 위치를 구현한 좌표가 아님."
     },
     "yangu_apartment": {
-      "kind": "city_stop",
-      "source_stop_id": "CCB250002023",
-      "expected_name": "양우A",
-      "source_line": 31,
-      "alternative_source_stop_ids": [
-        "CCB250002024"
-      ],
-      "evidence": "양우A 장소의 동명 기존 지점 중 최소 ID. 공식 설명의 건너편 위치를 구현한 좌표가 아님."
+      "kind": "city_stop", "source_stop_id": "CCB250002023", "expected_name": "양우A", "source_line": 31,
+      "alternative_source_stop_ids": ["CCB250002024"], "evidence": "양우A 장소의 동명 기존 지점 중 최소 ID. 공식 설명의 건너편 위치를 구현한 좌표가 아님."
     },
     "soyang_middle_school": {
-      "kind": "city_stop",
-      "source_stop_id": "CCB250002109",
-      "expected_name": "소양중학교",
-      "source_line": 1563,
-      "alternative_source_stop_ids": [
-        "CCB250002110"
-      ],
-      "evidence": "소양중학교 장소의 동명 기존 지점 중 최소 ID. 정문이나 셔틀 승강장 위치는 미확인."
+      "kind": "city_stop", "source_stop_id": "CCB250002109", "expected_name": "소양중학교", "source_line": 1563,
+      "alternative_source_stop_ids": ["CCB250002110"], "evidence": "소양중학교 장소의 동명 기존 지점 중 최소 ID. 정문이나 셔틀 승강장 위치는 미확인."
     },
     "soyang_elementary_school": {
-      "kind": "city_stop",
-      "source_stop_id": "CCB250002107",
-      "expected_name": "소양초교",
-      "source_line": 1825,
-      "alternative_source_stop_ids": [
-        "CCB250002108"
-      ],
-      "evidence": "소양초/소양초교 명칭을 수동 연결한 장소 대표점. 동명 기존 지점 중 최소 ID."
+      "kind": "city_stop", "source_stop_id": "CCB250002107", "expected_name": "소양초교", "source_line": 1825,
+      "alternative_source_stop_ids": ["CCB250002108"], "evidence": "소양초/소양초교 명칭을 수동 연결한 장소 대표점. 동명 기존 지점 중 최소 ID."
     },
     "myeongjin_school": {
-      "kind": "city_stop",
-      "source_stop_id": "CCB250001496",
-      "expected_name": "명진학교",
-      "source_line": 1869,
-      "alternative_source_stop_ids": [],
-      "evidence": "명진학교의 기존 지점만 장소 대표점으로 사용. 셔틀 정차 방향 확인은 아님."
+      "kind": "city_stop", "source_stop_id": "CCB250001496", "expected_name": "명진학교", "source_line": 1869,
+      "alternative_source_stop_ids": [], "evidence": "명진학교의 기존 지점만 장소 대표점으로 사용. 셔틀 정차 방향 확인은 아님."
     },
     "lotte_invens": {
-      "kind": "city_stop",
-      "source_stop_id": "CCB250001524",
-      "expected_name": "롯데인벤스",
-      "source_line": 1870,
-      "alternative_source_stop_ids": [],
-      "evidence": "롯데인벤스의 기존 지점만 장소 대표점으로 사용. 셔틀 승강장 확인은 아님."
+      "kind": "city_stop", "source_stop_id": "CCB250001524", "expected_name": "롯데인벤스", "source_line": 1870,
+      "alternative_source_stop_ids": [], "evidence": "롯데인벤스의 기존 지점만 장소 대표점으로 사용. 셔틀 승강장 확인은 아님."
     },
     "sau_crossroads": {
-      "kind": "city_stop",
-      "source_stop_id": "CCB250002121",
-      "expected_name": "사우사거리",
-      "source_line": 1609,
-      "alternative_source_stop_ids": [],
-      "evidence": "사우사거리의 기존 지점만 장소 대표점으로 사용. 셔틀 승강장 확인은 아님."
+      "kind": "city_stop", "source_stop_id": "CCB250002121", "expected_name": "사우사거리", "source_line": 1609,
+      "alternative_source_stop_ids": [], "evidence": "사우사거리의 기존 지점만 장소 대표점으로 사용. 셔틀 승강장 확인은 아님."
     },
     "dongsan_apartment": {
-      "kind": "city_stop",
-      "source_stop_id": "CCB250001540",
-      "expected_name": "동산A",
-      "source_line": 198,
-      "alternative_source_stop_ids": [],
-      "evidence": "동산A의 기존 지점만 장소 대표점으로 사용. 셔틀 승강장 확인은 아님."
+      "kind": "city_stop", "source_stop_id": "CCB250001540", "expected_name": "동산A", "source_line": 198,
+      "alternative_source_stop_ids": [], "evidence": "동산A의 기존 지점만 장소 대표점으로 사용. 셔틀 승강장 확인은 아님."
     },
     "hupyeong_jugong4": {
-      "kind": "city_stop",
-      "source_stop_id": "CCB250001215",
-      "expected_name": "후평주공4단지",
-      "source_line": 520,
-      "alternative_source_stop_ids": [],
-      "evidence": "후평주공4단지 단지명과 정확히 같은 기존 지점만 대표점으로 사용. 만물사 위치나 후문 지점을 추측하지 않음."
+      "kind": "city_stop", "source_stop_id": "CCB250001215", "expected_name": "후평주공4단지", "source_line": 520,
+      "alternative_source_stop_ids": [], "evidence": "후평주공4단지 단지명과 정확히 같은 기존 지점만 대표점으로 사용. 만물사 위치나 후문 지점을 추측하지 않음."
     },
     "useok_middle_school": {
-      "kind": "city_stop",
-      "source_stop_id": "CCB250001238",
-      "expected_name": "우석중학교",
-      "source_line": 2791,
-      "alternative_source_stop_ids": [],
-      "evidence": "우석중학교의 기존 지점만 장소 대표점으로 사용. 셔틀 승강장 확인은 아님."
+      "kind": "city_stop", "source_stop_id": "CCB250001238", "expected_name": "우석중학교", "source_line": 2791,
+      "alternative_source_stop_ids": [], "evidence": "우석중학교의 기존 지점만 장소 대표점으로 사용. 셔틀 승강장 확인은 아님."
     },
     "hupyeong3_post_office": {
-      "kind": "city_stop",
-      "source_stop_id": "CCB250001203",
-      "expected_name": "후평3동우체국",
-      "source_line": 1677,
-      "alternative_source_stop_ids": [],
-      "evidence": "후평3동우체국의 기존 지점만 대표점으로 사용. 우체국 입구 위치를 확정한 좌표가 아님."
+      "kind": "city_stop", "source_stop_id": "CCB250001203", "expected_name": "후평3동우체국", "source_line": 1677,
+      "alternative_source_stop_ids": [], "evidence": "후평3동우체국의 기존 지점만 대표점으로 사용. 우체국 입구 위치를 확정한 좌표가 아님."
     }
   },
   "stop_references": {
-    "대학교": "campus_clc",
-    "춘천역": "chuncheon_station",
+    "대학교": "campus_clc", "춘천역": "chuncheon_station",
     "온의금호1차 버스정류장": "onuigeumho",
-    "케이티앤지 버스정류장": "ktng",
-    "KT&G 버스정류장": "ktng",
-    "퇴계 우성A 입구 버스정류장": "toegye_useong",
-    "퇴계 우성A": "toegye_useong",
+    "케이티앤지 버스정류장": "ktng", "KT&G 버스정류장": "ktng",
+    "퇴계 우성A 입구 버스정류장": "toegye_useong", "퇴계 우성A": "toegye_useong",
     "휴먼타운A(505동 앞) 버스정류장": "human_town",
     "석사 삼익A 다리입구": "seoksa_samik",
-    "교육대학교 버스정류장": "education_university",
-    "교대(버스정류장)": "education_university",
-    "석사A 건너 버스정류장": "seoksa_apartment",
-    "양우A 건너 버스정류장": "yangu_apartment",
-    "소양중 정문": "soyang_middle_school",
-    "소양초 버스정류장": "soyang_elementary_school",
-    "명진학교 버스정류장": "myeongjin_school",
-    "롯데 인벤스 버스정류장": "lotte_invens",
-    "사우사거리 버스정류장": "sau_crossroads",
-    "동산A 버스정류장": "dongsan_apartment",
-    "후평주공 4단지 만물사": "hupyeong_jugong4",
-    "우석중학교 버스정류장": "useok_middle_school",
+    "교육대학교 버스정류장": "education_university", "교대(버스정류장)": "education_university",
+    "석사A 건너 버스정류장": "seoksa_apartment", "양우A 건너 버스정류장": "yangu_apartment",
+    "소양중 정문": "soyang_middle_school", "소양초 버스정류장": "soyang_elementary_school",
+    "명진학교 버스정류장": "myeongjin_school", "롯데 인벤스 버스정류장": "lotte_invens",
+    "사우사거리 버스정류장": "sau_crossroads", "동산A 버스정류장": "dongsan_apartment",
+    "후평주공 4단지 만물사": "hupyeong_jugong4", "우석중학교 버스정류장": "useok_middle_school",
     "후평3동 우체국 입구": "hupyeong3_post_office"
   },
   "unmatched_stops": [
-    "한국교직원공제회",
-    "CGV춘천 횡단보도 앞",
-    "칠전동(영화루 맞은편)",
-    "교원공제 회관",
-    "퇴계 주공 5단지 505동 앞",
-    "세경4차A 정문",
-    "이마트24(우석초교 건너)",
-    "석사진흥A 후문",
-    "써브웨이 춘천후평점"
+    "한국교직원공제회", "CGV춘천 횡단보도 앞", "칠전동(영화루 맞은편)",
+    "교원공제 회관", "퇴계 주공 5단지 505동 앞", "세경4차A 정문",
+    "이마트24(우석초교 건너)", "석사진흥A 후문", "써브웨이 춘천후평점"
   ]
 }
