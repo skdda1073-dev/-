@@ -14,6 +14,7 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/taxi.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/ride-room.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/transport-demo.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/itx-timetable.css') }}">
 </head>
 <body>
     <a class="skip-link" href="#dest-input">길찾기 검색으로 이동</a>
@@ -106,14 +107,41 @@
                 <nav class="transport-tabs" role="tablist" aria-label="교통 메뉴">
                     <button id="transport-tab-bus" class="transport-tab" type="button" role="tab" aria-selected="true" aria-controls="transport-panel-bus" tabindex="0"><svg class="icon" aria-hidden="true"><use href="#icon-bus"></use></svg><span>버스 시간표</span></button>
                     <button id="transport-tab-scooter" class="transport-tab" type="button" role="tab" aria-selected="false" aria-controls="transport-panel-scooter" tabindex="-1"><svg class="icon" aria-hidden="true"><use href="#icon-scooter"></use></svg><span>주변 킥보드 찾기</span></button>
-                    <button id="transport-tab-subway" class="transport-tab" type="button" role="tab" aria-selected="false" aria-controls="transport-panel-subway" tabindex="-1"><svg class="icon" aria-hidden="true"><use href="#icon-train"></use></svg><span>지하철 시간표</span></button>
+                    <button id="transport-tab-subway" class="transport-tab" type="button" role="tab" aria-selected="false" aria-controls="transport-panel-subway" tabindex="-1"><svg class="icon" aria-hidden="true"><use href="#icon-train"></use></svg><span>지하철·ITX 시간표</span></button>
                     <button id="transport-tab-intercity" class="transport-tab" type="button" role="tab" aria-selected="false" aria-controls="transport-panel-intercity" tabindex="-1"><svg class="icon" aria-hidden="true"><use href="#icon-bus"></use></svg><span>시외버스 시간표</span></button>
                     <button id="transport-tab-taxi" class="transport-tab" type="button" role="tab" aria-selected="false" aria-controls="transport-panel-taxi" tabindex="-1"><svg class="icon" aria-hidden="true"><use href="#icon-taxi"></use></svg><span>택시</span></button>
                     <button id="transport-tab-rooms" class="transport-tab" type="button" role="tab" aria-selected="false" aria-controls="transport-panel-rooms" tabindex="-1"><svg class="icon" aria-hidden="true"><use href="#icon-search"></use></svg><span>방 찾기</span></button>
                 </nav>
                 <section id="transport-panel-bus" class="transport-panel" role="tabpanel" aria-labelledby="transport-tab-bus" tabindex="0"><h2>버스 시간표</h2><p>버스 시간표 기능은 준비 중입니다.</p></section>
                 <section id="transport-panel-scooter" class="transport-panel" role="tabpanel" aria-labelledby="transport-tab-scooter" tabindex="0" hidden><h2>주변 킥보드 찾기</h2><p>주변 킥보드 찾기 기능은 준비 중입니다.</p></section>
-                <section id="transport-panel-subway" class="transport-panel" role="tabpanel" aria-labelledby="transport-tab-subway" tabindex="0" hidden><h2>지하철 시간표</h2><p>지하철 시간표 기능은 준비 중입니다.</p></section>
+                                <section id="transport-panel-subway" class="transport-panel" role="tabpanel" aria-labelledby="transport-tab-subway" tabindex="0" hidden>
+                    <h2>ITX-청춘 열차 시간표</h2>
+                    <p class="demo-caption">출발역과 도착역을 지정하면, 해당 구간을 운행하는 ITX-청춘 계획 시간표를 조회합니다. 일반 지하철 시간표는 별도로 준비 중입니다.</p>
+                    <div id="itx-timetable">
+                        <div class="itx-controls">
+                            <label for="itx-origin">출발역
+                                <select id="itx-origin" disabled><option value="">역 목록 불러오는 중</option></select>
+                            </label>
+                            <label for="itx-destination">도착역
+                                <select id="itx-destination" disabled><option value="">역 목록 불러오는 중</option></select>
+                            </label>
+                            <label for="itx-date">조회 날짜
+                                <input id="itx-date" type="date">
+                            </label>
+                            <button id="itx-load" type="button" disabled>시간표 조회</button>
+                        </div>
+                        <p id="itx-status" class="itx-status" role="status" aria-live="polite">ITX 탭을 열면 역 목록을 불러옵니다.</p>
+                        <div id="itx-table-wrap" class="itx-table-wrap" hidden>
+                            <table class="itx-table">
+                                <caption>선택한 구간의 ITX-청춘 시간표</caption>
+                                <thead><tr><th scope="col">열차번호</th><th scope="col">출발역</th><th scope="col">출발</th><th scope="col">도착역</th><th scope="col">도착 예정</th><th scope="col">요금</th></tr></thead>
+                                <tbody id="itx-table-body"></tbody>
+                            </table>
+                        </div>
+                        <p id="itx-warning" class="itx-warning" hidden></p>
+                        <p class="itx-note">시간표는 계획 시각이며, 실제 운행·지연·매진 여부는 코레일에서 확인해 주세요.</p>
+                    </div>
+                </section>
                 <section id="transport-panel-intercity" class="transport-panel" role="tabpanel" aria-labelledby="transport-tab-intercity" tabindex="0" hidden><h2>시외버스 시간표</h2><p>시외버스 시간표 기능은 준비 중입니다.</p></section>
                 <section id="transport-panel-taxi" class="transport-panel" role="tabpanel" aria-labelledby="transport-tab-taxi" tabindex="0" hidden><h2>택시</h2><p>택시 정보는 준비 중입니다.</p>
                     <section class="taxi-party" aria-labelledby="demo-party-heading">
@@ -250,5 +278,6 @@
     <script src="{{ url_for('static', filename='js/ui-renderer.js') }}" defer></script>
     <script src="{{ url_for('static', filename='js/ui-controller.js') }}" defer></script>
     <script src="{{ url_for('static', filename='js/transport-demo-controller.js') }}" defer></script>
+    <script src="{{ url_for('static', filename='js/itx-timetable.js') }}" defer></script>
 </body>
 </html>

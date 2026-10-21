@@ -4,6 +4,7 @@ from flask import Flask, render_template, request, jsonify
 from math import isfinite
 from werkzeug.exceptions import HTTPException
 import pandas as pd
+from services.itx_pair_service import bp as itx_pair_bp
 
 from services.settings import load_settings
 from services.place_search_service import PlaceSearchError, PlaceSearchService
@@ -26,7 +27,7 @@ settings = load_settings(base_dir)
 
 app = Flask(__name__, template_folder=template_dir)
 app.config["MAX_CONTENT_LENGTH"] = 16 * 1024
-
+app.register_blueprint(itx_pair_bp)
 # ==========================================
 # 🔑 1. API 키 설정
 # ==========================================
