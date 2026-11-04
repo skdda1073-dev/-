@@ -26,24 +26,72 @@ for (const width of [360, 390, 1440]) test(`${width}px menu, form, modal, partic
         const page = app.page;
         assert.equal(await page.locator('.quick-actions button').count(), 0);
         const tabs = page.locator('.transport-tab');
-        assert.deepEqual(await tabs.allTextContents(), ['버스 시간표', '주변 킥보드 찾기', '지하철 시간표', '시외버스 시간표', '택시', '방 찾기']);
-        assert.equal(await tabs.first().getAttribute('aria-selected'), 'true');
+        assert.deepEqual(await tabs.allTextContents(), ['학교 셔틀버스', '지하철·ITX 시간표', '시외버스 시간표', '택시', '방 찾기']);
+        assert.equal(await tabs.nth(1).getAttribute('aria-selected'), 'true');
         const bounds = await tabs.evaluateAll(items => items.map(item => {
             const r = item.getBoundingClientRect(); return { x: r.x, y: r.y, width: r.width };
         }));
-        assert.equal(bounds[0].y, bounds[1].y); assert.equal(bounds[1].y, bounds[2].y);
-        assert.equal(bounds[3].y, bounds[4].y); assert.equal(bounds[4].y, bounds[5].y); assert.ok(bounds[3].y > bounds[0].y);
-        assert.ok(Math.abs(bounds[0].width - bounds[2].width) < 1);
-        assert.ok(Math.abs(bounds[3].width - bounds[4].width) < 1);
-        assert.ok(Math.abs(bounds[3].x - bounds[0].x) < 1);
-        assert.ok(Math.abs(bounds[5].width - bounds[0].width) < 1);
-        assert.ok(Math.abs(bounds[5].x + bounds[5].width - bounds[2].x - bounds[2].width) < 1);
+        assert.ok(bounds[0].y < bounds[1].y);
+        assert.equal(bounds[1].y, bounds[2].y);
+        assert.equal(bounds[3].y, bounds[4].y); assert.ok(bounds[3].y > bounds[1].y);
+        bounds.slice(1).forEach(bound => assert.ok(Math.abs(bound.width - bounds[1].width) < 1));
+        assert.ok(Math.abs(bounds[3].x - bounds[1].x) < 1);
+        assert.ok(Math.abs(bounds[4].x - bounds[2].x) < 1);
+        assert.ok(Math.abs(bounds[0].x - bounds[1].x) < 1);
+        assert.ok(Math.abs(bounds[0].width - (bounds[2].x + bounds[2].width - bounds[1].x)) < 1);
+        assert.equal(await tabs.evaluateAll(items => items.every(item => {
+            const label = item.querySelector('span');
+            return item.scrollWidth <= item.clientWidth && label.scrollWidth <= label.clientWidth;
+        })), true, 'Menu labels fit without horizontal clipping');
+        await noOverflow(page);
+        assert.equal(await byId(page, 'transport-panel-subway').isVisible(), true);
+        assert.equal(await tabs.nth(1).getAttribute('tabindex'), '0');
+        assert.deepEqual(await tabs.evaluateAll(items => items.map(item => item.tabIndex)), [-1, 0, -1, -1, -1]);
+        assert.equal(await page.locator('#transport-tab-bus, #transport-tab-scooter, #transport-panel-bus, #transport-panel-scooter').count(), 0);
+        assert.equal(await page.evaluate(() => {
+            const ids = [...document.querySelectorAll('[id]')].map(item => item.id);
+            return ids.length === new Set(ids).size;
+        }), true, 'IDs remain unique');
+        const formOrder = await page.locator('.journey-form').evaluate(form => {
+            const origin = form.querySelector('.origin-section'), destination = form.querySelector('.destination-field');
+            const submit = form.querySelector('#route-submit');
+            const before = (a, b) => !!(a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING);
+            const styles = [...form.querySelectorAll('.journey-field-title')].map(item => {
+                const style = getComputedStyle(item);
+                return [style.fontFamily, style.fontSize, style.fontWeight, style.lineHeight, style.color];
+            });
+            return { ordered: before(origin, destination) && before(destination, submit) && !origin.contains(submit),
+                buttons: form.querySelectorAll('#route-submit').length, styles };
+        });
+        assert.equal(formOrder.ordered, true); assert.equal(formOrder.buttons, 1);
+        assert.equal(formOrder.styles.length, 2); assert.deepEqual(formOrder.styles[0], formOrder.styles[1]);
+        assert.equal(await page.locator('label[for="dest-input"]').count(), 1);
+        await byId(page, 'origin-building').click();
+        await byId(page, 'building-select').focus();
+        await page.keyboard.press('Tab');
+        assert.equal(await page.evaluate(() => document.activeElement.id), 'dest-input');
+        await page.keyboard.press('Tab');
+        assert.equal(await page.evaluate(() => document.activeElement.id), 'route-submit');
+        assert.equal(app.itxRequests.filter(item => item.pathname === '/api/itx/stations').length, 1);
+        assert.equal(app.itxRequests.filter(item => item.pathname === '/api/itx/route').length, 0);
+        await byId(page, 'itx-load').click();
+        await page.waitForFunction(() => !document.getElementById('itx-table-wrap').hidden);
+        assert.equal(app.itxRequests.filter(item => item.pathname === '/api/itx/route').length, 1);
+        assert.equal(await page.locator('#itx-table-body tr').count(), 1);
+        assert.equal(new URLSearchParams(app.itxRequests.at(-1).query).get('origin'), '춘천');
+        assert.equal(new URLSearchParams(app.itxRequests.at(-1).query).get('destination'), '마석');
         for (let i = 0; i < 5; i++) {
             await tabs.nth(i).click();
             const panel = byId(page, await tabs.nth(i).getAttribute('aria-controls'));
             assert.equal(await panel.isVisible(), true);
-            assert.match(await panel.innerText(), /준비 중입니다/);
+            assert.equal(await tabs.nth(i).getAttribute('aria-selected'), 'true');
+            assert.equal(await tabs.nth(i).getAttribute('tabindex'), '0');
+            assert.equal(await page.locator('#transport-demo > .transport-panel:not([hidden])').count(), 1);
+            if (i === 2 || i === 3) assert.match(await panel.innerText(), /준비 중입니다/);
         }
+        await tabs.nth(1).click();
+        assert.equal(app.itxRequests.filter(item => item.pathname === '/api/itx/stations').length, 1);
+        assert.equal(app.itxRequests.filter(item => item.pathname === '/api/itx/route').length, 1);
         await byId(page, 'transport-tab-rooms').click();
         assert.match(await byId(page, 'demo-room-empty').innerText(), /아직 모집 중인 택시팟이 없어요/);
         assert.equal(await page.locator('.demo-room-post').count(), 0);
@@ -107,7 +155,21 @@ test('validation retains values and keyboard tabs do not request data', async br
     const app = await openApp(browser, { timezoneId: 'America/Los_Angeles' });
     try {
         const page = app.page;
-        await byId(page, 'transport-tab-bus').focus();
+        await byId(page, 'transport-tab-subway').focus();
+        await page.keyboard.press('ArrowLeft');
+        assert.equal(await byId(page, 'transport-tab-shuttle').getAttribute('aria-selected'), 'true');
+        await page.keyboard.press('ArrowLeft');
+        assert.equal(await byId(page, 'transport-tab-rooms').getAttribute('aria-selected'), 'true');
+        await page.keyboard.press('Home');
+        assert.equal(await byId(page, 'transport-tab-shuttle').getAttribute('aria-selected'), 'true');
+        await page.keyboard.press('ArrowRight');
+        assert.equal(await byId(page, 'transport-tab-subway').getAttribute('aria-selected'), 'true');
+        await page.keyboard.press('ArrowDown');
+        assert.equal(await byId(page, 'transport-tab-intercity').getAttribute('aria-selected'), 'true');
+        await page.keyboard.press('ArrowUp');
+        assert.equal(await byId(page, 'transport-tab-subway').getAttribute('aria-selected'), 'true');
+        await page.keyboard.press('ArrowRight');
+        assert.equal(await byId(page, 'transport-tab-intercity').getAttribute('aria-selected'), 'true');
         await page.keyboard.press('End');
         assert.equal(await byId(page, 'transport-tab-rooms').getAttribute('aria-selected'), 'true');
         await page.keyboard.press('ArrowLeft');

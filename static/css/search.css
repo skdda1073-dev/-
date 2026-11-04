@@ -2,7 +2,7 @@
 .field-icon { display: grid; place-items: center; flex: 0 0 auto; width: 42px; height: 42px; border-radius: 50%; color: white; background: #367e94; }
 .field-icon .icon { width: 23px; height: 23px; stroke-width: 2.5; }
 .destination-control { flex: 1; min-width: 0; }
-.destination-control label { display: block; color: var(--muted); font-size: 10px; font-weight: 600; margin-bottom: 2px; }
+.destination-control label { display: block; margin-bottom: 2px; }
 .dest-input { width: 100%; min-height: 35px; padding: 4px 1px; background: transparent; color: var(--ink); border: 0; border-radius: 4px; font-size: 16px; font-weight: 750; letter-spacing: -.5px; text-overflow: ellipsis; }
 .dest-input::placeholder { color: #6d7c72; font-size: 14px; font-weight: 650; opacity: 1; }
 .dest-input:focus-visible { outline-offset: 3px; outline-width: 2px; }
@@ -23,7 +23,6 @@
 .clear-destination .icon { width: 16px; height: 16px; }
 .search-empty { padding: 17px 14px; color: var(--muted); font-size: 12px; }
 @media (min-width: 800px) {
-    .destination-control label { font-size: 11px; }
     .dest-input { font-size: 17px; }
     .dest-input::placeholder { font-size: 15px; }
     .search-status { font-size: 11px; margin-bottom: 16px; }

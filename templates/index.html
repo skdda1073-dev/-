@@ -15,6 +15,7 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/ride-room.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/transport-demo.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/itx-timetable.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/shuttle-timetable.css') }}">
 </head>
 <body>
     <a class="skip-link" href="#dest-input">길찾기 검색으로 이동</a>
@@ -71,21 +72,8 @@
             </div>
             <div id="planner-body" class="planner-body">
                 <section class="journey-form" aria-label="통학 경로 검색">
-                    <div class="destination-field">
-                        <span class="field-icon"><svg class="icon" aria-hidden="true"><use href="#icon-search"></use></svg></span>
-                        <div class="destination-control autocomplete-wrapper">
-                            <label for="dest-input">도착할 장소</label>
-                            <input type="text" id="dest-input" class="dest-input" placeholder="역, 건물, 장소를 검색하세요" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="autocomplete-list" aria-describedby="search-status" oninput="onSearchDestination(this.value)">
-                            <div id="autocomplete-list" class="autocomplete-list" role="listbox" aria-label="목적지 검색 결과" hidden></div>
-                        </div>
-                    </div>
-                    <div id="dest-selected-tag" class="dest-selected-tag" hidden>
-                        <svg class="icon" aria-hidden="true"><use href="#icon-pin"></use></svg><span id="dest-selected-text"></span>
-                        <button type="button" class="clear-destination" onclick="clearDestination()" aria-label="선택한 목적지 취소"><svg class="icon" aria-hidden="true"><use href="#icon-close"></use></svg></button>
-                    </div>
-                    <p id="search-status" class="search-status" role="status" aria-live="polite">목적지 없이 가까운 정류장만 찾아도 좋아요.</p>
                     <div class="origin-section">
-                        <div class="section-label"><span>출발 캠퍼스</span><span class="label-hint">학교를 선택하세요</span></div>
+                        <div class="section-label"><span class="journey-field-title">출발 캠퍼스</span><span class="label-hint">학교를 선택하세요</span></div>
                         <div class="campus-tabs" role="group" aria-label="출발 캠퍼스">
                             <button id="tab-hallym" class="campus-tab active is-active" type="button" onclick="switchCampus('hallym')" aria-pressed="true"><svg class="icon" aria-hidden="true"><use href="#icon-school"></use></svg>한림대학교</button>
                             <button id="tab-knu" class="campus-tab" type="button" onclick="switchCampus('knu')" aria-pressed="false"><svg class="icon" aria-hidden="true"><use href="#icon-school"></use></svg>강원대학교</button>
@@ -100,21 +88,64 @@
                             <svg class="icon select-chevron" aria-hidden="true"><use href="#icon-chevron-down"></use></svg>
                         </div>
                         <p id="origin-status" class="origin-status" role="status">조회할 때 현재 위치를 확인합니다.</p>
-                        <button id="route-submit" class="btn-route" type="button" onclick="searchJourney()"><svg class="icon" aria-hidden="true"><use href="#icon-route"></use></svg><span id="route-submit-label">가까운 정류장 찾기</span><svg class="icon arrow" aria-hidden="true"><use href="#icon-arrow-right"></use></svg></button>
                     </div>
+                    <div class="destination-field">
+                        <span class="field-icon"><svg class="icon" aria-hidden="true"><use href="#icon-search"></use></svg></span>
+                        <div class="destination-control autocomplete-wrapper">
+                            <label class="journey-field-title" for="dest-input">도착할 장소</label>
+                            <input type="text" id="dest-input" class="dest-input" placeholder="역, 건물, 장소를 검색하세요" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="autocomplete-list" aria-describedby="search-status" oninput="onSearchDestination(this.value)">
+                            <div id="autocomplete-list" class="autocomplete-list" role="listbox" aria-label="목적지 검색 결과" hidden></div>
+                        </div>
+                    </div>
+                    <div id="dest-selected-tag" class="dest-selected-tag" hidden>
+                        <svg class="icon" aria-hidden="true"><use href="#icon-pin"></use></svg><span id="dest-selected-text"></span>
+                        <button type="button" class="clear-destination" onclick="clearDestination()" aria-label="선택한 목적지 취소"><svg class="icon" aria-hidden="true"><use href="#icon-close"></use></svg></button>
+                    </div>
+                    <p id="search-status" class="search-status" role="status" aria-live="polite">목적지 없이 가까운 정류장만 찾아도 좋아요.</p>
+                    <button id="route-submit" class="btn-route" type="button" onclick="searchJourney()"><svg class="icon" aria-hidden="true"><use href="#icon-route"></use></svg><span id="route-submit-label">가까운 정류장 찾기</span><svg class="icon arrow" aria-hidden="true"><use href="#icon-arrow-right"></use></svg></button>
                 </section>
                 <div id="transport-demo">
                 <nav class="transport-tabs" role="tablist" aria-label="교통 메뉴">
-                    <button id="transport-tab-bus" class="transport-tab" type="button" role="tab" aria-selected="true" aria-controls="transport-panel-bus" tabindex="0"><svg class="icon" aria-hidden="true"><use href="#icon-bus"></use></svg><span>버스 시간표</span></button>
-                    <button id="transport-tab-scooter" class="transport-tab" type="button" role="tab" aria-selected="false" aria-controls="transport-panel-scooter" tabindex="-1"><svg class="icon" aria-hidden="true"><use href="#icon-scooter"></use></svg><span>주변 킥보드 찾기</span></button>
-                    <button id="transport-tab-subway" class="transport-tab" type="button" role="tab" aria-selected="false" aria-controls="transport-panel-subway" tabindex="-1"><svg class="icon" aria-hidden="true"><use href="#icon-train"></use></svg><span>지하철·ITX 시간표</span></button>
+                    <button id="transport-tab-shuttle" class="transport-tab transport-tab--wide" type="button" role="tab" aria-selected="false" aria-controls="transport-panel-shuttle" tabindex="-1"><svg class="icon" aria-hidden="true"><use href="#icon-bus"></use></svg><span>학교 셔틀버스</span></button>
+                    <button id="transport-tab-subway" class="transport-tab" type="button" role="tab" aria-selected="true" aria-controls="transport-panel-subway" tabindex="0"><svg class="icon" aria-hidden="true"><use href="#icon-train"></use></svg><span>지하철·ITX 시간표</span></button>
                     <button id="transport-tab-intercity" class="transport-tab" type="button" role="tab" aria-selected="false" aria-controls="transport-panel-intercity" tabindex="-1"><svg class="icon" aria-hidden="true"><use href="#icon-bus"></use></svg><span>시외버스 시간표</span></button>
                     <button id="transport-tab-taxi" class="transport-tab" type="button" role="tab" aria-selected="false" aria-controls="transport-panel-taxi" tabindex="-1"><svg class="icon" aria-hidden="true"><use href="#icon-taxi"></use></svg><span>택시</span></button>
                     <button id="transport-tab-rooms" class="transport-tab" type="button" role="tab" aria-selected="false" aria-controls="transport-panel-rooms" tabindex="-1"><svg class="icon" aria-hidden="true"><use href="#icon-search"></use></svg><span>방 찾기</span></button>
                 </nav>
-                <section id="transport-panel-bus" class="transport-panel" role="tabpanel" aria-labelledby="transport-tab-bus" tabindex="0"><h2>버스 시간표</h2><p>버스 시간표 기능은 준비 중입니다.</p></section>
-                <section id="transport-panel-scooter" class="transport-panel" role="tabpanel" aria-labelledby="transport-tab-scooter" tabindex="0" hidden><h2>주변 킥보드 찾기</h2><p>주변 킥보드 찾기 기능은 준비 중입니다.</p></section>
-                                <section id="transport-panel-subway" class="transport-panel" role="tabpanel" aria-labelledby="transport-tab-subway" tabindex="0" hidden>
+                <section id="transport-panel-shuttle" class="transport-panel" role="tabpanel" aria-labelledby="transport-tab-shuttle" tabindex="0" hidden>
+                    <h2>한림대학교 셔틀 시간표</h2>
+                    <p class="demo-caption">한림대학교 자료 · 저장된 시간표 기반</p>
+                    <p class="demo-caption">상단 학교 선택과 별도로 조회합니다. 시간표는 실제 운행·탑승을 보장하지 않으며, 임시 운휴·변경은 학교 안내를 확인해 주세요.</p>
+                    <div id="shuttle-timetable">
+                        <div class="shuttle-controls">
+                            <label for="shuttle-route">노선<select id="shuttle-route" disabled></select></label>
+                            <label for="shuttle-direction">방면<select id="shuttle-direction" disabled></select></label>
+                            <label class="shuttle-wide" for="shuttle-at">조회 기준 날짜·시각 (한국 시간)<input id="shuttle-at" type="datetime-local" required></label>
+                            <button id="shuttle-refresh" class="shuttle-wide" type="button">전체 시간표 조회 / 다시 시도</button>
+                        </div>
+                        <p id="shuttle-status" class="shuttle-status" role="status" aria-live="polite">셔틀 탭을 열면 시간표를 불러옵니다.</p>
+                        <p id="shuttle-source" class="shuttle-note"></p>
+                        <ul id="shuttle-warnings" class="shuttle-warnings" aria-label="시간표 이용 시 확인할 사항"></ul>
+                        <section aria-labelledby="shuttle-full-heading">
+                            <h3 id="shuttle-full-heading">전체 시간표 · 회차별 정류장 순서</h3>
+                            <p class="shuttle-note">조회 시각 이전 항목과 조회일 미운행 항목도 보존합니다. 회차별 운행 조건을 함께 확인하세요.</p>
+                            <div id="shuttle-trips"></div>
+                        </section>
+                        <form id="shuttle-segment-form" class="shuttle-controls">
+                            <label for="shuttle-board">타는 정류장<select id="shuttle-board" disabled required></select></label>
+                            <label for="shuttle-alight">내리는 정류장<select id="shuttle-alight" disabled required></select></label>
+                            <button id="shuttle-query" class="shuttle-wide" type="submit" disabled>이후 구간 후보 조회</button>
+                        </form>
+                        <section aria-labelledby="shuttle-candidates-heading">
+                            <h3 id="shuttle-candidates-heading">조회 시각 이후의 구간 후보</h3>
+                            <p class="shuttle-note">출발지에서 정류장까지의 이동·탑승 여유시간을 반영하지 않은 시간표 참고 후보입니다.</p>
+                            <p id="shuttle-segment-status" class="shuttle-status" role="status" aria-live="polite">타는 정류장과 내리는 정류장을 선택하세요.</p>
+                            <ul id="shuttle-segment-warnings" class="shuttle-warnings" aria-label="구간 조회 시 확인할 사항"></ul>
+                            <div id="shuttle-candidates"></div>
+                        </section>
+                    </div>
+                </section>
+                <section id="transport-panel-subway" class="transport-panel" role="tabpanel" aria-labelledby="transport-tab-subway" tabindex="0">
                     <h2>ITX-청춘 열차 시간표</h2>
                     <p class="demo-caption">출발역과 도착역을 지정하면, 해당 구간을 운행하는 ITX-청춘 계획 시간표를 조회합니다. 일반 지하철 시간표는 별도로 준비 중입니다.</p>
                     <div id="itx-timetable">
@@ -279,5 +310,6 @@
     <script src="{{ url_for('static', filename='js/ui-controller.js') }}" defer></script>
     <script src="{{ url_for('static', filename='js/transport-demo-controller.js') }}" defer></script>
     <script src="{{ url_for('static', filename='js/itx-timetable.js') }}" defer></script>
+    <script src="{{ url_for('static', filename='js/shuttle-timetable.js') }}" defer></script>
 </body>
 </html>

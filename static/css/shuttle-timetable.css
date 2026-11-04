@@ -1,0 +1,18 @@
+#shuttle-timetable { min-width: 0; margin-top: 16px; }
+#shuttle-timetable section { margin-top: 20px; }
+#shuttle-timetable h3 { font-size: 15px; line-height: 1.5; }
+.shuttle-controls { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin: 16px 0; min-width: 0; }
+.shuttle-controls label { display: flex; flex-direction: column; gap: 6px; min-width: 0; font-size: 12px; font-weight: 700; }
+.shuttle-wide { grid-column: 1 / -1; }
+.shuttle-controls select, .shuttle-controls input { width: 100%; min-width: 0; max-width: 100%; min-height: 44px; padding: 8px; border: 1px solid #b9ccbe; border-radius: 8px; background: white; color: var(--ink); font: inherit; }
+.shuttle-controls button { min-height: 44px; padding: 10px; border-radius: 10px; background: var(--green-dark); color: white; font: inherit; font-size: 13px; font-weight: 700; overflow-wrap: anywhere; }
+.shuttle-controls button:disabled { opacity: .6; cursor: default; }
+.shuttle-status { margin: 10px 0; font-size: 12px; line-height: 1.7; overflow-wrap: anywhere; }
+.shuttle-status[data-state="error"] { color: #973a24; }
+.shuttle-note { margin: 6px 0; color: #53685a; font-size: 11px; line-height: 1.7; overflow-wrap: anywhere; }
+.shuttle-warnings { padding-left: 18px; margin: 10px 0; color: #755117; font-size: 11px; line-height: 1.7; overflow-wrap: anywhere; }
+.shuttle-warnings:empty { display: none; }
+.shuttle-trip, .shuttle-candidate { margin-top: 12px; padding: 12px; border: 1px solid var(--line); border-radius: 12px; background: #f5faf5; min-width: 0; overflow-wrap: anywhere; }
+.shuttle-trip h4, .shuttle-candidate h4 { margin: 0 0 6px; font-size: 13px; }
+.shuttle-trip ol { padding-left: 22px; margin: 8px 0 0; }
+.shuttle-trip li, .shuttle-candidate p { font-size: 12px; line-height: 1.8; white-space: pre-wrap; }

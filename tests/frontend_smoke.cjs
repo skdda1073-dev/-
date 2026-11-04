@@ -184,14 +184,73 @@ async function activateRealMobility(page) {
     for (const src of sources) await page.addScriptTag({ url: src });
 }
 
+// Synthetic contract fixture, not an alternate production timetable or calendar.
+function shuttleFixture(params = new URLSearchParams()) {
+    const at = params.get('at') || '2026-10-19T07:50:00+09:00';
+    const day = at.slice(0, 10), weekday = new Date(day + 'T12:00:00+09:00').getUTCDay();
+    const verified = day >= '2026-01-01' && day <= '2026-12-31';
+    const closed = weekday === 0 || weekday === 6 || day === '2026-10-09' || day === '2026-07-01';
+    const event = (stop_id, name, time, departure = false) => ({ stop_id, name, time,
+        time_role: departure ? 'departure' : time === null ? 'arrival_unknown' : undefined });
+    const trip = (id, route_name, direction, events, departure = false) => ({ id, route_id: route_name + direction,
+        route_name, direction, routing_usable: true, sequence_basis: departure ? 'official_route_endpoints' : 'csv_row_order',
+        operation_status_at_query_date: closed || (id === 't1' && weekday === 5) ? 'not_operating' : verified ? 'verified' : 'unknown', events });
+    let trips = [
+        trip('t1', '제1노선', '등교', [event('r1-a', '춘천역', '09:15', true), event('r1-b', '대학교', null)], true),
+        trip('t1-later', '제1노선', '등교', [event('r1-a', '춘천역', '09:20', true), event('r1-b', '대학교', null)], true),
+        trip('t1-return', '제1노선', '하교', [event('r1-c', '대학교', '17:30', true), event('r1-d', '춘천역', null)], true),
+        trip('t2-a', '제2노선', '순환', [event('r2-a', '대학교', '08:00'), event('r2-b', '동명 정류장', '08:10')]),
+        trip('t2-b', '제2노선', '순환', [event('r2-c', '동명 정류장', '09:00'), event('r2-d', '종점', '09:10')]),
+    ].filter(item => (!params.has('route') || item.route_name === params.get('route'))
+        && (!params.has('direction') || item.direction === params.get('direction')));
+    const routes = [...new Map(trips.map(item => [item.route_id, { route_name: item.route_name, direction: item.direction,
+        trip_count: trips.filter(other => other.route_id === item.route_id).length }])).values()];
+    const stops = [...new Map(trips.flatMap(item => item.events.map(row => [row.stop_id, { id: row.stop_id, name: row.name }]))).values()];
+    const result = { mode: 'shuttle_timetable', status: verified ? 'ok' : 'unknown_calendar', query_at: at,
+        timezone: 'Asia/Seoul', calendar_status: verified ? 'verified' : 'unknown', time_basis: 'schedule', realtime: false,
+        warnings: [], source: { filename: 'synthetic-shuttle.csv', official_profile: { checked_on: '2026-10-18' } },
+        conditions: { calendar_coverage: { start: '2026-01-01', end: '2026-12-31' }, eligibility: null, fare: null },
+        routes, stops, trips, timetable_candidates: [] };
+    if (!params.has('board') || !params.has('alight')) {
+        if (trips.length && trips.every(item => item.operation_status_at_query_date === 'not_operating')) result.status = 'not_operating';
+        return result;
+    }
+    let connected = false, operating = false;
+    for (const item of trips) {
+        const start = item.events.findIndex(row => row.stop_id === params.get('board'));
+        const end = item.events.findIndex(row => row.stop_id === params.get('alight'));
+        if (start < 0 || end <= start) continue;
+        connected = true;
+        if (item.operation_status_at_query_date === 'not_operating') continue;
+        operating = true;
+        const first = item.events[start], last = item.events[end];
+        const scheduled = day + 'T' + first.time + ':00+09:00';
+        if (new Date(scheduled) < new Date(at)) continue;
+        result.timetable_candidates.push({ trip_id: item.id, route_name: item.route_name, direction: item.direction,
+            board: { id: first.stop_id, name: first.name }, alight: { id: last.stop_id, name: last.name },
+            scheduled_stop_at: scheduled, scheduled_departure_at: first.time_role === 'departure' ? scheduled : null,
+            scheduled_alight_stop_at: last.time === null ? null : day + 'T' + last.time + ':00+09:00',
+            scheduled_arrival_at: null, ride_min: null, total_min: null, service_date_confirmed: verified });
+    }
+    if (!result.timetable_candidates.length) result.status = !connected ? 'no_connection' : !operating ? 'not_operating' : 'no_departures_remaining';
+    return result;
+}
+
 async function openApp(browser, options = {}) {
     const previewFontCSS = await loadPreviewFontCSS();
     const context = await browser.newContext({
         viewport: options.viewport || { width: 390, height: 844 },
         deviceScaleFactor: 1, reducedMotion: 'reduce', locale: 'ko-KR', timezoneId: options.timezoneId || 'Asia/Seoul',
     });
-    const requests = [], searches = [], taxiRequests = [], roomRequests = [], errors = [], blocked = [];
-    await context.addInitScript(({ denyGPS }) => {
+    const requests = [], searches = [], taxiRequests = [], roomRequests = [], itxRequests = [], shuttleRequests = [], errors = [], blocked = [];
+    await context.addInitScript(({ denyGPS, fixedNow }) => {
+        if (fixedNow) {
+            const NativeDate = Date;
+            window.Date = class extends NativeDate {
+                constructor(...args) { super(...(args.length ? args : [fixedNow])); }
+                static now() { return new NativeDate(fixedNow).getTime(); }
+            };
+        }
         window.__testGPSCalls = [];
         window.__injected = false;
         const locate = (success, error, type) => {
@@ -205,7 +264,7 @@ async function openApp(browser, options = {}) {
             watchPosition(success, error) { locate(success, error, 'watchPosition'); return 1; },
             clearWatch() {},
         } });
-    }, { denyGPS: !!options.denyGPS });
+    }, { denyGPS: !!options.denyGPS, fixedNow: options.fixedNow });
     await context.route('**/*', async route => {
         const request = route.request();
         const url = new URL(request.url());
@@ -220,6 +279,20 @@ async function openApp(browser, options = {}) {
         if (url.origin !== BASE_ORIGIN) {
             blocked.push(url.origin);
             return route.abort('blockedbyclient');
+        }
+        if (url.pathname === '/shuttle_timetable') {
+            shuttleRequests.push(Object.fromEntries(url.searchParams));
+            if (options.shuttleHandler) return options.shuttleHandler(route, url, shuttleRequests.length);
+            return route.fulfill({ json: shuttleFixture(url.searchParams) });
+        }
+        if (url.pathname === '/api/itx/stations') {
+            itxRequests.push({ pathname: url.pathname, query: url.search });
+            return route.fulfill({ json: { stations: ['춘천', '마석', '용산'].map(name => ({ name })), date: '2030-10-21' } });
+        }
+        if (url.pathname === '/api/itx/route') {
+            itxRequests.push({ pathname: url.pathname, query: url.search });
+            return route.fulfill({ json: { trains: [{ train_no: '1001', origin: url.searchParams.get('origin'),
+                destination: url.searchParams.get('destination'), departure_time: '18:00', arrival_time: '19:00', fare: 6000 }] } });
         }
         if (url.pathname === '/search_poi') {
             const query = url.searchParams.get('q') || '';
@@ -265,7 +338,7 @@ async function openApp(browser, options = {}) {
         await context.close();
         throw error;
     }
-    return { page, context, requests, searches, taxiRequests, roomRequests, errors, blocked, async close() {
+    return { page, context, requests, searches, taxiRequests, roomRequests, itxRequests, shuttleRequests, errors, blocked, async close() {
         const captured = [...errors];
         await context.close();
         assert.deepEqual(captured, [], 'No unhandled JavaScript errors or blocking dialogs');
@@ -584,5 +657,5 @@ async function run() {
 }
 
 module.exports = { openApp, activateRealMobility, chooseBuilding, selectDestination, clearDestination, noOverflow, resultContains,
-    taxiFixture, journeyFixture, nearbyFixture, DESTINATION, INJECTION, BASE_URL };
+    taxiFixture, journeyFixture, nearbyFixture, shuttleFixture, DESTINATION, INJECTION, BASE_URL };
 if (require.main === module) run().catch(error => { console.error(error.stack || error); process.exitCode = 1; });
