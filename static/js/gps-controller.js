@@ -2,6 +2,7 @@
 (function() {
     let locationVersion = 0;
     let pendingResolve = null;
+    let pendingLookup = null;
 
     function setLocationStatus(message, failed) {
         const status = document.getElementById('origin-status');
@@ -17,6 +18,7 @@
         locationVersion += 1;
         if (pendingResolve) pendingResolve(null);
         pendingResolve = null;
+        pendingLookup = null;
     }
 
     function locate(force) {
@@ -31,7 +33,7 @@
             return Promise.resolve(null);
         }
 
-        return new Promise(function(resolve) {
+        const lookup = new Promise(function(resolve) {
             pendingResolve = resolve;
             function finish(position) {
                 if (version !== locationVersion) return;
@@ -63,6 +65,16 @@
                 onError(error);
             }
         });
+        pendingLookup = lookup;
+        const clearLookup = function() { if (pendingLookup === lookup) pendingLookup = null; };
+        lookup.then(clearLookup, clearLookup);
+        return lookup;
+    }
+
+    function getPosition(force) {
+        // A taxi click can share an explicit bus/location lookup without cancelling its loading state.
+        if (!force && pendingLookup) return pendingLookup;
+        return locate(Boolean(force));
     }
 
     function beginLocation() {
@@ -101,7 +113,7 @@
         if (window.AppModules.map) window.AppModules.map.recenterPosition(position.lat, position.lon, true);
     }
 
-    window.AppModules.gps = { findMyLocation, findRoutesByGPS, cancelPendingLocation };
+    window.AppModules.gps = { getPosition, findMyLocation, findRoutesByGPS, cancelPendingLocation };
     window.findMyLocation = findMyLocation;
     window.findRoutesByGPS = findRoutesByGPS;
 })();

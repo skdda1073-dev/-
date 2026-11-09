@@ -1,0 +1,93 @@
+/* 시외버스 조회에만 적용되는 레이아웃과 상태 표시. */
+#intercity-timetable {
+    margin-top: 18px;
+    padding: 22px;
+    border: 1px solid var(--line, #e2eae4);
+    border-radius: var(--radius-card, 22px);
+    background: #fff;
+    color: var(--ink, #18352b);
+    min-width: 0;
+}
+#intercity-timetable *, #intercity-timetable *::before, #intercity-timetable *::after { box-sizing: border-box; }
+#intercity-timetable [hidden] { display: none !important; }
+#intercity-timetable .intercity-controls { display: grid; gap: 12px; min-width: 0; }
+#intercity-timetable .intercity-terminal {
+    display: grid;
+    gap: 8px;
+    min-width: 0;
+    padding: 0;
+    margin: 0;
+    border: 0;
+}
+#intercity-timetable legend, #intercity-timetable .intercity-date-label { font-size: .88rem; font-weight: 700; }
+#intercity-timetable legend { padding: 0 0 8px; }
+#intercity-timetable .intercity-date-label { display: grid; gap: 8px; min-width: 0; }
+#intercity-timetable :is(input, select) {
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+    min-height: 44px;
+    padding: 10px 11px;
+    border: 1px solid var(--line, #e2eae4);
+    border-radius: 10px;
+    background: #fff;
+    color: inherit;
+    font: inherit;
+    font-size: .9rem;
+}
+#intercity-timetable input[readonly] { background: #f4f7f4; color: #56645d; }
+#intercity-timetable .intercity-additional-option { display: flex; align-items: center; gap: 9px; min-height: 44px; font-size: .85rem; cursor: pointer; }
+#intercity-timetable .intercity-additional-option input[type="checkbox"] { flex: 0 0 18px; width: 18px; height: 18px; min-height: 18px; margin: 0; padding: 0; accent-color: var(--green-dark, #187526); }
+#intercity-timetable button {
+    min-height: 44px;
+    padding: 10px 16px;
+    border: 1px solid transparent;
+    border-radius: 10px;
+    background: var(--green-dark, #187526);
+    color: #fff;
+    font: inherit;
+    font-size: .9rem;
+    font-weight: 700;
+    cursor: pointer;
+    overflow-wrap: anywhere;
+}
+#intercity-timetable button:disabled { opacity: .55; cursor: not-allowed; }
+#intercity-timetable .intercity-secondary {
+    border-color: var(--line, #e2eae4);
+    background: #f3f7f2;
+    color: var(--ink, #18352b);
+}
+#intercity-timetable #intercity-swap { justify-self: start; min-height: 36px; padding: 7px 12px; font-size: .8rem; }
+#intercity-timetable :is(button, input, select, a):focus-visible { outline: 3px solid var(--green, #2ba331); outline-offset: 3px; }
+#intercity-timetable .intercity-note, #intercity-timetable .intercity-source, #intercity-timetable .intercity-terminal-hint {
+    margin: 12px 0;
+    color: var(--muted, #6a7a73);
+    font-size: .82rem;
+    line-height: 1.65;
+    overflow-wrap: anywhere;
+}
+#intercity-timetable .intercity-terminal-hint { margin: 0; }
+#intercity-timetable .intercity-status { margin: 16px 0 10px; font-size: .92rem; font-weight: 650; line-height: 1.65; overflow-wrap: anywhere; }
+#intercity-timetable .intercity-status[data-state="error"] { color: #a23c2b; }
+#intercity-timetable .intercity-warnings { padding: 12px 16px 12px 30px; border-radius: 10px; background: #fff7e6; color: #76570c; font-size: .82rem; line-height: 1.7; overflow-wrap: anywhere; }
+#intercity-timetable #intercity-results { margin-top: 22px; }
+#intercity-timetable #intercity-results-heading { margin: 0; font-size: 1rem; overflow-wrap: anywhere; }
+#intercity-timetable .intercity-trips { display: grid; gap: 10px; padding: 0; margin: 12px 0; list-style: none; }
+#intercity-timetable .intercity-trip { padding: 16px; border: 1px solid var(--line, #e2eae4); border-radius: 12px; min-width: 0; }
+#intercity-timetable .intercity-trip-time { display: flex; gap: 10px; flex-wrap: wrap; align-items: baseline; margin: 0 0 12px; font-size: 1.2rem; line-height: 1.5; }
+#intercity-timetable .intercity-trip-time small { font-size: .74rem; color: var(--muted, #6a7a73); font-weight: 500; }
+#intercity-timetable .intercity-trip-details { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin: 0; }
+#intercity-timetable .intercity-trip-details div { min-width: 0; }
+#intercity-timetable .intercity-trip-details dt { margin-bottom: 4px; font-size: .74rem; color: var(--muted, #6a7a73); }
+#intercity-timetable .intercity-trip-details dd { margin: 0; font-size: .88rem; font-weight: 650; overflow-wrap: anywhere; }
+#intercity-timetable .intercity-booking { margin-top: 22px; padding-top: 16px; border-top: 1px solid var(--line, #e2eae4); }
+#intercity-timetable .intercity-booking p { margin: 0 0 10px; color: var(--muted, #6a7a73); font-size: .82rem; line-height: 1.6; }
+#intercity-timetable .intercity-booking-links { display: flex; flex-wrap: wrap; gap: 8px; }
+#intercity-timetable .intercity-booking-links a { display: inline-flex; align-items: center; min-height: 42px; padding: 9px 12px; border-radius: 9px; background: #f3f7f2; font-size: .82rem; font-weight: 650; }
+#intercity-timetable a { color: var(--green-dark, #187526); text-underline-offset: 3px; overflow-wrap: anywhere; }
+#intercity-timetable .intercity-visually-hidden { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+@media (max-width: 420px) {
+    #intercity-timetable { padding: 16px; }
+    #intercity-timetable .intercity-trip { padding: 12px; }
+    #intercity-timetable .intercity-trip-details { gap: 7px; }
+}

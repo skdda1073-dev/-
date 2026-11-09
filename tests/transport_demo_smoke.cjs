@@ -87,7 +87,11 @@ for (const width of [360, 390, 1440]) test(`${width}px menu, form, modal, partic
             assert.equal(await tabs.nth(i).getAttribute('aria-selected'), 'true');
             assert.equal(await tabs.nth(i).getAttribute('tabindex'), '0');
             assert.equal(await page.locator('#transport-demo > .transport-panel:not([hidden])').count(), 1);
-            if (i === 2 || i === 3) assert.match(await panel.innerText(), /준비 중입니다/);
+            if (i === 2) assert.match(await panel.innerText(), /오늘 출발 시간표/);
+            if (i === 3) {
+                assert.equal(await panel.locator('#taxi-refresh').isVisible(), true);
+                assert.equal(await panel.locator('#taxi-room-actions').isVisible(), false);
+            }
         }
         await tabs.nth(1).click();
         assert.equal(app.itxRequests.filter(item => item.pathname === '/api/itx/stations').length, 1);

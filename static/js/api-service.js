@@ -5,6 +5,8 @@
     let taxiController = null;
     let taxiVersion = 0;
     let taxiContext = null;
+    let taxiIntentVersion = 0;
+    let taxiPending = false;
 
     function setRouteLoading(visible, message) {
         const loading = document.getElementById('loading');
@@ -47,16 +49,22 @@
         if (window.AppModules.map) window.AppModules.map.clearStationMarkers();
     }
 
+    function cancelTaxiRequests() {
+        taxiVersion += 1;
+        taxiIntentVersion += 1;
+        if (taxiController) taxiController.abort();
+        taxiController = null;
+        taxiContext = null;
+        taxiPending = false;
+        if (window.AppModules.taxi) window.AppModules.taxi.reset();
+    }
+
     function cancelPendingRequests(options) {
         options = options || {};
         latestRequest += 1;
         if (routeController) routeController.abort();
         routeController = null;
-        taxiVersion += 1;
-        if (taxiController) taxiController.abort();
-        taxiController = null;
-        taxiContext = null;
-        if (window.AppModules.taxi) window.AppModules.taxi.reset();
+        if (options.resetTaxi !== false) cancelTaxiRequests();
         if (options.cancelLocation !== false && window.AppModules.gps) {
             window.AppModules.gps.cancelPendingLocation();
         }
@@ -85,7 +93,7 @@
         }
     }
 
-    function stateSnapshot(mode) {
+    function stateSnapshot(mode, ignorePosition) {
         const building = document.getElementById('building-select');
         const position = window.AppState.getCurrentPosition();
         return JSON.stringify({
@@ -93,7 +101,7 @@
             selectedMode: window.AppState.getOriginMode(),
             campus: selectedCampus,
             building: mode === 'building' && building ? building.value : null,
-            position: mode === 'gps' && position ? [position.lat, position.lon] : null,
+            position: !ignorePosition && mode === 'gps' && position ? [position.lat, position.lon] : null,
             destination: window.AppState.getDestination()
         });
     }
@@ -110,12 +118,14 @@
         if (taxi) taxi.loading(context);
         let timeout;
         try {
-            const response = await Promise.race([
+            const result = await Promise.race([
                 fetch('/api/taxi/estimate', {
                     method: 'POST', credentials: 'same-origin',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(context.payload),
                     ...(controller ? { signal: controller.signal } : {})
+                }).then(async function(response) {
+                    return { response: response, data: await response.json() };
                 }),
                 new Promise(function(resolve, reject) {
                     timeout = setTimeout(function() {
@@ -124,7 +134,7 @@
                     }, 15000);
                 })
             ]);
-            const data = await response.json();
+            const response = result.response, data = result.data;
             if (!current()) return;
             if (!response.ok) throw new Error(data && typeof data.error === 'string'
                 ? data.error : '택시 정보를 불러오지 못했어요.');
@@ -140,12 +150,85 @@
         }
     }
 
+    async function requestTaxiFromSelection() {
+        const taxi = window.AppModules.taxi;
+        if (!taxi) return;
+        if (taxiPending && taxiContext && taxiContext.isCurrent()) return;
+        cancelTaxiRequests();
+        const intent = taxiIntentVersion;
+        taxiPending = true;
+        const mode = window.AppState.getOriginMode();
+        const selection = stateSnapshot(mode, true);
+        const intentIsCurrent = function() {
+            return intent === taxiIntentVersion && selection === stateSnapshot(mode, true);
+        };
+        try {
+            const destination = window.AppState.getDestination();
+            if (!destination || typeof destination.name !== 'string' || !destination.name.trim()
+                || !window.AppState.isValidPosition(destination.lat, destination.lon)) {
+                taxi.prompt('상단에서 도착할 장소를 검색하고 검색 결과를 선택해 주세요.');
+                if (window.AppModules.search && typeof window.AppModules.search.setSearchStatus === 'function') {
+                    window.AppModules.search.setSearchStatus('검색 결과에서 목적지를 선택해 주세요.', true);
+                }
+                const input = document.getElementById('dest-input');
+                if (input) input.focus();
+                return;
+            }
+            const payload = { campus: selectedCampus, dest_name: destination.name,
+                dest_lat: Number(destination.lat), dest_lon: Number(destination.lon) };
+            if (mode === 'building') {
+                const select = document.getElementById('building-select');
+                const building = select ? select.value : '';
+                if (!building) {
+                    taxi.prompt('상단에서 출발 건물을 먼저 선택해 주세요.');
+                    if (select) { select.setAttribute('aria-invalid', 'true'); select.focus(); }
+                    return;
+                }
+                if (select) select.removeAttribute('aria-invalid');
+                payload.location = building;
+                // The server resolves campus building coordinates; no placeholder lat/lon is sent.
+            } else if (mode === 'gps') {
+                payload.location = '내 실시간 위치';
+                taxiContext = { payload: payload, mode: mode, isCurrent: intentIsCurrent };
+                const gps = window.AppModules.gps;
+                if (!gps || typeof gps.getPosition !== 'function') {
+                    taxi.failed('현재 위치를 확인할 수 없어요. 교내 건물을 선택해 주세요.', taxiContext);
+                    return;
+                }
+                taxi.loading(taxiContext, '현재 위치를 확인하고 있어요…');
+                // This method is reached only from the user's estimate/refresh button.
+                const position = await gps.getPosition(false);
+                if (!intentIsCurrent()) return;
+                if (!position || !window.AppState.isValidPosition(position.lat, position.lon)) {
+                    taxi.failed('현재 위치를 확인하지 못했어요. 위치 권한을 확인하거나 교내 건물을 선택해 주세요.', taxiContext);
+                    return;
+                }
+                payload.lat = Number(position.lat);
+                payload.lon = Number(position.lon);
+            } else {
+                taxi.prompt('상단에서 현재 위치 또는 출발 건물을 선택해 주세요.');
+                return;
+            }
+            if (!intentIsCurrent()) return;
+            const snapshot = stateSnapshot(mode);
+            taxiContext = { payload: payload, mode: mode, isCurrent: function() {
+                return intent === taxiIntentVersion && snapshot === stateSnapshot(mode);
+            } };
+            return await requestTaxiEstimate(taxiContext);
+        } catch (error) {
+            if (!intentIsCurrent() || error.name === 'AbortError') return;
+            taxi.failed('택시 조회를 시작하지 못했어요. 출발지와 목적지를 확인한 뒤 다시 조회해 주세요.', taxiContext);
+        } finally {
+            if (intent === taxiIntentVersion) taxiPending = false;
+        }
+    }
+
     function refreshTaxi() {
-        return requestTaxiEstimate(taxiContext);
+        return requestTaxiFromSelection();
     }
 
     async function requestRoute(payload, mode) {
-        cancelPendingRequests();
+        cancelPendingRequests({ resetTaxi: !(taxiContext && taxiContext.isCurrent()) });
         const requestId = latestRequest;
         const snapshot = stateSnapshot(mode);
         const controller = typeof AbortController === 'function' ? new AbortController() : null;
@@ -153,11 +236,7 @@
         const isCurrent = function() {
             return requestId === latestRequest && snapshot === stateSnapshot(mode);
         };
-        if (payload.dest_name && window.AppState.isValidPosition(payload.dest_lat, payload.dest_lon)) {
-            taxiContext = { payload: { ...payload }, mode: mode, isCurrent: isCurrent };
-            // Independent requests: transit failure and completion do not affect the taxi card.
-            requestTaxiEstimate(taxiContext);
-        }
+        // A transit search does not make a separate taxi provider request.
         setRouteLoading(true);
         let timeout;
         try {
@@ -257,7 +336,8 @@
         }, 'building');
     }
 
-    window.AppModules.api = { requestBusByCoords, findRoutes, cancelPendingRequests, setRouteLoading, drawRouteResult, refreshTaxi };
+    window.AppModules.api = { requestBusByCoords, findRoutes, cancelPendingRequests, setRouteLoading, drawRouteResult,
+        requestTaxiFromSelection, refreshTaxi };
     window.requestBusByCoords = requestBusByCoords;
     window.findRoutes = findRoutes;
     window.cancelPendingRequests = cancelPendingRequests;

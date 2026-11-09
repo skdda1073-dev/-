@@ -15,6 +15,7 @@ class ConfigurationError(RuntimeError):
 class Settings:
     tmap_app_key: str = field(default="", repr=False)
     public_data_key: str = field(default="", repr=False)
+    intercity_data_key: str = field(default="", repr=False)
     naver_map_client_id: str = field(default="", repr=False)
     debug: bool = False
     port: int = 5000
@@ -79,6 +80,7 @@ def load_settings(base_dir, environ=None):
     return Settings(
         tmap_app_key=value("TMAP_APP_KEY"),
         public_data_key=value("PUBLIC_DATA_KEY"),
+        intercity_data_key=value("INTERCITY_DATA_KEY") or value("PUBLIC_DATA_KEY"),
         naver_map_client_id=value("NAVER_MAP_CLIENT_ID"),
         debug=debug_text in {"true", "1", "yes"}, port=port,
         flask_secret_key=value("FLASK_SECRET_KEY"),

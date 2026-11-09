@@ -1,0 +1,698 @@
+{
+  "origin": {
+    "source_id": "2037",
+    "name": "춘천",
+    "city": "강원"
+  },
+  "reviewed_on": "2026-11-10",
+  "sources": [
+    {
+      "name": "버스타고 춘천 출발 도착지 및 터미널 안내",
+      "url": "https://www.bustago.or.kr/newweb/kr/index.do"
+    },
+    {
+      "name": "한국대중교통정보 춘천 시외버스 도착 시설목록",
+      "url": "https://chuncheon-pti.kr/index.php?mp=p3_1&sp=16652"
+    },
+    {
+      "name": "한국대중교통정보 전국 시외버스 시설목록",
+      "url": "https://chuncheon-pti.kr/index.php?mp=p3_2"
+    },
+    {
+      "name": "대구광역시 외국인 유학생 원스톱지원센터 교통안내",
+      "url": "https://studyindaegu.co.kr/main/contents.do?idx=6223"
+    },
+    {
+      "name": "당진시 시외버스 안내",
+      "url": "https://www.dangjin.go.kr/kor/sub05_05_03_02.do"
+    },
+    {
+      "name": "서산시 여객운수 터미널 현황",
+      "url": "https://www.seosan.go.kr/www/contents.do?key=1590"
+    },
+    {
+      "name": "아산시 시외버스 안내",
+      "url": "https://www.asan.go.kr/main/cms/?no=161"
+    },
+    {
+      "name": "평창군 도시계획시설 장평터미널 고시",
+      "url": "https://m.pc.go.kr/egf/bp/board/article/download?fileSeq=147859"
+    }
+  ],
+  "terminals": [
+    {
+      "source_id": "2051",
+      "source_name": "강릉시외터미널",
+      "city": "강원",
+      "display_name": "강릉시외터미널",
+      "kind": "terminal",
+      "evidence": {
+        "pti_id": "16462",
+        "pti_name": "강릉시외버스터미널",
+        "url": "https://chuncheon-pti.kr/index.php?mt=data&cm=road&oxid=1&cmd=road&subcmd=getcate&showtype=1&starttsid=16652&tid=2&id=19&srch=0"
+      }
+    },
+    {
+      "source_id": "2569",
+      "source_name": "고한(사북)",
+      "city": "강원",
+      "display_name": "고한(사북)",
+      "kind": "terminal",
+      "evidence": {
+        "pti_id": "16592",
+        "pti_name": "고한사북버스터미널",
+        "url": "https://chuncheon-pti.kr/index.php?mt=data&cm=road&oxid=1&cmd=road&subcmd=getcate&showtype=1&starttsid=16652&tid=2&id=28&srch=0"
+      }
+    },
+    {
+      "source_id": "2650",
+      "source_name": "다목리",
+      "city": "강원",
+      "display_name": "다목리",
+      "kind": "terminal",
+      "evidence": {
+        "pti_id": "16725",
+        "pti_name": "다목리버스터미널",
+        "url": "https://chuncheon-pti.kr/index.php?mt=data&cm=road&oxid=1&cmd=road&subcmd=getcate&showtype=1&starttsid=16652&tid=2&id=30&srch=0"
+      }
+    },
+    {
+      "source_id": "2671",
+      "source_name": "동해",
+      "city": "강원",
+      "display_name": "동해",
+      "kind": "terminal",
+      "evidence": {
+        "pti_id": "16859",
+        "pti_name": "동해종합버스터미널",
+        "url": "https://chuncheon-pti.kr/index.php?mt=data&cm=road&oxid=1&cmd=road&subcmd=getcate&showtype=1&starttsid=16652&tid=2&id=20&srch=0"
+      }
+    },
+    {
+      "source_id": "2640",
+      "source_name": "사창리",
+      "city": "강원",
+      "display_name": "사창리",
+      "kind": "terminal",
+      "evidence": {
+        "pti_id": "16731",
+        "pti_name": "사창리버스터미널",
+        "url": "https://chuncheon-pti.kr/index.php?mt=data&cm=road&oxid=1&cmd=road&subcmd=getcate&showtype=1&starttsid=16652&tid=2&id=30&srch=0"
+      }
+    },
+    {
+      "source_id": "2015",
+      "source_name": "삼척",
+      "city": "강원",
+      "display_name": "삼척",
+      "kind": "terminal",
+      "evidence": {
+        "pti_id": "16493",
+        "pti_name": "삼척종합버스터미널",
+        "url": "https://chuncheon-pti.kr/index.php?mt=data&cm=road&oxid=1&cmd=road&subcmd=getcate&showtype=1&starttsid=16652&tid=2&id=23&srch=0"
+      }
+    },
+    {
+      "source_id": "2019",
+      "source_name": "속초시외",
+      "city": "강원",
+      "display_name": "속초시외",
+      "kind": "terminal",
+      "evidence": {
+        "pti_id": "16860",
+        "pti_name": "속초시외버스터미널",
+        "url": "https://chuncheon-pti.kr/index.php?mt=data&cm=road&oxid=1&cmd=road&subcmd=getcate&showtype=1&starttsid=16652&tid=2&id=22&srch=0"
+      }
+    },
+    {
+      "source_id": "2062",
+      "source_name": "신남",
+      "city": "강원",
+      "display_name": "신남",
+      "kind": "terminal",
+      "evidence": {
+        "pti_id": "16569",
+        "pti_name": "신남버스터미널",
+        "url": "https://chuncheon-pti.kr/index.php?mt=data&cm=road&oxid=1&cmd=road&subcmd=getcate&showtype=1&starttsid=16652&tid=2&id=32&srch=0"
+      }
+    },
+    {
+      "source_id": "2022",
+      "source_name": "양구",
+      "city": "강원",
+      "display_name": "양구",
+      "kind": "terminal",
+      "evidence": {
+        "pti_id": "16513",
+        "pti_name": "양구시외버스터미널",
+        "url": "https://chuncheon-pti.kr/index.php?mt=data&cm=road&oxid=1&cmd=road&subcmd=getcate&showtype=1&starttsid=16652&tid=2&id=31&srch=0"
+      }
+    },
+    {
+      "source_id": "2024",
+      "source_name": "양양",
+      "city": "강원",
+      "display_name": "양양",
+      "kind": "terminal",
+      "evidence": {
+        "pti_id": "16523",
+        "pti_name": "양양종합여객터미널",
+        "url": "https://chuncheon-pti.kr/index.php?mt=data&cm=road&oxid=1&cmd=road&subcmd=getcate&showtype=1&starttsid=16652&tid=2&id=34&srch=0"
+      }
+    },
+    {
+      "source_id": "2025",
+      "source_name": "영월",
+      "city": "강원",
+      "display_name": "영월",
+      "kind": "terminal",
+      "evidence": {
+        "pti_id": "16542",
+        "pti_name": "영월시외버스터미널",
+        "url": "https://chuncheon-pti.kr/index.php?mt=data&cm=road&oxid=1&cmd=road&subcmd=getcate&showtype=1&starttsid=16652&tid=2&id=26&srch=0"
+      }
+    },
+    {
+      "source_id": "2026",
+      "source_name": "와수리",
+      "city": "강원",
+      "display_name": "와수리",
+      "kind": "terminal",
+      "evidence": {
+        "pti_id": "16626",
+        "pti_name": "와수리시외버스터미널",
+        "url": "https://chuncheon-pti.kr/index.php?mt=data&cm=road&oxid=1&cmd=road&subcmd=getcate&showtype=1&starttsid=16652&tid=2&id=29&srch=0"
+      }
+    },
+    {
+      "source_id": "2027",
+      "source_name": "원주",
+      "city": "강원",
+      "display_name": "원주(직통)",
+      "kind": "terminal",
+      "evidence": {
+        "pti_id": "16551",
+        "pti_name": "원주종합버스터미널",
+        "url": "https://chuncheon-pti.kr/index.php?mt=data&cm=road&oxid=1&cmd=road&subcmd=getcate&showtype=1&starttsid=16652&tid=2&id=18&srch=0"
+      }
+    },
+    {
+      "source_id": "2028",
+      "source_name": "원주",
+      "city": "강원",
+      "display_name": "원주(경유)",
+      "kind": "terminal",
+      "evidence": {
+        "pti_id": "16551",
+        "pti_name": "원주종합버스터미널",
+        "url": "https://chuncheon-pti.kr/index.php?mt=data&cm=road&oxid=1&cmd=road&subcmd=getcate&showtype=1&starttsid=16652&tid=2&id=18&srch=0"
+      }
+    },
+    {
+      "source_id": "2029",
+      "source_name": "원통",
+      "city": "강원",
+      "display_name": "원통",
+      "kind": "terminal",
+      "evidence": {
+        "pti_id": "16576",
+        "pti_name": "원통시외버스터미널",
+        "url": "https://chuncheon-pti.kr/index.php?mt=data&cm=road&oxid=1&cmd=road&subcmd=getcate&showtype=1&starttsid=16652&tid=2&id=32&srch=0"
+      }
+    },
+    {
+      "source_id": "2031",
+      "source_name": "인제",
+      "city": "강원",
+      "display_name": "인제",
+      "kind": "terminal",
+      "evidence": {
+        "pti_id": "16577",
+        "pti_name": "인제시외버스터미널",
+        "url": "https://chuncheon-pti.kr/index.php?mt=data&cm=road&oxid=1&cmd=road&subcmd=getcate&showtype=1&starttsid=16652&tid=2&id=32&srch=0"
+      }
+    },
+    {
+      "source_id": "2032",
+      "source_name": "장평",
+      "city": "강원",
+      "display_name": "장평",
+      "kind": "terminal",
+      "evidence": {
+        "pti_id": "16681",
+        "pti_name": "장평버스터미널",
+        "url": "https://chuncheon-pti.kr/index.php?mt=data&cm=road&oxid=1&cmd=road&subcmd=getcate&showtype=1&tid=2&id=27&dummy=211",
+        "provider_url": "https://www.bustago.or.kr/newweb/kr/terminalInfo/terminalinfo.do?terminalId=2032",
+        "catalogue_scope": "National intercity facility catalogue; the current Chuncheon connection is separately determined from the Bustago origin-dependent destination catalogue.",
+        "municipal_url": "https://m.pc.go.kr/egf/bp/board/article/download?fileSeq=147859"
+      }
+    },
+    {
+      "source_id": "2034",
+      "source_name": "주문진",
+      "city": "강원",
+      "display_name": "주문진",
+      "kind": "terminal",
+      "evidence": {
+        "pti_id": "16473",
+        "pti_name": "주문진시외버스터미널",
+        "url": "https://chuncheon-pti.kr/index.php?mt=data&cm=road&oxid=1&cmd=road&subcmd=getcate&showtype=1&starttsid=16652&tid=2&id=19&srch=0"
+      }
+    },
+    {
+      "source_id": "2039",
+      "source_name": "태백",
+      "city": "강원",
+      "display_name": "태백",
+      "kind": "terminal",
+      "evidence": {
+        "pti_id": "16664",
+        "pti_name": "태백시외버스터미널",
+        "url": "https://chuncheon-pti.kr/index.php?mt=data&cm=road&oxid=1&cmd=road&subcmd=getcate&showtype=1&starttsid=16652&tid=2&id=21&srch=0"
+      }
+    },
+    {
+      "source_id": "2044",
+      "source_name": "홍천",
+      "city": "강원",
+      "display_name": "홍천",
+      "kind": "terminal",
+      "evidence": {
+        "pti_id": "16718",
+        "pti_name": "홍천시외버스터미널",
+        "url": "https://chuncheon-pti.kr/index.php?mt=data&cm=road&oxid=1&cmd=road&subcmd=getcate&showtype=1&starttsid=16652&tid=2&id=24&srch=0"
+      }
+    },
+    {
+      "source_id": "2045",
+      "source_name": "화천",
+      "city": "강원",
+      "display_name": "화천",
+      "kind": "terminal",
+      "evidence": {
+        "pti_id": "16741",
+        "pti_name": "화천공용버스터미널",
+        "url": "https://chuncheon-pti.kr/index.php?mt=data&cm=road&oxid=1&cmd=road&subcmd=getcate&showtype=1&starttsid=16652&tid=2&id=30&srch=0"
+      }
+    },
+    {
+      "source_id": "2047",
+      "source_name": "횡성",
+      "city": "강원",
+      "display_name": "횡성",
+      "kind": "terminal",
+      "evidence": {
+        "pti_id": "16763",
+        "pti_name": "횡성시외버스터미널",
+        "url": "https://chuncheon-pti.kr/index.php?mt=data&cm=road&oxid=1&cmd=road&subcmd=getcate&showtype=1&starttsid=16652&tid=2&id=25&srch=0"
+      }
+    },
+    {
+      "source_id": "1001",
+      "source_name": "가평",
+      "city": "경기",
+      "display_name": "가평",
+      "kind": "terminal",
+      "evidence": {
+        "pti_id": "16419",
+        "pti_name": "가평시외버스터미널",
+        "url": "https://chuncheon-pti.kr/index.php?mt=data&cm=road&oxid=1&cmd=road&subcmd=getcate&showtype=1&starttsid=16652&tid=2&id=183&srch=0"
+      }
+    },
+    {
+      "source_id": "1782",
+      "source_name": "고양종합터미널",
+      "city": "경기",
+      "display_name": "고양종합터미널",
+      "kind": "terminal",
+      "evidence": {
+        "pti_id": "22932",
+        "pti_name": "고양종합버스터미널",
+        "url": "https://chuncheon-pti.kr/index.php?mt=data&cm=road&oxid=1&cmd=road&subcmd=getcate&showtype=1&starttsid=16652&tid=2&id=184&srch=0"
+      }
+    },
+    {
+      "source_id": "1010",
+      "source_name": "성남종합",
+      "city": "경기",
+      "display_name": "성남종합",
+      "kind": "terminal",
+      "evidence": {
+        "pti_id": "16800",
+        "pti_name": "성남시외버스터미널",
+        "url": "https://chuncheon-pti.kr/index.php?mt=data&cm=road&oxid=1&cmd=road&subcmd=getcate&showtype=1&starttsid=16652&tid=2&id=193&srch=0"
+      }
+    },
+    {
+      "source_id": "1011",
+      "source_name": "송탄",
+      "city": "경기",
+      "display_name": "송탄",
+      "kind": "terminal",
+      "evidence": {
+        "pti_id": "16822",
+        "pti_name": "송탄시외버스터미널",
+        "url": "https://chuncheon-pti.kr/index.php?mt=data&cm=road&oxid=1&cmd=road&subcmd=getcate&showtype=1&starttsid=16652&tid=2&id=211&srch=0"
+      }
+    },
+    {
+      "source_id": "1012",
+      "source_name": "수원터미널",
+      "city": "경기",
+      "display_name": "수원터미널",
+      "kind": "terminal",
+      "evidence": {
+        "pti_id": "16801",
+        "pti_name": "수원종합버스터미널",
+        "url": "https://chuncheon-pti.kr/index.php?mt=data&cm=road&oxid=1&cmd=road&subcmd=getcate&showtype=1&starttsid=16652&tid=2&id=194&srch=0"
+      }
+    },
+    {
+      "source_id": "1015",
+      "source_name": "안산",
+      "city": "경기",
+      "display_name": "안산",
+      "kind": "terminal",
+      "evidence": {
+        "pti_id": "16804",
+        "pti_name": "안산시외버스터미널",
+        "url": "https://chuncheon-pti.kr/index.php?mt=data&cm=road&oxid=1&cmd=road&subcmd=getcate&showtype=1&starttsid=16652&tid=2&id=196&srch=0"
+      }
+    },
+    {
+      "source_id": "1023",
+      "source_name": "오산",
+      "city": "경기",
+      "display_name": "오산",
+      "kind": "terminal",
+      "evidence": {
+        "pti_id": "16816",
+        "pti_name": "오산시외버스터미널",
+        "url": "https://chuncheon-pti.kr/index.php?mt=data&cm=road&oxid=1&cmd=road&subcmd=getcate&showtype=1&starttsid=16652&tid=2&id=203&srch=0"
+      }
+    },
+    {
+      "source_id": "1034",
+      "source_name": "청평",
+      "city": "경기",
+      "display_name": "청평",
+      "kind": "terminal",
+      "evidence": {
+        "pti_id": "16426",
+        "pti_name": "청평버스터미널",
+        "url": "https://chuncheon-pti.kr/index.php?mt=data&cm=road&oxid=1&cmd=road&subcmd=getcate&showtype=1&starttsid=16652&tid=2&id=183&srch=0"
+      }
+    },
+    {
+      "source_id": "1035",
+      "source_name": "평택",
+      "city": "경기",
+      "display_name": "평택",
+      "kind": "terminal",
+      "evidence": {
+        "pti_id": "16823",
+        "pti_name": "평택시외버스터미널",
+        "url": "https://chuncheon-pti.kr/index.php?mt=data&cm=road&oxid=1&cmd=road&subcmd=getcate&showtype=1&starttsid=16652&tid=2&id=211&srch=0"
+      }
+    },
+    {
+      "source_id": "5007",
+      "source_name": "경주시외",
+      "city": "경북",
+      "display_name": "경주시외",
+      "kind": "terminal",
+      "evidence": {
+        "pti_id": "16827",
+        "pti_name": "경주시외버스터미널",
+        "url": "https://chuncheon-pti.kr/index.php?mt=data&cm=road&oxid=1&cmd=road&subcmd=getcate&showtype=1&starttsid=16652&tid=2&id=103&srch=0"
+      }
+    },
+    {
+      "source_id": "5071",
+      "source_name": "포항",
+      "city": "경북",
+      "display_name": "포항",
+      "kind": "terminal",
+      "evidence": {
+        "pti_id": "16842",
+        "pti_name": "포항시외버스터미널",
+        "url": "https://chuncheon-pti.kr/index.php?mt=data&cm=road&oxid=1&cmd=road&subcmd=getcate&showtype=1&starttsid=16652&tid=2&id=140&srch=0"
+      }
+    },
+    {
+      "source_id": "9202",
+      "source_name": "대구북부",
+      "city": "대구",
+      "display_name": "대구북부",
+      "kind": "terminal",
+      "evidence": {
+        "pti_id": null,
+        "pti_name": null,
+        "url": "https://studyindaegu.co.kr/main/contents.do?idx=6223",
+        "facility_name": "북부시외버스터미널 (북부정류장)",
+        "facility_address": "대구 서구 서대구로 295(비산동)",
+        "provider_url": "https://www.bustago.or.kr/newweb/kr/terminalInfo/terminalinfo.do?terminalId=9202",
+        "identity_check": "The Daegu city international student support centre identifies the bus terminal at the exact road address shown in the Bustago source facility record. No 서대구/대구서부 name-only mapping is used."
+      }
+    },
+    {
+      "source_id": "9204",
+      "source_name": "대구서부",
+      "city": "대구",
+      "display_name": "대구서부",
+      "kind": "terminal",
+      "evidence": {
+        "pti_id": null,
+        "pti_name": null,
+        "url": "https://studyindaegu.co.kr/main/contents.do?idx=6223",
+        "facility_name": "서부시외버스터미널 (서부정류장)",
+        "facility_address": "대구 남구 월배로 496(대명동)",
+        "provider_url": "https://www.bustago.or.kr/newweb/kr/terminalInfo/terminalinfo.do?terminalId=9204",
+        "identity_check": "The Daegu city international student support centre identifies the bus terminal at the exact road address shown in the Bustago source facility record. No 서대구/대구서부 name-only mapping is used."
+      }
+    },
+    {
+      "source_id": "9503",
+      "source_name": "대전복합",
+      "city": "대전",
+      "display_name": "대전복합",
+      "kind": "terminal",
+      "evidence": {
+        "pti_id": "16406",
+        "pti_name": "대전복합버스터미널",
+        "url": "https://chuncheon-pti.kr/index.php?mt=data&cm=road&oxid=1&cmd=road&subcmd=getcate&showtype=1&starttsid=16652&tid=2&id=40&srch=0"
+      }
+    },
+    {
+      "source_id": "9001",
+      "source_name": "부산동부(노포)",
+      "city": "부산",
+      "display_name": "부산동부(노포)",
+      "kind": "terminal",
+      "evidence": {
+        "pti_id": "16399",
+        "pti_name": "부산동부버스터미널",
+        "url": "https://chuncheon-pti.kr/index.php?mt=data&cm=road&oxid=1&cmd=road&subcmd=getcate&showtype=1&starttsid=16652&tid=2&id=36&srch=0",
+        "provider_url": "https://www.bustago.or.kr/newweb/kr/terminalInfo/terminalinfo.do?terminalId=9001",
+        "identity_check": "Both primary source facility records give 부산광역시 금정구 노포동 133 and 부산동부버스터미널."
+      }
+    },
+    {
+      "source_id": "0010",
+      "source_name": "김포공항",
+      "city": "서울",
+      "display_name": "김포공항",
+      "kind": "airport",
+      "evidence": {
+        "pti_id": "16396",
+        "pti_name": "김포공항터미널",
+        "url": "https://chuncheon-pti.kr/index.php?mt=data&cm=road&oxid=1&cmd=road&subcmd=getcate&showtype=1&starttsid=16652&tid=2&id=35&srch=0"
+      }
+    },
+    {
+      "source_id": "0001",
+      "source_name": "동서울",
+      "city": "서울",
+      "display_name": "동서울",
+      "kind": "terminal",
+      "evidence": {
+        "pti_id": "16395",
+        "pti_name": "동서울종합버스터미널",
+        "url": "https://chuncheon-pti.kr/index.php?mt=data&cm=road&oxid=1&cmd=road&subcmd=getcate&showtype=1&starttsid=16652&tid=2&id=35&srch=0"
+      }
+    },
+    {
+      "source_id": "0003",
+      "source_name": "서울강남(경부)",
+      "city": "서울",
+      "display_name": "서울강남(경부)",
+      "kind": "terminal",
+      "evidence": {
+        "pti_id": "30822",
+        "pti_name": "서울고속버스터미널",
+        "url": "https://chuncheon-pti.kr/index.php?mt=data&cm=road&oxid=1&cmd=road&subcmd=getcate&showtype=1&starttsid=16652&tid=2&id=35&srch=0",
+        "provider_url": "https://www.bustago.or.kr/newweb/kr/terminalInfo/terminalinfo.do?terminalId=0003",
+        "identity_check": "Both primary source facility records give 서울특별시 서초구 신반포로 194."
+      }
+    },
+    {
+      "source_id": "4292",
+      "source_name": "세종시",
+      "city": "세종",
+      "display_name": "세종시",
+      "kind": "terminal",
+      "evidence": {
+        "pti_id": "22937",
+        "pti_name": "세종종합버스터미널",
+        "url": "https://chuncheon-pti.kr/index.php?mt=data&cm=road&oxid=1&cmd=road&subcmd=getcate&showtype=1&starttsid=16652&tid=2&id=222&srch=0",
+        "provider_url": "https://www.bustago.or.kr/newweb/kr/terminalInfo/terminalinfo.do?terminalId=4292",
+        "identity_check": "Both primary source facility records give 세종특별자치시 갈매로 37-12."
+      }
+    },
+    {
+      "source_id": "9601",
+      "source_name": "울산",
+      "city": "울산",
+      "display_name": "울산",
+      "kind": "terminal",
+      "evidence": {
+        "pti_id": "16408",
+        "pti_name": "울산시외버스터미널",
+        "url": "https://chuncheon-pti.kr/index.php?mt=data&cm=road&oxid=1&cmd=road&subcmd=getcate&showtype=1&starttsid=16652&tid=2&id=41&srch=0"
+      }
+    },
+    {
+      "source_id": "9302",
+      "source_name": "인천",
+      "city": "인천",
+      "display_name": "인천",
+      "kind": "terminal",
+      "evidence": {
+        "pti_id": "16403",
+        "pti_name": "인천종합버스터미널",
+        "url": "https://chuncheon-pti.kr/index.php?mt=data&cm=road&oxid=1&cmd=road&subcmd=getcate&showtype=1&starttsid=16652&tid=2&id=38&srch=0"
+      }
+    },
+    {
+      "source_id": "9303",
+      "source_name": "인천공항T1",
+      "city": "인천",
+      "display_name": "인천공항T1",
+      "kind": "airport",
+      "evidence": {
+        "pti_id": "41597",
+        "pti_name": "인천공항1터미널",
+        "url": "https://chuncheon-pti.kr/index.php?mt=data&cm=road&oxid=1&cmd=road&subcmd=getcate&showtype=1&starttsid=16652&tid=2&id=38&srch=0",
+        "provider_url": "https://www.bustago.or.kr/newweb/kr/terminalInfo/terminalinfo.do?terminalId=9303",
+        "identity_check": "The connected Bustago catalogue explicitly names 인천공항T1; K-PTI explicitly names 인천공항1터미널."
+      }
+    },
+    {
+      "source_id": "9337",
+      "source_name": "인천공항T2",
+      "city": "인천",
+      "display_name": "인천공항T2",
+      "kind": "airport",
+      "evidence": {
+        "pti_id": "41598",
+        "pti_name": "인천공항2터미널",
+        "url": "https://chuncheon-pti.kr/index.php?mt=data&cm=road&oxid=1&cmd=road&subcmd=getcate&showtype=1&starttsid=16652&tid=2&id=38&srch=0",
+        "provider_url": "https://www.bustago.or.kr/newweb/kr/terminalInfo/terminalinfo.do?terminalId=9337",
+        "identity_check": "The connected Bustago catalogue names 인천공항T2 and its facility record names 인천공항(제2터미널); K-PTI explicitly names 인천공항2터미널."
+      }
+    },
+    {
+      "source_id": "8038",
+      "source_name": "순천",
+      "city": "전남",
+      "display_name": "순천",
+      "kind": "terminal",
+      "evidence": {
+        "pti_id": "18300",
+        "pti_name": "순천종합버스터미널",
+        "url": "https://chuncheon-pti.kr/index.php?mt=data&cm=road&oxid=1&cmd=road&subcmd=getcate&showtype=1&starttsid=16652&tid=2&id=151&srch=0"
+      }
+    },
+    {
+      "source_id": "4006",
+      "source_name": "당진",
+      "city": "충남",
+      "display_name": "당진",
+      "kind": "terminal",
+      "evidence": {
+        "pti_id": "20368",
+        "pti_name": "당진시외터미널",
+        "url": "https://chuncheon-pti.kr/index.php?mt=data&cm=road&oxid=1&cmd=road&subcmd=getcate&showtype=1&tid=2&id=219&dummy=211",
+        "provider_url": "https://www.bustago.or.kr/newweb/kr/terminalInfo/terminalinfo.do?terminalId=4006",
+        "catalogue_scope": "National intercity facility catalogue; the current Chuncheon connection is separately determined from the Bustago origin-dependent destination catalogue.",
+        "municipal_url": "https://www.dangjin.go.kr/kor/sub05_05_03_02.do"
+      }
+    },
+    {
+      "source_id": "4010",
+      "source_name": "서산",
+      "city": "충남",
+      "display_name": "서산",
+      "kind": "terminal",
+      "evidence": {
+        "pti_id": "20399",
+        "pti_name": "서산공용버스터미널",
+        "url": "https://chuncheon-pti.kr/index.php?mt=data&cm=road&oxid=1&cmd=road&subcmd=getcate&showtype=1&tid=2&id=93&dummy=211",
+        "provider_url": "https://www.bustago.or.kr/newweb/kr/terminalInfo/terminalinfo.do?terminalId=4010",
+        "catalogue_scope": "National intercity facility catalogue; the current Chuncheon connection is separately determined from the Bustago origin-dependent destination catalogue.",
+        "municipal_url": "https://www.seosan.go.kr/www/contents.do?key=1590"
+      }
+    },
+    {
+      "source_id": "4012",
+      "source_name": "아산",
+      "city": "충남",
+      "display_name": "아산",
+      "kind": "terminal",
+      "evidence": {
+        "pti_id": "20376",
+        "pti_name": "아산시외버스터미널",
+        "url": "https://chuncheon-pti.kr/index.php?mt=data&cm=road&oxid=1&cmd=road&subcmd=getcate&showtype=1&tid=2&id=95&dummy=211",
+        "provider_url": "https://www.bustago.or.kr/newweb/kr/terminalInfo/terminalinfo.do?terminalId=4012",
+        "catalogue_scope": "National intercity facility catalogue; the current Chuncheon connection is separately determined from the Bustago origin-dependent destination catalogue.",
+        "municipal_url": "https://www.asan.go.kr/main/cms/?no=161"
+      }
+    },
+    {
+      "source_id": "4019",
+      "source_name": "천안",
+      "city": "충남",
+      "display_name": "천안",
+      "kind": "terminal",
+      "evidence": {
+        "pti_id": "16846",
+        "pti_name": "천안종합버스터미널",
+        "url": "https://chuncheon-pti.kr/index.php?mt=data&cm=road&oxid=1&cmd=road&subcmd=getcate&showtype=1&starttsid=16652&tid=2&id=98&srch=0"
+      }
+    },
+    {
+      "source_id": "2296",
+      "source_name": "제천",
+      "city": "충북",
+      "display_name": "제천",
+      "kind": "terminal",
+      "evidence": {
+        "pti_id": "16853",
+        "pti_name": "제천시외버스터미널",
+        "url": "https://chuncheon-pti.kr/index.php?mt=data&cm=road&oxid=1&cmd=road&subcmd=getcate&showtype=1&starttsid=16652&tid=2&id=80&srch=0"
+      }
+    },
+    {
+      "source_id": "3015",
+      "source_name": "청주",
+      "city": "충북",
+      "display_name": "청주",
+      "kind": "terminal",
+      "evidence": {
+        "pti_id": "16857",
+        "pti_name": "청주시외터미널",
+        "url": "https://chuncheon-pti.kr/index.php?mt=data&cm=road&oxid=1&cmd=road&subcmd=getcate&showtype=1&starttsid=16652&tid=2&id=84&srch=0"
+      }
+    }
+  ]
+}

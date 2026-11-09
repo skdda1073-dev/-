@@ -173,13 +173,20 @@ const MAP_SDK = String.raw`(() => {
         } } };
 })();`;
 
-// Explicit test-only entry point; the default page never activates live mobility.
+// Test-only room activation. The ordinary page already loads its taxi estimate.
 async function activateRealMobility(page) {
     const sources = await page.evaluate(() => {
         const template = document.getElementById('real-mobility-template');
-        document.getElementById('transport-demo').hidden = true;
-        template.before(template.content.cloneNode(true));
-        return [template.dataset.taxiSrc, template.dataset.roomSrc];
+        const demo = document.getElementById('transport-demo');
+        const taxi = document.getElementById('taxi-section');
+        // Preserve the existing estimate and listeners before hiding the tabbed demo.
+        if (taxi && demo.contains(taxi)) template.before(taxi);
+        demo.hidden = true;
+        const actions = document.getElementById('taxi-room-actions');
+        if (actions) actions.hidden = false;
+        if (!document.getElementById('ride-room-section')) template.before(template.content.cloneNode(true));
+        return [template.dataset.roomSrc].filter(src => src && !Array.from(document.scripts).some(script =>
+            script.src === new URL(src, document.baseURI).href));
     });
     for (const src of sources) await page.addScriptTag({ url: src });
 }
@@ -242,7 +249,7 @@ async function openApp(browser, options = {}) {
         viewport: options.viewport || { width: 390, height: 844 },
         deviceScaleFactor: 1, reducedMotion: 'reduce', locale: 'ko-KR', timezoneId: options.timezoneId || 'Asia/Seoul',
     });
-    const requests = [], searches = [], taxiRequests = [], roomRequests = [], itxRequests = [], shuttleRequests = [], errors = [], blocked = [];
+    const requests = [], searches = [], taxiRequests = [], roomRequests = [], itxRequests = [], shuttleRequests = [], intercityRequests = [], errors = [], blocked = [];
     await context.addInitScript(({ denyGPS, fixedNow }) => {
         if (fixedNow) {
             const NativeDate = Date;
@@ -284,6 +291,11 @@ async function openApp(browser, options = {}) {
             shuttleRequests.push(Object.fromEntries(url.searchParams));
             if (options.shuttleHandler) return options.shuttleHandler(route, url, shuttleRequests.length);
             return route.fulfill({ json: shuttleFixture(url.searchParams) });
+        }
+        if (url.pathname.startsWith('/api/intercity/')) {
+            intercityRequests.push({ pathname: url.pathname, query: url.search });
+            if (options.intercityHandler) return options.intercityHandler(route, url, intercityRequests.length);
+            return route.fulfill({ json: intercityFixture(url.pathname, url.searchParams) });
         }
         if (url.pathname === '/api/itx/stations') {
             itxRequests.push({ pathname: url.pathname, query: url.search });
@@ -328,7 +340,7 @@ async function openApp(browser, options = {}) {
         await page.goto(BASE_URL, { waitUntil: options.mapSDKGate ? 'domcontentloaded' : 'networkidle' });
         await page.locator('#route-submit').waitFor({ state: 'visible' });
         if (options.realMobility) {
-            // Preserve live UI regression coverage using inert production markup and mocked APIs.
+            // Room regression coverage opts into inert markup; the taxi script stays loaded once.
             await activateRealMobility(page);
         }
 
@@ -338,11 +350,34 @@ async function openApp(browser, options = {}) {
         await context.close();
         throw error;
     }
-    return { page, context, requests, searches, taxiRequests, roomRequests, itxRequests, shuttleRequests, errors, blocked, async close() {
+    return { page, context, requests, searches, taxiRequests, roomRequests, itxRequests, shuttleRequests, intercityRequests, errors, blocked, async close() {
         const captured = [...errors];
         await context.close();
         assert.deepEqual(captured, [], 'No unhandled JavaScript errors or blocking dialogs');
     } };
+}
+
+// Synthetic test data only. No production timetable or terminal-code fallback.
+function intercityFixture(pathname, params = new URLSearchParams()) {
+    const today = '2030-10-21';
+    const terminals = [{ id: 'TEST_CTN', name: '춘천', city: '춘천시' },
+        { id: 'TEST_DSE', name: '동서울', city: '서울시' },
+        { id: 'TEST_OTHER', name: '테스트 터미널', city: '테스트시' }];
+    if (pathname.endsWith('/config')) return { today, date_policy: 'today_only', configured: true };
+    if (pathname.endsWith('/terminals')) return { status: 'ok', today, terminals,
+        fetched_at: today + 'T08:00:00+09:00', from_cache: false };
+    if (pathname.endsWith('/destinations')) return { status: 'ok', today,
+        departure: terminals.find(item => item.id === params.get('departure_id')) || { id: params.get('departure_id'), name: '테스트 출발', city: '테스트시' },
+        destinations: terminals.filter(item => item.id !== params.get('departure_id')),
+        additional_stops: [],
+        fetched_at: today + 'T08:00:00+09:00', from_cache: false,
+        source: { name: '합성 등록 노선', url: 'https://example.invalid/registered-routes' }, warnings: [] };
+    return { status: 'ok', date: params.get('date') || today,
+        departure: { id: params.get('departure_id'), name: '테스트 출발' },
+        arrival: { id: params.get('arrival_id'), name: '테스트 도착' },
+        fetched_at: today + 'T08:00:00+09:00', from_cache: false, warnings: [],
+        trips: [{ departure_at: today + 'T10:00:00+09:00', arrival_at: today + 'T11:30:00+09:00', arrival_estimated: true, duration_minutes: 90, grade: '테스트 우등', fare_krw: 12300, route_id: 'TEST_ROUTE' },
+            { departure_at: today + 'T09:00:00+09:00', arrival_at: null, duration_minutes: null, grade: '테스트 일반', fare_krw: null, route_id: 'TEST_ROUTE_2' }] };
 }
 
 async function noOverflow(page) {
@@ -657,5 +692,5 @@ async function run() {
 }
 
 module.exports = { openApp, activateRealMobility, chooseBuilding, selectDestination, clearDestination, noOverflow, resultContains,
-    taxiFixture, journeyFixture, nearbyFixture, shuttleFixture, DESTINATION, INJECTION, BASE_URL };
+    taxiFixture, journeyFixture, nearbyFixture, shuttleFixture, intercityFixture, DESTINATION, INJECTION, BASE_URL };
 if (require.main === module) run().catch(error => { console.error(error.stack || error); process.exitCode = 1; });
