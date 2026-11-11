@@ -207,7 +207,7 @@ if (unit) {
             assert.equal(app.shuttleRequests.length, 0);
             await page.locator('#tab-knu').click();
             const state = await page.evaluate(() => ({ campus: selectedCampus, mode: originMode, destination: AppState.getDestination() }));
-            await page.locator('#transport-tab-shuttle').click();
+            await selectTool(page, 'shuttle');
             await page.waitForFunction(() => !document.getElementById('shuttle-query').disabled);
             assert.match(await page.locator('#transport-panel-shuttle').innerText(), /한림대학교 자료 · 저장된 시간표 기반/);
             assert.equal(await page.locator('#shuttle-at').inputValue(), '2026-10-19T07:50');
@@ -222,8 +222,8 @@ if (unit) {
             await page.waitForFunction(() => document.querySelector('#shuttle-board option[value="r2-b"]'));
             assert.equal(await page.locator('#shuttle-board option').filter({ hasText: '동명 정류장' }).count(), 2);
             const before = app.shuttleRequests.length;
-            await page.locator('#transport-tab-subway').click();
-            await page.locator('#transport-tab-shuttle').click();
+            await selectTool(page, 'subway');
+            await selectTool(page, 'shuttle');
             assert.equal(app.shuttleRequests.length, before);
             await noOverflow(page);
         } finally { await app.close(); }

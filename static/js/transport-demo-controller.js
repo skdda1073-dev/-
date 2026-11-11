@@ -4,7 +4,6 @@
     const root = document.getElementById('transport-demo');
     if (!root) return;
     const byId = id => document.getElementById(id);
-    const tabs = [...root.querySelectorAll('[role="tab"]')];
     const dialog = byId('demo-party-dialog');
     const form = byId('demo-party-form');
     const join = byId('demo-join');
@@ -19,9 +18,18 @@
     let lastSubmission = null;
     let toastTimer = null;
     let toastHideTimer = null;
+    let autoMoveTimer = null;
+    let highlightTimer = null;
+    let highlightedPost = null;
     let opener = null;
 
-    const timeRange = item => item.from.replace('T', ' ') + ' ~ ' + item.to.replace('T', ' ');
+    const departureText = item => item.from.replace('T', ' ');
+    function validDeparture(value) {
+        if (!/^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}$/.test(value) || value.slice(0, 4) === '0000') return false;
+        // Reject calendar normalization such as February 30, regardless of browser timezone.
+        const instant = Date.parse(value + ':00+09:00');
+        return Number.isFinite(instant) && new Date(instant + 9 * 60 * 60 * 1000).toISOString().slice(0, 16) === value;
+    }
     const count = item => item.joined ? '2/4명' : '1/4명';
     function textNode(tag, value, className) {
         const element = document.createElement(tag);
@@ -29,15 +37,42 @@
         if (className) element.className = className;
         return element;
     }
-    function showSuccess() {
+    function cancelAutoMove() {
+        clearTimeout(autoMoveTimer);
+        autoMoveTimer = null;
+    }
+    function clearHighlight() {
+        clearTimeout(highlightTimer);
+        highlightTimer = null;
+        if (highlightedPost) highlightedPost.classList.remove('is-new');
+        highlightedPost = null;
+    }
+    function showSuccess(id) {
+        cancelAutoMove();
+        clearHighlight();
         clearTimeout(toastTimer);
         clearTimeout(toastHideTimer);
         toast.classList.remove('is-fading');
-        toast.textContent = '작성 완료!';
+        toast.textContent = '생성완료!';
         toast.hidden = false;
         toastTimer = setTimeout(() => {
             toast.classList.add('is-fading');
             toastHideTimer = setTimeout(() => { toast.hidden = true; toast.textContent = ''; }, 400);
+        }, 1000);
+        const shell = window.AppModules.shell;
+        const navigation = shell.getNavigation();
+        autoMoveTimer = setTimeout(() => {
+            autoMoveTimer = null;
+            if (navigation !== shell.getNavigation() || shell.getState().active !== 'taxi' || !shell.getState().toolOpen) return;
+            shell.select('rooms', { source: 'demo-auto' });
+            const post = posts.get(id)?.button;
+            if (!post) return;
+            post.classList.add('is-new');
+            highlightedPost = post;
+            highlightTimer = setTimeout(clearHighlight, 1800);
+            post.focus({ preventScroll: true });
+            const rect = post.getBoundingClientRect(), panel = byId('planner-panel').getBoundingClientRect();
+            if (rect.top < panel.top || rect.bottom > panel.bottom) post.scrollIntoView({ block: 'nearest', inline: 'nearest', behavior: 'auto' });
         }, 1000);
     }
     function renderList() {
@@ -53,10 +88,10 @@
                 const occupancy = textNode('span', count(item), 'demo-post-count');
                 button.append(textNode('span', '내가 만든 방', 'demo-post-owner'),
                     textNode('strong', item.title), textNode('span', '목적지 · ' + item.destination),
-                    textNode('span', timeRange(item)), textNode('span', '모집 중', 'party-state'), occupancy);
+                    textNode('span', '출발 예정 · ' + departureText(item)), textNode('span', '모집 중', 'party-state'), occupancy);
                 button.addEventListener('click', () => open(item.id, button));
                 li.append(button);
-                post = { li, occupancy };
+                post = { li, button, occupancy };
                 posts.set(item.id, post);
             }
             post.occupancy.textContent = count(item);
@@ -89,33 +124,10 @@
         byId('demo-chat-send').disabled = room.sending;
     }
 
-    function selectTab(tab) {
-        tabs.forEach(item => {
-            const selected = item === tab;
-            item.setAttribute('aria-selected', String(selected));
-            item.tabIndex = selected ? 0 : -1;
-            byId(item.getAttribute('aria-controls')).hidden = !selected;
-        });
-    }
-    tabs.forEach((tab, index) => {
-        tab.addEventListener('click', () => selectTab(tab));
-        tab.addEventListener('keydown', event => {
-            let next;
-            if (event.key === 'ArrowRight' || event.key === 'ArrowDown') next = (index + 1) % tabs.length;
-            if (event.key === 'ArrowLeft' || event.key === 'ArrowUp') next = (index + tabs.length - 1) % tabs.length;
-            if (event.key === 'Home') next = 0;
-            if (event.key === 'End') next = tabs.length - 1;
-            if (next === undefined) return;
-            event.preventDefault();
-            selectTab(tabs[next]);
-            tabs[next].focus();
-        });
-    });
-
     function render() {
         byId('demo-room-title').textContent = room.title;
         byId('demo-room-destination').textContent = room.destination;
-        byId('demo-room-time').textContent = timeRange(room);
+        byId('demo-room-time').textContent = departureText(room);
         byId('demo-count').textContent = count(room);
         byId('demo-members').replaceChildren(...Array.from({ length: 4 }, (_, index) => {
             const slot = document.createElement('li');
@@ -128,6 +140,7 @@
     }
     function open(id, button) {
         if (dialog.open || !rooms.has(id)) return;
+        cancelAutoMove();
         room = rooms.get(id);
         opener = button;
         render();
@@ -146,7 +159,7 @@
             byId('demo-' + name).setAttribute('aria-invalid', 'true');
             if (!firstError) firstError = byId('demo-' + name);
         };
-        ['title', 'destination', 'from', 'to'].forEach(name => {
+        ['title', 'destination', 'from'].forEach(name => {
             const input = byId('demo-' + name);
             values[name] = input.value.trim();
             input.removeAttribute('aria-invalid');
@@ -154,11 +167,7 @@
             if (!values[name]) error(name, name === 'title' ? '제목을 입력해 주세요.' : name === 'destination' ? '목적지를 입력해 주세요.' : '날짜와 시간을 입력해 주세요.');
         });
         // Explicit offset avoids interpreting Korean wall-clock inputs in the browser's timezone.
-        const start = Date.parse(values.from + '+09:00');
-        const end = Date.parse(values.to + '+09:00');
-        if (values.from && !Number.isFinite(start)) error('from', '올바른 날짜와 시간을 입력해 주세요.');
-        if (values.to && !Number.isFinite(end)) error('to', '올바른 날짜와 시간을 입력해 주세요.');
-        if (Number.isFinite(start) && Number.isFinite(end) && end < start) error('to', '종료 시간은 시작 시간보다 빠를 수 없어요.');
+        if (values.from && !validDeparture(values.from)) error('from', '올바른 날짜와 시간을 한국 시간으로 입력해 주세요.');
         if (firstError) { firstError.focus(); return; }
         const fingerprint = JSON.stringify(values);
         if (fingerprint === lastSubmission) {
@@ -174,24 +183,27 @@
             renderList();
             lastSubmission = fingerprint;
             byId('demo-new-post').hidden = false;
-            byId('demo-create-status').textContent = '방 찾기 탭에서 작성한 모집글을 확인해 주세요.';
-            showSuccess();
+            byId('demo-create-status').textContent = '이 페이지의 시연 게시물을 만들었어요. 잠시 후 방 찾기에서 보여드려요.';
+            showSuccess(id);
+            window.AppModules.shell?.refreshUnloadGuard();
         } finally {
             queueMicrotask(() => { creating = false; submit.disabled = false; });
         }
     });
     byId('demo-new-post').addEventListener('click', () => {
+        cancelAutoMove();
         lastSubmission = null;
         form.reset();
-        ['title', 'destination', 'from', 'to'].forEach(name => {
+        ['title', 'destination', 'from'].forEach(name => {
             byId('demo-' + name).removeAttribute('aria-invalid');
             byId('demo-' + name + '-error').textContent = '';
         });
         byId('demo-create-status').textContent = '새 모집글을 작성해 주세요.';
         byId('demo-title').focus();
+        window.AppModules.shell?.refreshUnloadGuard();
     });
     byId('demo-go-create').addEventListener('click', () => {
-        selectTab(byId('transport-tab-taxi'));
+        window.AppModules.shell.select('taxi');
         byId('demo-title').focus();
     });
     join.addEventListener('click', () => {
@@ -254,4 +266,10 @@
         if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
         else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
     });
+    form.addEventListener('input', cancelAutoMove);
+    window.AppModules.shell.onMenuSelect((_, options) => { if (options.source !== 'demo-auto') cancelAutoMove(); });
+    const hasUnsavedData = () => rooms.size > 0 || ['title', 'destination', 'from']
+        .some(name => Boolean(byId('demo-' + name).value));
+    window.AppModules.demo = { hasUnsavedData };
+    window.AppModules.shell.setDirtyProvider(hasUnsavedData);
 })();

@@ -78,7 +78,7 @@ window.AppState = {
                 console.error('교내 건물 목록을 읽지 못했습니다:', error);
             }
         }
-        ['search', 'ui', 'map'].forEach(function(name) {
+        ['shell', 'search', 'ui', 'map'].forEach(function(name) {
             const module = window.AppModules[name];
             if (!module || typeof module.init !== 'function') return;
             try {

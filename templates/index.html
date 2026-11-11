@@ -19,7 +19,8 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/intercity-timetable.css') }}">
 </head>
 <body>
-    <a class="skip-link" href="#dest-input">길찾기 검색으로 이동</a>
+    <a id="skip-search" class="skip-link" href="#tab-hallym">길찾기 검색으로 이동</a>
+    <div id="app-intro" class="app-intro" aria-hidden="true" hidden><svg class="icon intro-bus" aria-hidden="true"><use href="#icon-bus"></use></svg><strong>춘천 통학 마스터!</strong></div>
     <svg class="icon-sprite" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
         <defs>
             <symbol id="icon-bus" viewBox="0 0 24 24"><rect x="5" y="3" width="14" height="16" rx="4"/><path d="M5 11h14M8 19v2m8-2v2M9 6h6"/><circle cx="8.5" cy="15" r=".8" fill="currentColor" stroke="none"/><circle cx="15.5" cy="15" r=".8" fill="currentColor" stroke="none"/></symbol>
@@ -46,32 +47,52 @@
             <symbol id="icon-taxi" viewBox="0 0 24 24"><path d="m4 10 2-5h12l2 5M3 10h18v9H3zM7 19v2m10-2v2M9 5V2h6v3"/><path d="M6 14h2m8 0h2"/></symbol>
         </defs>
     </svg>
-    <div class="app-shell">
-        <section class="map-stage" aria-label="캠퍼스와 주변 정류장 지도">
+            <header class="app-header">
+                <button id="app-reload" type="button" class="brand" aria-label="통학 마스터 새로고침">
+                    <span class="brand-icon"><svg class="icon" aria-hidden="true"><use href="#icon-bus"></use></svg></span>
+                    <span>통학<span class="brand-light">마스터</span><small>CHUNCHEON CAMPUS</small></span>
+                </button>
+                <span class="city-badge"><span class="status-dot"></span> 춘천</span>
+            </header>
+    <button id="sidebar-toggle" class="sidebar-toggle" type="button" aria-controls="app-sidebar" aria-expanded="false" aria-label="메뉴 펼치기" title="메뉴 펼치기"><svg class="icon" aria-hidden="true"><use href="#icon-chevron-down"></use></svg><span class="sr-only">메뉴</span></button>
+    <button id="sidebar-backdrop" class="sidebar-backdrop" type="button" aria-label="메뉴 닫기" tabindex="-1" hidden></button>
+    <div id="app-shell" class="app-shell">
+        <aside id="app-sidebar" class="app-sidebar">
+                <nav id="app-menu" class="transport-tabs" role="tablist" aria-orientation="vertical" aria-label="교통 메뉴">
+                    <button id="transport-tab-journey" class="transport-tab" type="button" role="tab" aria-selected="true" aria-controls="transport-panel-journey" tabindex="0" aria-label="길찾기" title="길찾기"><svg class="icon" aria-hidden="true"><use href="#icon-route"></use></svg><span>길찾기</span></button>
+                    <button id="transport-tab-shuttle" class="transport-tab" title="학교 셔틀버스" aria-label="학교 셔틀버스" type="button" role="tab" aria-selected="false" aria-controls="transport-panel-shuttle" tabindex="-1"><svg class="icon" aria-hidden="true"><use href="#icon-bus"></use></svg><span>학교 셔틀버스</span></button>
+                    <button id="transport-tab-subway" class="transport-tab" title="지하철·ITX 시간표" aria-label="지하철·ITX 시간표" type="button" role="tab" aria-selected="false" aria-controls="transport-panel-subway" tabindex="-1"><svg class="icon" aria-hidden="true"><use href="#icon-train"></use></svg><span>지하철·ITX 시간표</span></button>
+                    <button id="transport-tab-intercity" class="transport-tab" title="시외버스 시간표" aria-label="시외버스 시간표" type="button" role="tab" aria-selected="false" aria-controls="transport-panel-intercity" tabindex="-1"><svg class="icon" aria-hidden="true"><use href="#icon-bus"></use></svg><span>시외버스 시간표</span></button>
+                    <button id="transport-tab-taxi" class="transport-tab" title="택시" aria-label="택시" type="button" role="tab" aria-selected="false" aria-controls="transport-panel-taxi" tabindex="-1"><svg class="icon" aria-hidden="true"><use href="#icon-taxi"></use></svg><span>택시</span></button>
+                    <button id="transport-tab-rooms" class="transport-tab" title="방 찾기" aria-label="방 찾기" type="button" role="tab" aria-selected="false" aria-controls="transport-panel-rooms" tabindex="-1"><svg class="icon" aria-hidden="true"><use href="#icon-search"></use></svg><span>방 찾기</span></button>
+                </nav>
+        </aside>
+        <section id="map-stage" class="map-stage" aria-label="캠퍼스와 주변 정류장 지도">
             <div id="map" class="map-canvas"{% if naver_map_client_id %} data-sdk-src="https://oapi.map.naver.com/openapi/v3/maps.js?ncpKeyId={{ naver_map_client_id | urlencode }}&amp;callback=initMap"{% endif %}></div>
             <div id="map-status" class="map-status" role="status">
                 <span class="map-status-icon"><svg class="icon" aria-hidden="true"><use href="#icon-map"></use></svg></span>
                 <strong>캠퍼스 지도를 준비하고 있어요</strong>
                 <p data-map-status-text>아래에서 출발지와 목적지를 선택해 보세요.</p>
             </div>
-            <header class="map-header">
-                <a class="brand" href="/" aria-label="통학 마스터 홈">
-                    <span class="brand-icon"><svg class="icon" aria-hidden="true"><use href="#icon-bus"></use></svg></span>
-                    <span>통학<span class="brand-light">마스터</span><small>CHUNCHEON CAMPUS</small></span>
-                </a>
-                <span class="city-badge"><span class="status-dot"></span> 춘천</span>
-            </header>
+
             <div class="map-tools">
                 <button type="button" class="map-fab" onclick="findMyLocation()" aria-label="지도에 내 위치 표시" title="내 위치 표시"><svg class="icon" aria-hidden="true"><use href="#icon-target"></use></svg></button>
             </div>
+            <div id="route-detail-map" class="route-detail-layer">
+                <section id="route-detail" class="route-detail" aria-labelledby="route-detail-heading" hidden>
+                    <header class="route-detail-header"><h3 id="route-detail-heading" tabindex="-1">선택한 경로 상세</h3><button id="route-detail-close" class="results-action" type="button" aria-label="선택한 경로 상세 닫기">닫기</button></header>
+                    <div id="route-detail-content" class="route-detail-content"></div>
+                </section>
+            </div>
         </section>
         <main id="planner-panel" class="planner-panel">
-            <button id="panel-toggle" class="panel-handle" type="button" onclick="togglePlanner()" aria-expanded="true" aria-controls="planner-body" aria-label="검색 패널 접고 지도 크게 보기"><span class="handle-bar"></span><svg class="icon" aria-hidden="true"><use href="#icon-chevron-down"></use></svg></button>
+            <button id="panel-toggle" class="panel-handle" type="button" onclick="togglePlanner()" aria-expanded="true" aria-controls="planner-body" aria-label="도구 닫고 지도 보기"><span>도구 닫기</span><svg class="icon" aria-hidden="true"><use href="#icon-close"></use></svg></button>
             <div class="panel-heading">
-                <div><p class="eyebrow">나의 캠퍼스, 나의 길</p><h1>어디로 갈까요?</h1></div>
+                <div><p class="eyebrow">나의 캠퍼스, 나의 길</p><h1 id="tool-heading" tabindex="-1">어디로 갈까요?</h1></div>
                 <span class="heading-icon"><svg class="icon" aria-hidden="true"><use href="#icon-arrow-up-right"></use></svg></span>
             </div>
             <div id="planner-body" class="planner-body">
+                <section id="transport-panel-journey" class="transport-panel journey-panel" role="tabpanel" aria-labelledby="transport-tab-journey" tabindex="0">
                 <section class="journey-form" aria-label="통학 경로 검색">
                     <div class="origin-section">
                         <div class="section-label"><span class="journey-field-title">출발 캠퍼스</span><span class="label-hint">학교를 선택하세요</span></div>
@@ -104,19 +125,16 @@
                     </div>
                     <p id="search-status" class="search-status" role="status" aria-live="polite">목적지 없이 가까운 정류장만 찾아도 좋아요.</p>
                     <button id="route-submit" class="btn-route" type="button" onclick="searchJourney()"><svg class="icon" aria-hidden="true"><use href="#icon-route"></use></svg><span id="route-submit-label">가까운 정류장 찾기</span><svg class="icon arrow" aria-hidden="true"><use href="#icon-arrow-right"></use></svg></button>
+                    <button id="results-show" class="results-action" type="button" aria-controls="results-section" hidden>결과 보기</button>
+                </section>
+
                 </section>
                 <div id="transport-demo">
-                <nav class="transport-tabs" role="tablist" aria-label="교통 메뉴">
-                    <button id="transport-tab-shuttle" class="transport-tab transport-tab--wide" type="button" role="tab" aria-selected="false" aria-controls="transport-panel-shuttle" tabindex="-1"><svg class="icon" aria-hidden="true"><use href="#icon-bus"></use></svg><span>학교 셔틀버스</span></button>
-                    <button id="transport-tab-subway" class="transport-tab" type="button" role="tab" aria-selected="true" aria-controls="transport-panel-subway" tabindex="0"><svg class="icon" aria-hidden="true"><use href="#icon-train"></use></svg><span>지하철·ITX 시간표</span></button>
-                    <button id="transport-tab-intercity" class="transport-tab" type="button" role="tab" aria-selected="false" aria-controls="transport-panel-intercity" tabindex="-1"><svg class="icon" aria-hidden="true"><use href="#icon-bus"></use></svg><span>시외버스 시간표</span></button>
-                    <button id="transport-tab-taxi" class="transport-tab" type="button" role="tab" aria-selected="false" aria-controls="transport-panel-taxi" tabindex="-1"><svg class="icon" aria-hidden="true"><use href="#icon-taxi"></use></svg><span>택시</span></button>
-                    <button id="transport-tab-rooms" class="transport-tab" type="button" role="tab" aria-selected="false" aria-controls="transport-panel-rooms" tabindex="-1"><svg class="icon" aria-hidden="true"><use href="#icon-search"></use></svg><span>방 찾기</span></button>
-                </nav>
+
                 <section id="transport-panel-shuttle" class="transport-panel" role="tabpanel" aria-labelledby="transport-tab-shuttle" tabindex="0" hidden>
                     <h2>한림대학교 셔틀 시간표</h2>
                     <p class="demo-caption">한림대학교 자료 · 저장된 시간표 기반</p>
-                    <p class="demo-caption">상단 학교 선택과 별도로 조회합니다. 시간표는 실제 운행·탑승을 보장하지 않으며, 임시 운휴·변경은 학교 안내를 확인해 주세요.</p>
+                    <p class="demo-caption">길찾기의 학교 선택과 별도로 조회합니다. 시간표는 실제 운행·탑승을 보장하지 않으며, 임시 운휴·변경은 학교 안내를 확인해 주세요.</p>
                     <div id="shuttle-timetable">
                         <div class="shuttle-controls">
                             <label for="shuttle-route">노선<select id="shuttle-route" disabled></select></label>
@@ -146,7 +164,7 @@
                         </section>
                     </div>
                 </section>
-                <section id="transport-panel-subway" class="transport-panel" role="tabpanel" aria-labelledby="transport-tab-subway" tabindex="0">
+                <section id="transport-panel-subway" class="transport-panel" role="tabpanel" aria-labelledby="transport-tab-subway" tabindex="0" hidden>
                     <h2>ITX-청춘 열차 시간표</h2>
                     <p class="demo-caption">출발역과 도착역을 지정하면, 해당 구간을 운행하는 ITX-청춘 계획 시간표를 조회합니다. 일반 지하철 시간표는 별도로 준비 중입니다.</p>
                     <div id="itx-timetable">
@@ -232,7 +250,9 @@
                     <section id="taxi-section" class="taxi-section" aria-labelledby="taxi-heading">
                         <div class="taxi-card">
                             <div class="taxi-top"><h2 id="taxi-heading">택시 예상요금</h2><span class="taxi-provider">TMAP</span></div>
-                            <p id="taxi-route" class="taxi-route">상단에서 출발지와 도착할 장소를 선택해 주세요.</p>
+                            <p id="taxi-route" class="taxi-route">길찾기에서 출발지와 도착할 장소를 선택해 주세요.</p>
+                            <p id="taxi-selection" class="taxi-caption" aria-live="polite"></p>
+                            <button id="taxi-edit-selection" class="taxi-button taxi-button--secondary" type="button">출발·도착 수정</button>
                             <button id="taxi-refresh" class="taxi-button" type="button" aria-describedby="taxi-route">택시 예상요금 조회</button>
                             <div id="taxi-content" aria-live="polite"><p class="taxi-status">예상 시간·거리·요금과 2~4명 분담액을 확인할 수 있어요.</p></div>
                             <p class="taxi-caption">차량 주행시간 기준 · 택시 대기시간 제외<br>실제 미터요금은 달라질 수 있어요.</p>
@@ -246,8 +266,7 @@
                         <form id="demo-party-form" novalidate>
                             <label class="demo-field" for="demo-title">제목<input id="demo-title" type="text" required aria-describedby="demo-title-error" placeholder="오늘 저녁 남춘천역 같이 가실 분!"></label><p id="demo-title-error" class="demo-error" aria-live="polite"></p>
                             <label class="demo-field" for="demo-destination">목적지<input id="demo-destination" type="text" required aria-describedby="demo-destination-error" placeholder="예: 남춘천역"></label><p id="demo-destination-error" class="demo-error" aria-live="polite"></p>
-                            <label class="demo-field" for="demo-from">출발 구간 시작 · 한국 시간<input id="demo-from" type="datetime-local" required aria-describedby="demo-from-error"></label><p id="demo-from-error" class="demo-error" aria-live="polite"></p>
-                            <label class="demo-field" for="demo-to">출발 구간 끝 · 한국 시간<input id="demo-to" type="datetime-local" required aria-describedby="demo-to-error"></label><p id="demo-to-error" class="demo-error" aria-live="polite"></p>
+                            <label class="demo-field" for="demo-from">출발 예정 시각 · 한국 시간<input id="demo-from" type="datetime-local" required aria-describedby="demo-from-error"></label><p id="demo-from-error" class="demo-error" aria-live="polite"></p>
                             <button class="demo-button" type="submit">모집하기</button>
                             <button id="demo-new-post" class="demo-button demo-button--secondary" type="button" hidden>새 모집글 작성</button>
                             <p id="demo-create-status" class="demo-caption" role="status"></p>
@@ -261,15 +280,6 @@
                 </section>
                 </div>
                 <div id="app-status" class="app-status" role="status" aria-live="polite"></div>
-                <section id="results-section" class="results-section" aria-labelledby="results-heading">
-                    <div class="results-header"><h2 id="results-heading">나의 이동 안내</h2><span id="result-count" class="result-count"></span></div>
-                    <div id="loading" class="loading" role="status" aria-live="polite" hidden><span class="loading-spinner" aria-hidden="true"></span><span id="loading-text">통학 경로를 찾고 있어요.</span></div>
-                    <div id="initial-state" class="initial-state">
-                        <span class="initial-icon"><svg class="icon" aria-hidden="true"><use href="#icon-bus"></use></svg></span>
-                        <div><h3>강의실에서 정류장까지</h3><p>출발지를 선택하면 가까운 정류장과<br>이용할 수 있는 버스를 안내해 드려요.</p></div>
-                    </div>
-                    <div id="result-container" aria-live="polite" aria-atomic="false"></div>
-                </section>
                 <template id="real-mobility-template" data-room-src="{{ url_for('static', filename='js/ride-room-controller.js') }}">
                 <section id="ride-room-section" class="ride-rooms" aria-labelledby="ride-room-heading">
                     <h2 id="ride-room-heading" tabindex="-1">택시 동승 모집</h2>
@@ -335,12 +345,26 @@
                 <footer class="panel-footer"><span class="footer-dot"></span><span>한림대 · 강원대 학생을 위한 통학 도우미</span><svg class="icon" aria-hidden="true"><use href="#icon-walk"></use></svg></footer>
             </div>
         </main>
+                <section id="results-section" class="results-section" aria-labelledby="results-heading" hidden>
+                    <header class="results-header"><h2 id="results-heading" tabindex="-1">나의 이동 안내</h2><span id="result-count" class="result-count"></span><button id="results-close" class="results-action" type="button" aria-label="결과 패널 닫기">닫기</button></header>
+                    <div class="results-toolbar"><button id="results-edit" class="results-action" type="button">검색 수정</button><button id="results-map" class="results-action" type="button">지도 보기</button><button id="results-list" class="results-action" type="button" hidden>경로 목록</button></div>
+                    <p id="results-summary" class="results-summary" aria-live="polite"></p>
+                    <div id="results-scroll" class="results-scroll">
+                    <div id="loading" class="loading" role="status" aria-live="polite" hidden><span class="loading-spinner" aria-hidden="true"></span><span id="loading-text">통학 경로를 찾고 있어요.</span></div>
+                    <div id="initial-state" class="initial-state">
+                        <span class="initial-icon"><svg class="icon" aria-hidden="true"><use href="#icon-bus"></use></svg></span>
+                        <div><h3>강의실에서 정류장까지</h3><p>출발지를 선택하면 가까운 정류장과<br>이용할 수 있는 버스를 안내해 드려요.</p></div>
+                    </div>
+                    <div id="result-container" aria-live="polite" aria-atomic="false"></div>
+                    <div id="route-detail-inline"></div>
+                    </div>
+                </section>
     </div>
     <dialog id="demo-party-dialog" class="party-dialog" aria-labelledby="demo-dialog-heading" aria-describedby="demo-dialog-disclaimer">
         <header class="party-dialog-header"><h2 id="demo-dialog-heading">택시팟 구해요!</h2><button id="demo-close" class="demo-button demo-button--secondary" type="button" aria-label="모집방 닫기" autofocus>닫기</button></header>
         <p id="demo-dialog-disclaimer" class="demo-caption">UI 시연용 · 실제 모집이나 참가가 아닙니다</p>
         <p class="demo-caption">다른 참가자 한 명의 입장을 시연합니다. 새로고침하면 방·참가 상태·대화가 초기화됩니다.</p>
-        <section class="party-info" aria-label="모집 정보"><span class="party-state">모집 중</span><h3 id="demo-room-title"></h3><dl><dt>목적지</dt><dd id="demo-room-destination"></dd><dt>출발 구간 · 한국 시간</dt><dd id="demo-room-time"></dd></dl></section>
+        <section class="party-info" aria-label="모집 정보"><span class="party-state">모집 중</span><h3 id="demo-room-title"></h3><dl><dt>목적지</dt><dd id="demo-room-destination"></dd><dt>출발 예정 시각 · 한국 시간</dt><dd id="demo-room-time"></dd></dl></section>
         <section class="party-members" aria-labelledby="demo-members-heading"><h3 id="demo-members-heading">참가 현황 <span id="demo-count" role="status">1/4명</span></h3><ul id="demo-members"></ul></section>
         <section class="party-chat" aria-labelledby="demo-chat-heading">
             <h3 id="demo-chat-heading">택시팟 채팅</h3>
@@ -354,9 +378,13 @@
         </section>
         <footer class="party-dialog-actions"><button id="demo-join" class="demo-button" type="button">같이 타요!</button></footer>
     </dialog>
+    <button id="tool-reopen" class="tool-reopen" type="button" hidden>도구 다시 열기</button>
+    <button id="results-reopen" class="results-reopen results-action" type="button" aria-controls="results-section" hidden>조회 결과 다시 보기</button>
     <div id="demo-toast" class="demo-toast" role="status" aria-live="polite" aria-atomic="true" hidden></div>
     <script id="campus-building-data" type="application/json">{{ {'hallym': hallym_buildings, 'knu': knu_buildings} | tojson }}</script>
     <script src="{{ url_for('static', filename='js/main.js') }}" defer></script>
+    <script src="{{ url_for('static', filename='js/app-shell-controller.js') }}" defer></script>
+    <script src="{{ url_for('static', filename='js/intro-controller.js') }}" defer></script>
     <script src="{{ url_for('static', filename='js/map-controller.js') }}" defer></script>
     <script src="{{ url_for('static', filename='js/gps-controller.js') }}" defer></script>
     <script src="{{ url_for('static', filename='js/search-controller.js') }}" defer></script>

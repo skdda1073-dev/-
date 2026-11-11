@@ -335,10 +335,17 @@ async function openApp(browser, options = {}) {
     const page = await context.newPage();
     page.setDefaultTimeout(6500);
     page.on('pageerror', error => errors.push(error.message));
-    page.on('dialog', dialog => { errors.push(`Unexpected blocking dialog: ${dialog.message()}`); dialog.dismiss().catch(() => {}); });
+    let expectedDialog = null;
+    page.on('dialog', dialog => {
+        if (expectedDialog && dialog.type() === expectedDialog.type) {
+            expectedDialog.handled = true;
+            (expectedDialog.accept ? dialog.accept() : dialog.dismiss()).catch(error => errors.push(error.message));
+        } else { errors.push(`Unexpected blocking dialog: ${dialog.message()}`); dialog.dismiss().catch(() => {}); }
+    });
     try {
         await page.goto(BASE_URL, { waitUntil: options.mapSDKGate ? 'domcontentloaded' : 'networkidle' });
         await page.locator('#route-submit').waitFor({ state: 'visible' });
+        await page.locator('#app-intro').waitFor({ state: 'hidden' });
         if (options.realMobility) {
             // Room regression coverage opts into inert markup; the taxi script stays loaded once.
             await activateRealMobility(page);
@@ -350,7 +357,13 @@ async function openApp(browser, options = {}) {
         await context.close();
         throw error;
     }
-    return { page, context, requests, searches, taxiRequests, roomRequests, itxRequests, shuttleRequests, intercityRequests, errors, blocked, async close() {
+    return { page, context, requests, searches, taxiRequests, roomRequests, itxRequests, shuttleRequests, intercityRequests, errors, blocked,
+        async expectDialog(type, accept, action) {
+            assert.equal(expectedDialog, null);
+            expectedDialog = { type, accept, handled: false };
+            try { await action(); assert.equal(expectedDialog.handled, true, 'Expected data-loss confirmation was shown'); }
+            finally { expectedDialog = null; }
+        }, async close() {
         const captured = [...errors];
         await context.close();
         assert.deepEqual(captured, [], 'No unhandled JavaScript errors or blocking dialogs');
@@ -383,7 +396,7 @@ function intercityFixture(pathname, params = new URLSearchParams()) {
 async function noOverflow(page) {
     const result = await page.evaluate(() => {
         const width = document.documentElement.clientWidth;
-        const outside = [...document.querySelectorAll('#planner-panel input, #planner-panel textarea, #planner-panel select, #planner-panel button, #result-container button, #result-container summary')]
+        const outside = [...document.querySelectorAll('#planner-panel input, #planner-panel textarea, #planner-panel select, #planner-panel button, #results-section button, #results-section summary')]
             .filter(el => el.getClientRects().length && (el.getBoundingClientRect().left < -1 || el.getBoundingClientRect().right > width + 1))
             .map(el => el.id || el.textContent.trim().slice(0, 80));
         return { scrollWidth: document.documentElement.scrollWidth, viewport: window.innerWidth, outside };
@@ -392,7 +405,14 @@ async function noOverflow(page) {
     assert.deepEqual(result.outside, [], 'Interactive controls remain inside the viewport');
 }
 
+async function selectTool(page, name) {
+    const tab = page.locator('#transport-tab-' + name);
+    if (!await tab.isVisible()) await page.locator('#sidebar-toggle').click();
+    await tab.click();
+}
+
 async function chooseBuilding(page, campus = 'hallym') {
+    await selectTool(page, 'journey');
     await page.locator(`#tab-${campus}`).click();
     await page.locator('#origin-building').click();
     const building = await page.locator('#building-select option').evaluateAll(options => options.find(option => option.value)?.value);
@@ -402,6 +422,7 @@ async function chooseBuilding(page, campus = 'hallym') {
 }
 
 async function selectDestination(page, query = '남춘천', expectedName = DESTINATION.name) {
+    await selectTool(page, 'journey');
     const input = page.locator('#dest-input');
     await input.fill(query);
     await page.locator('#autocomplete-list [role="option"]').first().waitFor({ state: 'visible' });
@@ -414,6 +435,7 @@ async function selectDestination(page, query = '남춘천', expectedName = DESTI
 }
 
 async function clearDestination(page) {
+    await selectTool(page, 'journey');
     await page.locator('#dest-selected-tag button').click();
     await page.locator('#dest-input').waitFor({ state: 'visible' });
     await page.locator('#dest-selected-tag').waitFor({ state: 'hidden' });
@@ -623,6 +645,8 @@ test('GPS denial offers building fallback that remains usable', async browser =>
         const { page } = app;
         await page.locator('#origin-gps').click();
         await page.locator('#route-submit').click();
+        await resultContains(page, /현재 위치를 확인하지 못했어요/);
+        await page.locator('#results-edit').click();
         await page.locator('#origin-status').filter({ hasText: /위치 권한.*교내 건물/ }).waitFor({ state: 'visible' });
         assert.equal(app.requests.length, 0, 'Denied GPS is not sent as a transit request');
         assert.ok((await page.evaluate(() => window.__testGPSCalls)).length > 0);
@@ -670,6 +694,70 @@ test('an older autocomplete response cannot replace the newest search', async br
     } finally { releaseOld(); await app.close(); }
 });
 
+for (const width of [360, 390, 1024, 1440]) test(`${width}px independent results, selected detail and original response index`, async browser => {
+    const app = await openApp(browser, { viewport: { width, height: 900 }, routeHandler: (route, payload) => {
+        const data = journeyFixture(payload);
+        const first = clone(data.journeys[0]), second = clone(first);
+        first.legs[0].board.name = '첫째 경로 승차';
+        second.legs[0].board.name = '둘째 경로 승차';
+        data.journeys = [{ legs: [] }, first, second];
+        return route.fulfill({ json: data });
+    } });
+    try {
+        const { page } = app;
+        assert.equal(await page.locator('#results-section').isVisible(), false);
+        await chooseBuilding(page); await selectDestination(page);
+        await page.locator('#route-submit').click();
+        await resultContains(page, '총 소요 추정');
+        assert.equal(await page.locator('#result-count').innerText(), '2개');
+        assert.equal(await page.locator('#results-section').count(), 1);
+        assert.equal(await page.locator('.route-card.is-selected').getAttribute('data-journey-index'), '1');
+        assert.equal(await page.locator('#route-detail').isVisible(), false, 'Automatic selection never opens details');
+        assert.equal(await page.locator('#result-container .journey-timeline').count(), 0);
+        await page.locator('.route-select[data-journey-index="2"]').focus();
+        await page.keyboard.press('Enter');
+        assert.equal(await page.locator('.route-card.is-selected').getAttribute('data-journey-index'), '2');
+        assert.equal(await page.locator('#route-detail').isVisible(), true);
+        assert.match(await page.locator('#route-detail-content').innerText(), /둘째 경로 승차/);
+        assert.equal(await page.locator('#route-detail-heading').innerText(), '선택한 경로 상세 · 경로 02');
+        assert.equal(await page.locator('.journey-timeline').count(), 1);
+        assert.equal(await page.locator('#route-detail').count(), 1);
+        const geometry = await page.evaluate(() => {
+            const map = document.getElementById('map-stage').getBoundingClientRect();
+            const detail = document.getElementById('route-detail'), rect = detail.getBoundingClientRect();
+            const list = document.getElementById('results-section').getBoundingClientRect();
+            return { docked: document.getElementById('app-shell').classList.contains('detail-docked'),
+                parent: detail.parentElement.id, insideMap: rect.left >= map.left && rect.right <= map.right && rect.top >= map.top && rect.bottom <= map.bottom,
+                beforeList: rect.right <= list.left, adequate: innerWidth >= 1280 && map.width >= 640 && map.height >= 480 };
+        });
+        assert.equal(geometry.docked, geometry.adequate);
+        assert.equal(geometry.parent, geometry.docked ? 'route-detail-map' : 'route-detail-inline');
+        if (geometry.docked) {
+            assert.equal(geometry.insideMap, true); assert.equal(geometry.beforeList, true);
+            assert.equal(await page.locator('#result-container').isVisible(), true);
+        }
+        await page.locator('.station-marker[title*="둘째 경로 승차"]').waitFor({ state: 'attached' });
+        await noOverflow(page);
+        await page.locator('#route-detail-close').click();
+        assert.equal(await page.locator('#route-detail').isVisible(), false);
+        assert.equal(await page.locator('#result-container').isVisible(), true);
+        assert.equal(await page.evaluate(() => document.activeElement.getAttribute('data-journey-index')), '2');
+        await page.locator('.route-select[data-journey-index="2"]').click();
+        assert.equal(await page.locator('#route-detail').isVisible(), true);
+        await page.locator('#results-edit').click();
+        assert.equal(await page.locator('#route-submit').isVisible(), true);
+        assert.equal(await page.locator('#results-section').isVisible(), false);
+        await page.locator('#results-show').click();
+        assert.equal(await page.locator('.route-card.is-selected').getAttribute('data-journey-index'), '2');
+        assert.equal(await page.locator('#route-detail').isVisible(), false, 'Reopening results does not reopen the detail');
+        await page.locator('#results-close').click();
+        assert.equal(await page.locator('#results-section').isVisible(), false);
+        await page.locator('#results-show').click();
+        assert.equal(await page.locator('#results-section').isVisible(), true);
+        assert.equal(app.requests.length, 1, 'Editing/closing/reopening never requeries');
+    } finally { await app.close(); }
+});
+
 async function run() {
     const browser = await chromium.launch({ headless: true,
         ...(process.env.CAPSTONE_BROWSER_EXECUTABLE ? { executablePath: process.env.CAPSTONE_BROWSER_EXECUTABLE } : {}),
@@ -691,6 +779,6 @@ async function run() {
     if (failures.length) process.exitCode = 1;
 }
 
-module.exports = { openApp, activateRealMobility, chooseBuilding, selectDestination, clearDestination, noOverflow, resultContains,
+module.exports = { openApp, selectTool, activateRealMobility, chooseBuilding, selectDestination, clearDestination, noOverflow, resultContains,
     taxiFixture, journeyFixture, nearbyFixture, shuttleFixture, intercityFixture, DESTINATION, INJECTION, BASE_URL };
 if (require.main === module) run().catch(error => { console.error(error.stack || error); process.exitCode = 1; });

@@ -7,6 +7,12 @@
     let taxiContext = null;
     let taxiIntentVersion = 0;
     let taxiPending = false;
+    let resultToken = null;
+
+    function beginRouteResults(payload) {
+        resultToken = window.AppModules.shell?.beginResults(payload) || null;
+        return resultToken;
+    }
 
     function setRouteLoading(visible, message) {
         const loading = document.getElementById('loading');
@@ -27,6 +33,7 @@
         if (label && visible) label.textContent = '찾는 중…';
         if (results) results.setAttribute('aria-busy', String(visible));
         if (visible) {
+            window.AppModules.renderer?.renderResults({ loading: true, message });
             const initial = document.getElementById('initial-state');
             if (initial) initial.hidden = true;
         } else if (window.AppModules.ui) {
@@ -35,6 +42,9 @@
     }
 
     function clearResults() {
+        resultToken = null;
+        window.AppModules.shell?.invalidateResults();
+        window.AppModules.renderer?.resetResults();
         const container = document.getElementById('result-container');
         const initial = document.getElementById('initial-state');
         const count = document.getElementById('result-count');
@@ -72,15 +82,16 @@
         if (options.clearResults !== false) clearResults();
     }
 
-    function drawRouteResult(data) {
+    function drawRouteResult(data, token = resultToken) {
+        const present = !window.AppModules.shell || window.AppModules.shell.canPresent(token);
         try {
-            if (window.AppModules.map) window.AppModules.map.drawStationMarkersOnMap(data);
+            if (present && window.AppModules.map && !(data && Array.isArray(data.journeys))) window.AppModules.map.drawStationMarkersOnMap(data);
         } catch (error) {
             console.error('지도 결과 표시 실패:', error);
         }
         const renderer = window.renderResults || (window.AppModules.renderer && window.AppModules.renderer.renderResults);
         if (typeof renderer === 'function') {
-            renderer(data);
+            renderer(data, { present });
             return;
         }
         const container = document.getElementById('result-container');
@@ -166,12 +177,13 @@
             const destination = window.AppState.getDestination();
             if (!destination || typeof destination.name !== 'string' || !destination.name.trim()
                 || !window.AppState.isValidPosition(destination.lat, destination.lon)) {
-                taxi.prompt('상단에서 도착할 장소를 검색하고 검색 결과를 선택해 주세요.');
+                taxi.prompt('길찾기에서 도착할 장소를 검색하고 검색 결과를 선택해 주세요.');
                 if (window.AppModules.search && typeof window.AppModules.search.setSearchStatus === 'function') {
                     window.AppModules.search.setSearchStatus('검색 결과에서 목적지를 선택해 주세요.', true);
                 }
                 const input = document.getElementById('dest-input');
-                if (input) input.focus();
+                if (window.AppModules.shell) window.AppModules.shell.openJourney('dest-input');
+                else if (input) input.focus();
                 return;
             }
             const payload = { campus: selectedCampus, dest_name: destination.name,
@@ -180,8 +192,10 @@
                 const select = document.getElementById('building-select');
                 const building = select ? select.value : '';
                 if (!building) {
-                    taxi.prompt('상단에서 출발 건물을 먼저 선택해 주세요.');
-                    if (select) { select.setAttribute('aria-invalid', 'true'); select.focus(); }
+                    taxi.prompt('길찾기에서 출발 건물을 먼저 선택해 주세요.');
+                    if (select) select.setAttribute('aria-invalid', 'true');
+                    if (window.AppModules.shell) window.AppModules.shell.openJourney('building-select');
+                    else if (select) select.focus();
                     return;
                 }
                 if (select) select.removeAttribute('aria-invalid');
@@ -206,7 +220,7 @@
                 payload.lat = Number(position.lat);
                 payload.lon = Number(position.lon);
             } else {
-                taxi.prompt('상단에서 현재 위치 또는 출발 건물을 선택해 주세요.');
+                taxi.prompt('길찾기에서 현재 위치 또는 출발 건물을 선택해 주세요.');
                 return;
             }
             if (!intentIsCurrent()) return;
@@ -227,8 +241,11 @@
         return requestTaxiFromSelection();
     }
 
-    async function requestRoute(payload, mode) {
-        cancelPendingRequests({ resetTaxi: !(taxiContext && taxiContext.isCurrent()) });
+    async function requestRoute(payload, mode, pendingToken) {
+        cancelPendingRequests({ resetTaxi: !(taxiContext && taxiContext.isCurrent()), clearResults: !pendingToken, cancelLocation: !pendingToken });
+        const token = pendingToken || beginRouteResults(payload);
+        resultToken = token;
+        window.AppModules.shell?.updateResultSummary(token, payload);
         const requestId = latestRequest;
         const snapshot = stateSnapshot(mode);
         const controller = typeof AbortController === 'function' ? new AbortController() : null;
@@ -261,17 +278,20 @@
                 throw new Error('서버 응답을 읽지 못했어요. 잠시 후 다시 시도해 주세요.');
             }
             if (!isCurrent()) return;
+            if (!data || (typeof data !== 'object') || (!Array.isArray(data) && !data.error && !data.notice && !Array.isArray(data.journeys))) {
+                throw new Error('서버 응답 형식을 확인할 수 없어요. 잠시 후 다시 조회해 주세요.');
+            }
             if (!response.ok && !(data && data.error)) {
                 data = { error: '경로를 불러오지 못했어요. 잠시 후 다시 시도해 주세요.' };
             }
-            drawRouteResult(data);
+            drawRouteResult(data, token);
         } catch (error) {
             if (!isCurrent() || error.name === 'AbortError') return;
             drawRouteResult({
                 error: error instanceof TypeError
                     ? '서버에 연결하지 못했어요. 연결 상태를 확인하고 다시 찾아보세요.'
                     : error.message || '경로를 불러오지 못했어요. 다시 시도해 주세요.'
-            });
+            }, token);
         } finally {
             clearTimeout(timeout);
             if (requestId === latestRequest) {
@@ -281,7 +301,7 @@
         }
     }
 
-    function requestBusByCoords(lat, lon) {
+    function requestBusByCoords(lat, lon, pendingToken) {
         if (!window.AppState.isValidPosition(lat, lon)) {
             cancelPendingRequests();
             drawRouteResult({ notice: '현재 위치를 확인하지 못했어요. 다시 확인하거나 교내 건물을 선택해 주세요.' });
@@ -302,7 +322,7 @@
         return requestRoute({
             lat: Number(lat), lon: Number(lon), location: '내 실시간 위치', campus: selectedCampus,
             dest_lat: destination.lat, dest_lon: destination.lon, dest_name: destination.name
-        }, 'gps');
+        }, 'gps', pendingToken);
     }
 
     function findRoutes() {
@@ -337,7 +357,7 @@
     }
 
     window.AppModules.api = { requestBusByCoords, findRoutes, cancelPendingRequests, setRouteLoading, drawRouteResult,
-        requestTaxiFromSelection, refreshTaxi };
+        requestTaxiFromSelection, refreshTaxi, beginRouteResults };
     window.requestBusByCoords = requestBusByCoords;
     window.findRoutes = findRoutes;
     window.cancelPendingRequests = cancelPendingRequests;

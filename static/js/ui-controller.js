@@ -3,6 +3,7 @@
     let initialized = false;
 
     function sync() {
+        if (window.AppModules.shell) window.AppModules.shell.syncSelection();
         const button = document.getElementById('route-submit');
         const label = document.getElementById('route-submit-label');
         const input = document.getElementById('dest-input');
@@ -11,6 +12,11 @@
     }
 
     function setPlannerExpanded(expanded) {
+        if (window.AppModules.shell) {
+            if (expanded) window.AppModules.shell.openTool();
+            else window.AppModules.shell.closeTool();
+            return;
+        }
         const panel = document.getElementById('planner-panel');
         const body = document.getElementById('planner-body');
         const toggle = document.getElementById('panel-toggle');
@@ -34,22 +40,25 @@
     }
 
     function focusDestination() {
-        setPlannerExpanded(true);
+        if (window.AppModules.shell) window.AppModules.shell.openJourney();
+        else setPlannerExpanded(true);
         if (destName) window.clearDestination({ focus: false });
         const input = document.getElementById('dest-input');
         if (input) input.focus();
     }
 
     function focusBuildings() {
-        setPlannerExpanded(true);
+        if (window.AppModules.shell) window.AppModules.shell.openJourney();
+        else setPlannerExpanded(true);
         window.selectOriginMode('building', { focus: false });
         const select = document.getElementById('building-select');
         if (select) select.focus();
     }
 
     function focusMap() {
+        if (window.AppModules.shell) window.AppModules.shell.showMap();
         const mobile = typeof window.matchMedia === 'function' && window.matchMedia('(max-width: 799px)').matches;
-        if (mobile) setPlannerExpanded(false);
+        if (mobile && !window.AppModules.shell) setPlannerExpanded(false);
         const ready = window.AppModules.map && window.AppModules.map.isReady();
         const target = document.getElementById(ready ? 'map' : 'map-status');
         if (target) {
@@ -63,7 +72,8 @@
         if (event && typeof event.preventDefault === 'function') event.preventDefault();
         const button = document.getElementById('route-submit');
         if (button && button.disabled) return Promise.resolve();
-        setPlannerExpanded(true);
+        if (window.AppModules.shell) window.AppModules.shell.select('journey');
+        else setPlannerExpanded(true);
         const input = document.getElementById('dest-input');
         if (!destName && input && input.value.trim()) {
             window.AppModules.search.setSearchStatus('검색 결과에서 목적지를 선택해 주세요.', true);

@@ -5,7 +5,7 @@
     let expiryTimer = null;
     const byId = function(id) { return document.getElementById(id); };
     const money = function(value) { return Number.isSafeInteger(value) && value >= 0 ? value.toLocaleString('ko-KR') + '원' : '조회 불가'; };
-    const initialRoute = '상단에서 출발지와 도착할 장소를 선택해 주세요.';
+    const initialRoute = '길찾기에서 출발지와 도착할 장소를 선택해 주세요.';
 
     function setButton(label, disabled) {
         const refresh = byId('taxi-refresh');

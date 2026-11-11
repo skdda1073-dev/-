@@ -2,16 +2,17 @@
 'use strict';
 const assert = require('node:assert/strict');
 const { chromium } = require('playwright');
-const { openApp, noOverflow, intercityFixture, INJECTION } = require('./frontend_smoke.cjs');
+const { openApp, selectTool, noOverflow, intercityFixture, INJECTION } = require('./frontend_smoke.cjs');
 const tests = [];
 const test = (name, run) => tests.push({ name, run });
 const byId = (page, id) => page.locator('#intercity-' + id);
 
 async function openIntercity(app, keyboard = false) {
     if (keyboard) {
+        if (!await app.page.locator('#transport-tab-subway').isVisible()) await app.page.locator('#sidebar-toggle').click();
         await app.page.locator('#transport-tab-subway').focus();
         await app.page.keyboard.press('ArrowRight');
-    } else await app.page.locator('#transport-tab-intercity').click();
+    } else await selectTool(app.page, 'intercity');
     await byId(app.page, 'origin').waitFor({ state: 'visible' });
 }
 async function selectRoute(app, destination = 'TEST_DSE', search) {
@@ -66,8 +67,8 @@ for (const width of [360, 1440]) test(`${width}px lazy keyboard opening, termina
         assert.match(rendered[1], /도착 예상/);
         await noOverflow(page);
         nonIntercityRequests(app);
-        await page.locator('#transport-tab-subway').click();
-        await page.locator('#transport-tab-intercity').click();
+        await selectTool(page, 'subway');
+        await selectTool(page, 'intercity');
         assert.equal(app.intercityRequests.length, 4);
         await byId(page, 'swap').click();
         await page.waitForFunction(() => !document.getElementById('intercity-destination').disabled);

@@ -145,15 +145,13 @@
         if (valid.length === 1) {
             map.panTo(new naver.maps.LatLng(valid[0].lat, valid[0].lon));
         } else {
-            const padding = { top: 100, right: 45, bottom: 85, left: 45 };
+            const padding = { top: 48, right: 32, bottom: 64, left: 32 };
             const element = document.getElementById('map');
-            const panel = document.getElementById('planner-panel');
-            if (element && panel && window.matchMedia && window.matchMedia('(min-width: 800px)').matches) {
+            if (element) {
                 const mapRect = element.getBoundingClientRect();
-                const panelRect = panel.getBoundingClientRect();
-                padding.left = Math.min(mapRect.width * 0.6, panelRect.right - mapRect.left + 35);
-            } else if (panel && panel.classList.contains('is-collapsed')) {
-                padding.bottom = 170;
+                padding.left = padding.right = Math.max(12, Math.min(32, mapRect.width * .12));
+                padding.top = Math.max(12, Math.min(48, mapRect.height * .16));
+                padding.bottom = Math.max(12, Math.min(64, mapRect.height * .2));
             }
             map.fitBounds(bounds, padding);
         }
@@ -216,7 +214,7 @@
         return drawEntries(entries);
     }
 
-    function showJourneyOnMap(response, index) {
+    function showJourneyOnMap(response, index, options = {}) {
         if (!response || !Array.isArray(response.journeys) || !Number.isInteger(index) || !response.journeys[index]) return false;
         const entries = journeyEntries(response, index);
         if (!map || authenticationFailed) {
@@ -224,7 +222,8 @@
             announce('지도를 연결하지 못했어요. 경로 카드의 승차·하차 정류장을 확인해 주세요.');
             return false;
         }
-        if (window.focusMap) window.focusMap();
+        if (options.focus === true && window.focusMap) window.focusMap();
+        resizeMap();
         const shown = drawEntries(entries);
         if (shown) announce((index + 1) + '번째 경로의 출발지, 승차·하차 정류장, 목적지를 지도에 표시했어요.');
         return shown;

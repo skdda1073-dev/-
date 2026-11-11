@@ -4,6 +4,7 @@
 
     const boundContainers = new WeakSet();
     let lastJourneyResponse = null;
+    let validJourneyIndices = new Set(), selectedJourneyIndex = null;
 
     function text(value) {
         if (typeof value === 'string') return value;
@@ -78,7 +79,7 @@
         const initial = document.getElementById('initial-state');
         const headingElement = document.getElementById('results-heading');
         const countElement = document.getElementById('result-count');
-        if (section) { section.hidden = false; section.style.display = ''; }
+        if (section && !window.AppModules.shell) { section.hidden = false; section.style.display = ''; }
         if (initial) initial.hidden = true;
         if (headingElement) headingElement.textContent = heading;
         if (countElement) {
@@ -97,10 +98,21 @@
         const items = warningsMarkup(values, 'results-note-list');
         return items ? `<details class="results-notes"><summary>${icon('warning')}<span>경로 정보 안내</span>${icon('chevron-down')}</summary>${items}</details>` : '';
     }
+    function sourceNotes(value) {
+        if (!value || typeof value !== 'object') return '';
+        return `<details class="results-notes"><summary>출처·확인 기준</summary><pre class="result-source">${escapeHtml(JSON.stringify(value, null, 2))}</pre></details>`;
+    }
+    function setResultStatus(state) {
+        const section = document.getElementById('results-section');
+        if (section) section.dataset.state = state;
+    }
+    function journeyLegs(journey) {
+        return journey.legs.map(leg => ({ ...record(leg), transport_type: leg.transport_type || journey.transport_type }));
+    }
 
     function routeBadge(leg, alternate) {
-        const route = text(leg.route_no).trim() || '번호 미확인';
-        return `<span class="route-badge${alternate ? ' route-badge--alternate' : ''}">${icon('bus')}<span>${escapeHtml(route)}</span></span>`;
+        const route = text(leg.route_no).trim() || text(leg.route_name).trim() || '번호 미확인';
+        return `<span class="route-badge${alternate ? ' route-badge--alternate' : ''}">${icon('bus')}<span>${leg.transport_type === 'shuttle' ? '셔틀 · ' : ''}${escapeHtml(route)}</span></span>`;
     }
 
     function routeTiming(journey, legs) {
@@ -136,6 +148,7 @@
     }
 
     function busStep(leg, index) {
+        const shuttle = leg.transport_type === 'shuttle';
         const board = record(leg.board);
         const alight = record(leg.alight);
         const verified = leg.direction_verified === true && leg.arrival_reference_only !== true;
@@ -146,8 +159,8 @@
         const facts = [];
         if (stopCount !== null) facts.push(`${Math.round(stopCount)}개 정류장`);
         facts.push(ride === null ? '탑승 시간 미확인' : `탑승 약 ${minutes(ride)}`);
-        const waitText = wait === null ? '대기 시간 미확인' : `승차 대기 약 ${minutes(wait)}`;
-        const arrivalText = arrival === null ? '' : ` · 조회 시점 기준 약 ${minutes(arrival)} 후 도착`;
+        const waitText = shuttle ? '저장된 시간표 기준 · 실제 운행·탑승 보장 아님' : wait === null ? '대기 시간 미확인' : `승차 대기 약 ${minutes(wait)}`;
+        const arrivalText = shuttle ? '' : arrival === null ? '' : ` · 조회 시점 기준 약 ${minutes(arrival)} 후 도착`;
         const routeId = leg.route_number_verified === false && text(leg.route_id)
             ? `<p class="journey-route-id">노선 ID ${escapeHtml(leg.route_id)} · 노선번호 확인 필요</p>` : '';
         return `<li class="journey-step journey-step--bus${index > 0 ? ' journey-step--alternate' : ''}">
@@ -167,7 +180,10 @@
             if (index > 0) {
                 const buffer = number(journey.transfer_buffer_min);
                 const bufferText = buffer === null ? '환승 여유 시간을 확인하세요' : `환승 여유 총 ${minutes(buffer)} 반영`;
-                html += `<li class="journey-step journey-step--transfer"><span class="journey-step-icon">${icon('swap')}</span><div class="journey-step-content"><strong>같은 정류장에서 환승</strong><p>${escapeHtml(bufferText)}</p></div></li>`;
+                const previous = record(legs[index - 1].alight), next = record(leg.board);
+                const same = (text(previous.id) && previous.id === next.id) ||
+                    (number(previous.lat) !== null && number(previous.lon) !== null && previous.lat === next.lat && previous.lon === next.lon);
+                html += `<li class="journey-step journey-step--transfer"><span class="journey-step-icon">${icon('swap')}</span><div class="journey-step-content"><strong>${same ? '같은 정류장에서 환승' : '환승 구간 · 연결 정보 확인 필요'}</strong><p>${escapeHtml(bufferText)}</p></div></li>`;
             }
             html += busStep(leg, index);
         });
@@ -176,7 +192,7 @@
     }
 
     function journeyCard(journey, index, mapIndex, response) {
-        const legs = journey.legs.map(record);
+        const legs = journeyLegs(journey);
         const timing = routeTiming(journey, legs);
         const board = record(legs[0].board);
         const accessMinutes = number(timing.access.minutes);
@@ -192,13 +208,13 @@
         if (!notes.length) notes.push('도착 예상은 운행 상황에 따라 달라질 수 있어요');
         const warnings = warningList(journey.warnings);
         if (timing.directionUnknown) warnings.unshift('정류장 순서를 바탕으로 찾은 경로 후보예요. 상·하행과 종점·회차에서 계속 탈 수 있는지는 승차 전에 확인해 주세요.');
-        return `<article class="result-card route-card${index === 0 ? ' route-card--first' : ''}" aria-labelledby="route-title-${index}">
-            <div class="route-card-top"><span class="route-rank">경로 ${String(index + 1).padStart(2, '0')}</span><button class="route-map-button" type="button" data-journey-index="${mapIndex}" aria-label="경로 ${index + 1} 지도에서 보기">${icon('map')}<span>지도에서 보기</span>${icon('arrow-up-right')}</button></div>
+        return `<article class="result-card route-card" data-journey-index="${mapIndex}" aria-labelledby="route-title-${index}">
+            <div class="route-card-top"><span class="route-rank">경로 ${String(index + 1).padStart(2, '0')}</span><button class="route-map-button route-select" type="button" data-journey-index="${mapIndex}" aria-controls="route-detail" aria-pressed="false" aria-expanded="false" aria-label="경로 ${index + 1} 선택하고 상세 보기">${icon('map')}<span>이 경로 선택</span>${icon('arrow-up-right')}</button></div>
             <div class="route-overview"><h3 id="route-title-${index}">${timeHeadline(timing)}</h3><span class="route-transfer">${transferLabel}</span></div>
             <div class="route-chain"><span class="route-chain-walk">${icon('walk')}<span>${timing.walk === null ? '도보 미확인' : `총 도보 ${minutes(timing.walk)}`}</span></span><span class="route-chain-arrow">${icon('chevron-down')}</span>${chain}</div>
             <div class="boarding-guide"><span class="boarding-guide-icon">${icon('walk')}</span><div><span class="boarding-guide-label">승차 정류장까지</span><strong>${escapeHtml(text(board.name) || '승차 정류장 미확인')}</strong><p>${escapeHtml(accessText)}</p></div></div>
             <p class="route-note${timing.directionUnknown || timing.waitUnknown ? ' route-note--warning' : ''}">${icon(timing.directionUnknown || timing.waitUnknown ? 'warning' : 'clock')}<span>${escapeHtml(notes.join(' · '))}</span></p>
-            <details class="route-details"><summary><span>경로 자세히</span>${icon('chevron-down')}</summary>${journeyTimeline(journey, legs, response, timing)}${warningsMarkup(warnings, 'route-warnings')}</details></article>`;
+            ${warningsMarkup(warnings, 'route-warnings')}</article>`;
     }
 
     function nearbyBus(bus) {
@@ -230,30 +246,68 @@
             ${station.arrival_error && buses.length ? `<p class="station-arrival-warning">${icon('warning')}일부 도착정보를 확인하지 못했어요.</p>` : ''}</article>`;
     }
 
+    function selectJourney(index, options = {}) {
+        if (!lastJourneyResponse || !validJourneyIndices.has(index)) return false;
+        const changed = selectedJourneyIndex !== index;
+        selectedJourneyIndex = index;
+        const journey = lastJourneyResponse.journeys[index], legs = journeyLegs(journey);
+        const container = document.getElementById('result-container');
+        container.querySelectorAll('.route-card').forEach(card => {
+            const selected = Number(card.getAttribute('data-journey-index')) === index;
+            card.classList.toggle('is-selected', selected);
+            card.querySelector('.route-select')?.setAttribute('aria-pressed', String(selected));
+        });
+        const detail = document.getElementById('route-detail');
+        if (detail) {
+            const ordinal = [...validJourneyIndices].indexOf(index) + 1;
+            document.getElementById('route-detail-heading').textContent = `선택한 경로 상세 · 경로 ${String(ordinal).padStart(2, '0')}`;
+            if (changed) {
+                const content = document.getElementById('route-detail-content');
+                content.innerHTML = journeyTimeline(journey, legs, lastJourneyResponse, routeTiming(journey, legs))
+                    + warningsMarkup(journey.warnings, 'route-warnings');
+                content.scrollTop = 0;
+            }
+        }
+        const shell = window.AppModules.shell;
+        const present = options.present !== false && (!shell || shell.canPresent());
+        if (present) {
+            if (options.user && shell) shell.showDetail({ focus: options.focus });
+            else if (options.user && detail) detail.hidden = false;
+            try {
+                if (typeof window.showJourneyOnMap === 'function') window.showJourneyOnMap(lastJourneyResponse, index, { focus: false });
+            } catch (_) { /* A map failure must not hide the readable timetable. */ }
+        }
+        return true;
+    }
+    function resetResults() {
+        window.AppModules.shell?.closeDetail({ returnFocus: false });
+        lastJourneyResponse = null; validJourneyIndices = new Set(); selectedJourneyIndex = null;
+        const detail = document.getElementById('route-detail'), content = document.getElementById('route-detail-content');
+        if (detail) detail.hidden = true;
+        if (content) content.replaceChildren();
+    }
     function bindMapActions(container) {
         if (boundContainers.has(container) || typeof container.addEventListener !== 'function') return;
         container.addEventListener('click', event => {
             const target = event.target && typeof event.target.closest === 'function' ? event.target.closest('[data-journey-index]') : null;
             if (!target || !container.contains(target) || !lastJourneyResponse) return;
             const index = Number(target.getAttribute('data-journey-index'));
-            if (!Number.isInteger(index) || index < 0 || index >= lastJourneyResponse.journeys.length) return;
-            if (typeof window.showJourneyOnMap === 'function') {
-                const shown = window.showJourneyOnMap(lastJourneyResponse, index);
-                if (shown && typeof window.focusMap === 'function') window.focusMap();
-            }
+            if (!Number.isInteger(index)) return;
+            selectJourney(index, { user: true, focus: event.detail === 0 });
         });
         boundContainers.add(container);
     }
 
-    function renderResults(data) {
+    function renderResults(data, options = {}) {
         const container = document.getElementById('result-container');
         if (!container) return;
         bindMapActions(container);
         const payload = record(data);
         const loading = document.getElementById('loading');
         container.hidden = false;
-        lastJourneyResponse = null;
+        resetResults();
         if (payload.loading === true) {
+            setResultStatus('loading');
             setResultsState('경로를 찾고 있어요', null);
             container.innerHTML = '';
             container.setAttribute('aria-busy', 'true');
@@ -268,13 +322,15 @@
         if (loading) { loading.hidden = true; loading.style.display = 'none'; }
         container.setAttribute('aria-busy', 'false');
         if (payload.error) {
+            setResultStatus('error');
             setResultsState('다시 확인해 주세요', null);
-            container.innerHTML = stateCard('error', '정보를 불러오지 못했어요', friendlyMessage(payload.error) || '잠시 후 다시 시도해 주세요.');
+            container.innerHTML = stateCard('error', '정보를 불러오지 못했어요', friendlyMessage(payload.error) || '잠시 후 다시 시도해 주세요.') + resultsNotes(payload.warnings) + sourceNotes(payload.source);
             return;
         }
         if (payload.notice) {
+            setResultStatus('error');
             setResultsState('출발 준비', null);
-            container.innerHTML = stateCard('notice', '여기부터 확인해 주세요', friendlyMessage(payload.notice));
+            container.innerHTML = stateCard('notice', '여기부터 확인해 주세요', friendlyMessage(payload.notice)) + resultsNotes(payload.warnings) + sourceNotes(payload.source);
             return;
         }
         if (payload.mode === 'journeys' || Array.isArray(payload.journeys)) {
@@ -282,19 +338,25 @@
             const candidates = journeys.map((value, index) => ({ value: record(value), index })).filter(item => Array.isArray(item.value.legs) && item.value.legs.length && item.value.legs.every(leg => leg && typeof leg === 'object' && !Array.isArray(leg)));
             setResultsState('이동 경로', candidates.length);
             if (!candidates.length) {
-                container.innerHTML = stateCard('empty', '검색 범위 안에서 경로를 찾지 못했어요', '출발지나 목적지를 바꿔 다시 찾아보세요. 가까운 정류장도 확인할 수 있어요.') + resultsNotes(payload.warnings);
+                setResultStatus('empty');
+                container.innerHTML = stateCard('empty', '검색 범위 안에서 경로를 찾지 못했어요', '출발지나 목적지를 바꿔 다시 찾아보세요. 가까운 정류장도 확인할 수 있어요.') + resultsNotes(payload.warnings) + sourceNotes(payload.source);
                 return;
             }
             lastJourneyResponse = payload;
-            container.innerHTML = candidates.map((item, index) => journeyCard(item.value, index, item.index, payload)).join('') + resultsNotes(payload.warnings);
+            validJourneyIndices = new Set(candidates.map(item => item.index));
+            setResultStatus(candidates.some(item => { const timing = routeTiming(item.value, journeyLegs(item.value)); return !timing.complete; }) || warningList(payload.warnings).length ? 'partial' : 'ready');
+            container.innerHTML = candidates.map((item, index) => journeyCard(item.value, index, item.index, payload)).join('') + resultsNotes(payload.warnings) + sourceNotes(payload.source);
+            selectJourney(candidates[0].index, { present: options.present });
             return;
         }
         const stations = Array.isArray(data) ? data.filter(value => value && typeof value === 'object' && !Array.isArray(value)).map(record) : [];
         setResultsState('가까운 정류장', stations.length);
         if (!stations.length) {
+            setResultStatus('empty');
             container.innerHTML = stateCard('empty', '주변 정류장을 찾지 못했어요', '출발 건물을 바꾸거나 내 위치를 다시 확인해 주세요.');
             return;
         }
+        setResultStatus(stations.some(item => item.arrival_error) ? 'partial' : 'ready');
         container.innerHTML = `<p class="results-caption">${icon('clock')}<span>도착정보는 조회 시점 기준이며 운행 상황에 따라 달라질 수 있어요.</span></p>` + stations.map(stationCard).join('');
     }
 
@@ -302,5 +364,8 @@
     window.format24Time = format24Time;
     window.renderResults = renderResults;
     window.AppModules = window.AppModules || {};
-    window.AppModules.renderer = Object.assign(window.AppModules.renderer || {}, { renderResults });
+    window.AppModules.renderer = Object.assign(window.AppModules.renderer || {}, { renderResults, resetResults, selectJourney,
+        getSelectedButton: () => [...document.getElementById('result-container').querySelectorAll('.route-select')]
+            .find(button => Number(button.getAttribute('data-journey-index')) === selectedJourneyIndex) || null,
+        getSelectedIndex: () => selectedJourneyIndex });
 }());
