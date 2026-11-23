@@ -22,6 +22,8 @@ from services.ride_room_service import RideRoomService
 from services.ride_room_routes import create_ride_room_blueprint
 from services.intercity_booking_service import BookingIntercityService
 from services.intercity_routes import create_intercity_blueprint
+from services.commute_advice_service import CommuteAdviceService
+from services.commute_advice_routes import create_commute_advice_blueprint
 
 base_dir = os.path.abspath(os.path.dirname(__file__))
 template_dir = os.path.join(base_dir, 'templates')
@@ -32,6 +34,11 @@ app.config["MAX_CONTENT_LENGTH"] = 16 * 1024
 app.register_blueprint(itx_pair_bp)
 intercity_service = BookingIntercityService()
 app.register_blueprint(create_intercity_blueprint(intercity_service))
+commute_advice_service = CommuteAdviceService(
+    settings.weather_data_key, settings.airkorea_data_key,
+    station_name=settings.airkorea_station_name,
+)
+app.register_blueprint(create_commute_advice_blueprint(commute_advice_service))
 # ==========================================
 # 🔑 1. API 키 설정
 # ==========================================
@@ -118,7 +125,7 @@ app.register_blueprint(create_ride_room_blueprint(ride_room_service, configured=
 @app.errorhandler(HTTPException)
 def mobility_http_error(error):
     # Router-level 404/405 are not handled by a Blueprint error handler.
-    if request.path == "/api/ride-rooms" or request.path.startswith(("/api/ride-rooms/", "/api/taxi/", "/api/intercity/")):
+    if request.path in {"/api/ride-rooms", "/api/commute-advice"} or request.path.startswith(("/api/ride-rooms/", "/api/taxi/", "/api/intercity/", "/api/commute-advice/")):
         status = error.code or 500
         code = {404: "NOT_FOUND", 405: "METHOD_NOT_ALLOWED", 413: "REQUEST_TOO_LARGE"}.get(status, "INVALID_REQUEST")
         response = jsonify(code=code, error="요청 경로 또는 형식을 확인해 주세요.")

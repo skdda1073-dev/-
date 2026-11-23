@@ -17,6 +17,7 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/itx-timetable.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/shuttle-timetable.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/intercity-timetable.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/commute-advice.css') }}">
 </head>
 <body>
     <a id="skip-search" class="skip-link" href="#tab-hallym">길찾기 검색으로 이동</a>
@@ -52,8 +53,15 @@
                     <span class="brand-icon"><svg class="icon" aria-hidden="true"><use href="#icon-bus"></use></svg></span>
                     <span>통학<span class="brand-light">마스터</span><small>CHUNCHEON CAMPUS</small></span>
                 </button>
-                <span class="city-badge"><span class="status-dot"></span> 춘천</span>
+                <div class="header-context">
+                    <span class="city-badge"><span class="status-dot"></span> 춘천</span>
+                    <button id="commute-advice-toggle" class="commute-advice-toggle" type="button" aria-expanded="false" aria-controls="commute-advice-panel">
+                        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v2M5.6 5.6 7 7M3 12h2M17 7l1.4-1.4M19 12h2"/><path d="M8 12a4 4 0 1 1 8 0"/><path d="M8 20a4 4 0 0 1 0-8 5 5 0 0 1 9.2 1.5A3.3 3.3 0 0 1 17 20Z"/></svg>
+                        <span class="commute-advice-toggle-copy"><span>통학 준비</span><span id="commute-advice-toggle-status" class="commute-advice-toggle-status">확인 중</span></span><span id="commute-advice-count" class="commute-advice-count" hidden></span>
+                    </button>
+                </div>
             </header>
+    {% include 'partials/commute_advice.html' %}
     <button id="sidebar-toggle" class="sidebar-toggle" type="button" aria-controls="app-sidebar" aria-expanded="false" aria-label="메뉴 펼치기" title="메뉴 펼치기"><svg class="icon" aria-hidden="true"><use href="#icon-chevron-down"></use></svg><span class="sr-only">메뉴</span></button>
     <button id="sidebar-backdrop" class="sidebar-backdrop" type="button" aria-label="메뉴 닫기" tabindex="-1" hidden></button>
     <div id="app-shell" class="app-shell">
@@ -396,5 +404,6 @@
     <script src="{{ url_for('static', filename='js/itx-timetable.js') }}" defer></script>
     <script src="{{ url_for('static', filename='js/shuttle-timetable.js') }}" defer></script>
     <script src="{{ url_for('static', filename='js/intercity-timetable.js') }}" defer></script>
+    <script src="{{ url_for('static', filename='js/commute-advice.js') }}" defer></script>
 </body>
 </html>

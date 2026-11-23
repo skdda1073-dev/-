@@ -23,7 +23,11 @@ window.AppModules = window.AppModules || {};
 window.AppState = {
     getSelectedCampus: function() { return selectedCampus; },
     setSelectedCampus: function(value) {
-        if (value === 'hallym' || value === 'knu') selectedCampus = value;
+        if ((value !== 'hallym' && value !== 'knu') || value === selectedCampus) return;
+        selectedCampus = value;
+        if (typeof window.CustomEvent === 'function' && typeof window.dispatchEvent === 'function') {
+            window.dispatchEvent(new window.CustomEvent('commute:campus-change', { detail: { campus: value } }));
+        }
     },
     getOriginMode: function() { return originMode; },
     setOriginMode: function(value) {
@@ -78,7 +82,7 @@ window.AppState = {
                 console.error('교내 건물 목록을 읽지 못했습니다:', error);
             }
         }
-        ['shell', 'search', 'ui', 'map'].forEach(function(name) {
+        ['shell', 'search', 'ui', 'map', 'commuteAdvice'].forEach(function(name) {
             const module = window.AppModules[name];
             if (!module || typeof module.init !== 'function') return;
             try {

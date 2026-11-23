@@ -249,7 +249,7 @@ async function openApp(browser, options = {}) {
         viewport: options.viewport || { width: 390, height: 844 },
         deviceScaleFactor: 1, reducedMotion: 'reduce', locale: 'ko-KR', timezoneId: options.timezoneId || 'Asia/Seoul',
     });
-    const requests = [], searches = [], taxiRequests = [], roomRequests = [], itxRequests = [], shuttleRequests = [], intercityRequests = [], errors = [], blocked = [];
+    const requests = [], searches = [], taxiRequests = [], roomRequests = [], itxRequests = [], shuttleRequests = [], intercityRequests = [], adviceRequests = [], errors = [], blocked = [];
     await context.addInitScript(({ denyGPS, fixedNow }) => {
         if (fixedNow) {
             const NativeDate = Date;
@@ -286,6 +286,11 @@ async function openApp(browser, options = {}) {
         if (url.origin !== BASE_ORIGIN) {
             blocked.push(url.origin);
             return route.abort('blockedbyclient');
+        }
+        if (url.pathname === '/api/commute-advice') {
+            adviceRequests.push(Object.fromEntries(url.searchParams));
+            if (options.adviceHandler) return options.adviceHandler(route, url, adviceRequests.length);
+            return route.fulfill({ json: adviceFixture(url.searchParams.get('campus')) });
         }
         if (url.pathname === '/shuttle_timetable') {
             shuttleRequests.push(Object.fromEntries(url.searchParams));
@@ -346,6 +351,9 @@ async function openApp(browser, options = {}) {
         await page.goto(BASE_URL, { waitUntil: options.mapSDKGate ? 'domcontentloaded' : 'networkidle' });
         await page.locator('#route-submit').waitFor({ state: 'visible' });
         await page.locator('#app-intro').waitFor({ state: 'hidden' });
+        if (!options.keepCommuteAdviceOpen && await page.locator('#commute-advice-panel').count()) {
+            if (await page.locator('#commute-advice-panel').isVisible()) await page.locator('#commute-advice-close').click();
+        }
         if (options.realMobility) {
             // Room regression coverage opts into inert markup; the taxi script stays loaded once.
             await activateRealMobility(page);
@@ -357,7 +365,7 @@ async function openApp(browser, options = {}) {
         await context.close();
         throw error;
     }
-    return { page, context, requests, searches, taxiRequests, roomRequests, itxRequests, shuttleRequests, intercityRequests, errors, blocked,
+    return { page, context, requests, searches, taxiRequests, roomRequests, itxRequests, shuttleRequests, intercityRequests, adviceRequests, errors, blocked,
         async expectDialog(type, accept, action) {
             assert.equal(expectedDialog, null);
             expectedDialog = { type, accept, handled: false };
@@ -779,6 +787,20 @@ async function run() {
     if (failures.length) process.exitCode = 1;
 }
 
+// Synthetic data for browser tests only; production always calls its Flask advice endpoint.
+function adviceFixture(campus, overrides = {}) {
+    const selected = campus === 'knu' ? 'knu' : 'hallym';
+    const weather = { status: 'ok', code: null, source: '기상청', issued_at: '2030-10-21T08:00:00+09:00',
+        fetched_at: '2030-10-21T08:30:00+09:00', forecast_at: '2030-10-21T09:00:00+09:00',
+        temperature_c: 16, wind_speed_ms: 1.5, rain_probability: 10, message: '다음 예보 시각의 날씨예요.' };
+    const air = { status: 'ok', code: null, source: '에어코리아', station_name: '중앙로',
+        observed_at: '2030-10-21T08:00:00+09:00', fetched_at: '2030-10-21T08:30:00+09:00',
+        pm10: { value: 24, grade: '좋음' }, pm25: { value: 12, grade: '좋음' }, message: '주변 측정소의 참고값이에요.' };
+    return { status: 'ok', campus: { id: selected, name: selected === 'knu' ? '강원대학교' : '한림대학교' },
+        generated_at: '2030-10-21T08:30:00+09:00', period: { start: '2030-10-21T09:00:00+09:00', end: '2030-10-21T15:00:00+09:00', label: '앞으로 6시간' },
+        alerts: [], summary: '확인된 예보와 대기질에서 추가 준비 안내는 없어요.', ...overrides,
+        weather: { ...weather, ...(overrides.weather || {}) }, air: { ...air, ...(overrides.air || {}) } };
+}
 module.exports = { openApp, selectTool, activateRealMobility, chooseBuilding, selectDestination, clearDestination, noOverflow, resultContains,
-    taxiFixture, journeyFixture, nearbyFixture, shuttleFixture, intercityFixture, DESTINATION, INJECTION, BASE_URL };
+    taxiFixture, journeyFixture, nearbyFixture, shuttleFixture, intercityFixture, adviceFixture, DESTINATION, INJECTION, BASE_URL };
 if (require.main === module) run().catch(error => { console.error(error.stack || error); process.exitCode = 1; });

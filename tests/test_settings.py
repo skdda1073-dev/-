@@ -93,6 +93,29 @@ class SettingsTests(unittest.TestCase):
                     load_settings(self.root, environ={name: bad})
                 self.assertNotIn(bad, str(raised.exception))
 
+    def test_environment_advice_keys_use_public_fallback_without_rewriting_env(self):
+        self.write_env("PUBLIC_DATA_KEY='fake-common-key'\n")
+        before = (self.root / ".env").read_bytes()
+        settings = load_settings(self.root, environ={})
+        self.assertEqual(settings.weather_data_key, "fake-common-key")
+        self.assertEqual(settings.airkorea_data_key, "fake-common-key")
+        self.assertEqual(settings.airkorea_station_name, "중앙로")
+        self.assertEqual((self.root / ".env").read_bytes(), before)
+        self.assertNotIn("fake-common-key", repr(settings))
+        self.assertEqual(len(settings.configured()), 3)
+
+    def test_environment_advice_keys_can_be_overridden_independently(self):
+        self.write_env("PUBLIC_DATA_KEY='fake-common'\nWEATHER_DATA_KEY='fake-file-weather'\n")
+        settings = load_settings(self.root, environ={
+            "WEATHER_DATA_KEY": "fake-env-weather", "AIRKOREA_DATA_KEY": "fake-air",
+            "AIRKOREA_STATION_NAME": "퇴계동",
+        })
+        self.assertEqual(settings.weather_data_key, "fake-env-weather")
+        self.assertEqual(settings.airkorea_data_key, "fake-air")
+        self.assertEqual(settings.airkorea_station_name, "퇴계동")
+        self.assertNotIn("fake-env-weather", repr(settings))
+        self.assertNotIn("fake-air", repr(settings))
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -26,6 +26,9 @@ class Settings:
     taxi_cache_max_entries: int = 512
     ride_room_message_rate_per_minute: int = 15
     ride_room_create_rate_per_hour: int = 3
+    weather_data_key: str = field(default="", repr=False)
+    airkorea_data_key: str = field(default="", repr=False)
+    airkorea_station_name: str = "중앙로"
 
     def configured(self):
         """존재 여부만 반환한다. 발급·권한·외부 연결 성공을 뜻하지 않는다."""
@@ -81,6 +84,9 @@ def load_settings(base_dir, environ=None):
         tmap_app_key=value("TMAP_APP_KEY"),
         public_data_key=value("PUBLIC_DATA_KEY"),
         intercity_data_key=value("INTERCITY_DATA_KEY") or value("PUBLIC_DATA_KEY"),
+        weather_data_key=value("WEATHER_DATA_KEY") or value("PUBLIC_DATA_KEY"),
+        airkorea_data_key=value("AIRKOREA_DATA_KEY") or value("PUBLIC_DATA_KEY"),
+        airkorea_station_name=value("AIRKOREA_STATION_NAME", "중앙로") or "중앙로",
         naver_map_client_id=value("NAVER_MAP_CLIENT_ID"),
         debug=debug_text in {"true", "1", "yes"}, port=port,
         flask_secret_key=value("FLASK_SECRET_KEY"),
