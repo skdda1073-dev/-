@@ -6,6 +6,7 @@ from time import monotonic
 
 from services.public_transit_client import PublicDataError
 from services.route_planner import plan_journeys
+from services.travel_recommendation import build_recommendation
 
 
 class TransitService:
@@ -14,8 +15,8 @@ class TransitService:
 
     def __init__(self, client, walking_time, topology_repository=None, shuttle_service=None):
         self.client = client
-        # 노선망은 로컬 CSV, 실시간 도착만 외부 API를 사용한다.
-        # 주입하지 않은 기존 호출자는 API 어댑터와 호환된다.
+        # 운영 시내버스는 공식 API의 ID·번호·순서를 함께 사용한다.
+        # 명시적으로 주입한 CSV는 기존 데이터 검증·셔틀 참조와 호환한다.
         self.topology = topology_repository if topology_repository is not None else client
         self.csv_mode = topology_repository is not None
         self.walking_time = walking_time
@@ -46,6 +47,76 @@ class TransitService:
         except (ValueError, TypeError, KeyError, OverflowError):
             return None
 
+    def _direct_walk(self, origin, destination):
+        """전체 도보는 실제 보행 조회로만 확인하며 실패를 추정값으로 채우지 않는다."""
+        unavailable = {"status": "unavailable", "minutes": None, "distance_m": None, "source": "tmap"}
+        points = []
+        for position in (origin, destination):
+            if not isinstance(position, dict):
+                return unavailable
+            point = self._coords({"gpslati": position.get("lat"), "gpslong": position.get("lon")})
+            if point is None:
+                return unavailable
+            points.append(point)
+        if points[0] == points[1]:
+            return {"status": "ok", "minutes": 0, "distance_m": 0, "source": "tmap"}
+        try:
+            result = self.walking_time(
+                *points[0], str(origin.get("name") or "출발지"),
+                *points[1], str(destination.get("name") or "목적지"),
+            )
+            if not isinstance(result, (list, tuple)) or len(result) != 2:
+                return unavailable
+            if any(isinstance(value, bool) or not isinstance(value, (int, float)) for value in result):
+                return unavailable
+            minutes, distance = map(float, result)
+            if not isfinite(minutes) or not isfinite(distance) or minutes <= 0 or distance <= 0:
+                return unavailable
+        except Exception:
+            return unavailable
+        return {"status": "ok", "minutes": minutes, "distance_m": distance, "source": "tmap"}
+
+    def _official_metadata(self, ids, metadata, warnings):
+        """정류소별 임시 번호 대신 같은 ID의 공식 노선상세를 기준으로 삼는다."""
+        if not ids:
+            return {}
+        details, errors = {}, []
+        try:
+            details[ids[0]] = self.topology.route_info(ids[0])
+        except PublicDataError as error:
+            if error.authorization_failed:
+                raise PublicDataError("ROUTE_PERMISSION", "공식 버스노선정보 조회가 거절되었습니다. 활용신청 승인·인증키 반영 상태를 확인하세요.") from None
+            errors.append(error)
+        remaining, other_errors = self._collect(ids[1:], self.topology.route_info)
+        details.update(remaining)
+        errors.extend(other_errors)
+        if any(error.authorization_failed for error in errors):
+            raise PublicDataError("ROUTE_PERMISSION", "공식 버스노선정보 조회가 거절되었습니다. 활용신청 승인·인증키 반영 상태를 확인하세요.")
+        result = {}
+        for route_id, detail in details.items():
+            if not isinstance(detail, dict):
+                continue
+            number = detail.get("routeno")
+            if (str(detail.get("routeid", "")).strip() != route_id
+                    or not isinstance(number, (str, int)) or isinstance(number, bool)
+                    or not str(number).strip()):
+                continue
+            number = str(number).strip()
+            if metadata.get(route_id, {}).get("route_no") not in (None, "", number):
+                warnings.append("정류소 경유정보와 노선상세의 번호가 달라 동일 노선 ID의 공식 상세번호를 사용했습니다.")
+            result[route_id] = {
+                "route_no": number, "end_node": str(detail.get("endnodenm") or ""),
+                "route_number_verified": True, "number_basis": "tago_route_info",
+                "sequence_basis": "api_direction", "direction_verified": True,
+            }
+        if not result:
+            if errors and not details:
+                raise errors[0]
+            raise PublicDataError("ROUTE_DATA", "공식 노선번호와 노선 ID를 확인하지 못해 버스를 추천하지 않았습니다.")
+        if len(result) < len(ids):
+            warnings.append("공식 노선번호를 확인하지 못한 노선은 추천에서 제외했습니다.")
+        return result
+
     def _stops(self, position, warnings):
         stops = self.topology.nearby_stops(position["lat"], position["lon"])
         unique = {}
@@ -73,7 +144,7 @@ class TransitService:
         valid = {node_id: stop for node_id, stop in by_id.items() if walks.get(node_id, (-1, -1))[0] >= 0}
         if stops and not valid:
             raise PublicDataError("WALK_UNAVAILABLE", "주변 정류장은 있지만 도보 경로를 확인하지 못했습니다. TMAP_APP_KEY 설정·호출 한도·네트워크를 확인하세요.")
-        serving, _ = self._collect(valid, self.topology.station_routes)
+        serving, _ = self._collect(valid, self.topology.station_routes) if self.csv_mode else ({}, [])
         def captured_arrivals(node_id):
             try:
                 rows = self.client.arrivals(node_id)
@@ -81,6 +152,17 @@ class TransitService:
             except PublicDataError as error:
                 return monotonic(), [], str(error)
         snapshots, _ = self._collect(valid, captured_arrivals)
+        official, official_error = {}, None
+        if not self.csv_mode:
+            arrival_ids = sorted({
+                str(row["routeid"]) for _, rows, _ in snapshots.values()
+                for row in rows if row.get("routeid")
+            })
+            if arrival_ids:
+                try:
+                    official = self._official_metadata(arrival_ids, {}, [])
+                except PublicDataError:
+                    official_error = "공식 노선번호를 확인하지 못해 도착 예정 버스를 표시하지 않았습니다. 버스노선정보 인증 설정을 확인하세요."
         now = monotonic()
         for node_id, stop in valid.items():
             lat, lon = self._coords(stop)
@@ -89,8 +171,18 @@ class TransitService:
             routes = serving.get(node_id, [])
             metadata = {str(route["routeid"]): route for route in routes if route.get("routeid")}
             timestamp, arrivals, arrival_error = snapshots.get(node_id, (now, [], "실시간 도착정보 미확인"))
+            arrival_error = official_error or arrival_error
             buses = []
             for arrival in arrivals:
+                route_id = str(arrival.get("routeid", ""))
+                canonical = official.get(route_id)
+                if not self.csv_mode:
+                    if not canonical:
+                        arrival_error = arrival_error or "공식 노선번호를 확인하지 못한 버스는 표시하지 않았습니다."
+                        continue
+                    if arrival.get("routeno") is not None and str(arrival["routeno"]).strip() != canonical["route_no"]:
+                        arrival_error = "노선번호가 다른 도착정보를 제외했습니다. 잠시 후 다시 조회하세요."
+                        continue
                 try:
                     seconds = float(arrival["arrtime"]) - (now - timestamp)
                     if not isfinite(seconds) or seconds < 0:
@@ -105,10 +197,10 @@ class TransitService:
                     status, badge, message = "hurry", "촉박", "승차 여유시간이 부족합니다. 다음 배차도 확인하세요."
                 else:
                     status, badge, message = "miss", "다음차", "도보로 도착하기 전에 지나가는 버스입니다."
-                route = metadata.get(str(arrival.get("routeid", "")), {})
+                route = metadata.get(route_id, {})
                 buses.append({
-                    "route": str(arrival.get("routeno", route.get("routeno", ""))),
-                    "destination": f"노선 참고: {route.get('endnodenm', '정보 없음')}",
+                    "route": canonical["route_no"] if canonical else str(arrival.get("routeno", route.get("routeno", ""))),
+                    "destination": f"노선 참고: {canonical.get('end_node') if canonical else route.get('endnodenm', '정보 없음')}",
                     "min_left": minutes, "walk_min": walk_min, "spare_min": spare,
                     "status_badge": badge, "status_type": status, "guide_msg": message,
                     "prev_cnt": arrival.get("arrprevstationcnt", 0), "is_recommended": False,
@@ -124,14 +216,18 @@ class TransitService:
 
     def plan(self, origin, destination):
         """두 공급자를 독립 조회한다. 셔틀 미주입 호출의 기존 계약은 유지한다."""
+        direct_walk = self._direct_walk(origin, destination)
         if self.shuttle_service is None:
-            return self._plan_city(origin, destination)
+            response = self._plan_city(origin, destination)
+            response["direct_walk"] = direct_walk
+            response["recommendation"] = build_recommendation(origin, destination, direct_walk, response.get("journeys", []))
+            return response
 
         city_status = {"status": "ok", "code": None}
         try:
             response = self._plan_city(origin, destination, journey_limit=None)
         except Exception as error:
-            safe_codes = {"CSV_DATA", "WALK_UNAVAILABLE", "ROUTE_PERMISSION", "NETWORK", "INCOMPLETE"}
+            safe_codes = {"CSV_DATA", "WALK_UNAVAILABLE", "ROUTE_PERMISSION", "ROUTE_DATA", "PUBLIC_DATA_KEY_MISSING", "NETWORK", "INCOMPLETE"}
             code = getattr(error, "code", None)
             city_status = {"status": "error", "code": code if code in safe_codes else "CITY_UNAVAILABLE"}
             response = {
@@ -139,6 +235,7 @@ class TransitService:
                 "journeys": [], "source": {"source": "unavailable"}, "search": {},
                 "warnings": ["시내버스 경로를 조회하지 못했습니다. 셔틀 조회 결과는 별도로 확인하세요."],
             }
+        response["direct_walk"] = direct_walk
 
         try:
             shuttle = self.shuttle_service.plan(origin, destination)
@@ -174,6 +271,7 @@ class TransitService:
                 "error": "시내버스 경로를 조회하지 못했고 연결 가능한 셔틀 후보도 없습니다. 공급자별 상태를 확인하세요.",
                 "code": city_status["code"],
             })
+        response["recommendation"] = build_recommendation(origin, destination, direct_walk, response.get("journeys", []))
         return response
 
     @staticmethod
@@ -218,7 +316,7 @@ class TransitService:
             warnings.extend(source.get("warnings", []))
             response["search"]["max_routes"] = source["route_count"]
         else:
-            response["source"] = {"source": "api", "sequence_basis": "api_direction"}
+            response["source"] = {"source": "api", "sequence_basis": "api_direction", "number_basis": "tago_route_info"}
         origin_stops = self._stops(origin, warnings)
         destination_stops = self._stops(destination, warnings)
         if not origin_stops or not destination_stops:
@@ -256,6 +354,9 @@ class TransitService:
         if not self.csv_mode and len(ids) > self.MAX_ROUTES:
             warnings.append(f"호출량을 제한하기 위해 {self.MAX_ROUTES}개 노선까지만 확인했습니다. 전체 최단 경로를 보장하지 않습니다.")
             ids = ids[:self.MAX_ROUTES]
+        if not self.csv_mode:
+            metadata = self._official_metadata(ids, metadata, warnings)
+            ids = [route_id for route_id in ids if route_id in metadata]
         sequences, errors = {}, []
         if ids:
             try:
@@ -276,12 +377,23 @@ class TransitService:
             if not any(sequences.values()):
                 raise errors[0]
             warnings.append("일부 노선의 정류장 순서를 조회하지 못해 해당 노선을 제외했습니다.")
-        routes = {route_id: {**metadata[route_id], "stops": rows} for route_id, rows in sequences.items() if rows}
+        routes = {}
+        for route_id, rows in sequences.items():
+            if not rows:
+                continue
+            if any(str(stop.get("routeid", route_id)).strip() != route_id for stop in rows):
+                warnings.append("조회한 노선 ID와 경유 정보가 다른 노선은 제외했습니다.")
+                continue
+            info = {**metadata[route_id], "stops": rows}
+            if not self.csv_mode and any(stop.get("updowncd") not in (0, 1, "0", "1") for stop in rows):
+                info.update(sequence_basis="api_order", direction_verified=False)
+                response["source"]["sequence_basis"] = "api_order"
+            routes[route_id] = info
         if not routes:
             warnings.append("순서를 검증할 수 있는 노선 정보가 없어 경로를 구성하지 못했습니다.")
             return response
         if not self.csv_mode and any(any(stop.get("updowncd") not in (0, 1, "0", "1") for stop in route["stops"]) for route in routes.values()):
-            warnings.append("운행 방향을 확인할 수 없는 노선 구간은 추천에서 제외합니다.")
+            warnings.append("상·하행 미제공 구간은 공식 경유 순서와 다음 정류장으로 안내하며, 회차·대기·총 소요 시간은 확정하지 않습니다.")
 
         # 접근/마지막 도보를 한 번씩만 조회하고, 배차 정보는 보행 조회 후 새로 받는다.
         walk_jobs = {}
@@ -303,7 +415,7 @@ class TransitService:
         valid_destinations = [stop for stop in destination_stops if walking_time(
             *self._coords(stop), "", destination["lat"], destination["lon"], destination["name"])[0] >= 0]
         if not valid_origins or not valid_destinations:
-            raise PublicDataError("WALK_UNAVAILABLE", "CSV 노선은 읽었지만 출발지 또는 목적지의 도보 경로를 확인하지 못했습니다. TMAP_APP_KEY 설정·호출 한도·네트워크를 확인하세요.")
+            raise PublicDataError("WALK_UNAVAILABLE", "노선은 조회했지만 출발지 또는 목적지의 도보 경로를 확인하지 못했습니다. TMAP_APP_KEY 설정·호출 한도·네트워크를 확인하세요.")
 
         def captured_arrivals(node_id):
             rows = self.client.arrivals(node_id)

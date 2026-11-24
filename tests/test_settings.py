@@ -21,7 +21,7 @@ class SettingsTests(unittest.TestCase):
     def test_no_file_and_missing_credentials_are_safe_defaults(self):
         settings = load_settings(self.root, environ={})
         self.assertEqual(settings.configured(), dict.fromkeys(
-            ["tmap_app_key", "public_data_key", "naver_map_client_id"], False))
+            ["tmap_app_key", "public_data_key", "tago_api_key", "naver_map_client_id"], False))
         self.assertFalse(settings.debug)
         self.assertEqual(settings.port, 5000)
 
@@ -38,6 +38,26 @@ class SettingsTests(unittest.TestCase):
         settings = load_settings(self.root, environ={"TMAP_APP_KEY": "env-fake", "PUBLIC_DATA_KEY": ""})
         self.assertEqual(settings.tmap_app_key, "env-fake")
         self.assertFalse(settings.configured()["public_data_key"])
+
+    def test_bus_key_is_separate_from_existing_public_and_intercity_keys(self):
+        self.write_env("PUBLIC_DATA_KEY='fake-friend-public'\nTAGO_API_KEY='fake-own-bus'\n")
+        before = self.root.joinpath('.env').read_bytes()
+        settings = load_settings(self.root, environ={})
+        self.assertEqual(settings.bus_data_key, "fake-own-bus")
+        self.assertEqual(settings.public_data_key, "fake-friend-public")
+        self.assertEqual(settings.intercity_data_key, "fake-friend-public")
+        self.assertTrue(settings.configured()["tago_api_key"])
+        self.assertNotIn("fake-", repr(settings))
+        self.assertEqual(self.root.joinpath('.env').read_bytes(), before)
+
+    def test_bus_key_preserves_legacy_fallback_and_environment_precedence(self):
+        self.write_env("PUBLIC_DATA_KEY='fake-public'\nTAGO_API_KEY='fake-file-bus'\nINTERCITY_DATA_KEY='fake-intercity'\n")
+        settings = load_settings(self.root, environ={"TAGO_API_KEY": "fake-env-bus"})
+        self.assertEqual(settings.bus_data_key, "fake-env-bus")
+        self.assertEqual(settings.intercity_data_key, "fake-intercity")
+        settings = load_settings(self.root, environ={"TAGO_API_KEY": ""})
+        self.assertEqual(settings.bus_data_key, "fake-public")
+        self.assertEqual(settings.tago_api_key, "")
 
     def test_loading_does_not_mutate_process_environment(self):
         self.write_env("TMAP_APP_KEY='file-fake'\n")
@@ -72,7 +92,7 @@ class SettingsTests(unittest.TestCase):
         self.assertEqual(settings.taxi_cache_max_entries, 512)
         self.assertEqual(settings.ride_room_message_rate_per_minute, 15)
         self.assertEqual(settings.ride_room_create_rate_per_hour, 3)
-        self.assertEqual(len(settings.configured()), 3)
+        self.assertEqual(len(settings.configured()), 4)
         self.assertFalse((self.root / "instance").exists())
 
     def test_chat_secrets_are_literal_private_and_environment_wins(self):
@@ -92,6 +112,31 @@ class SettingsTests(unittest.TestCase):
                 with self.assertRaises(ConfigurationError) as raised:
                     load_settings(self.root, environ={name: bad})
                 self.assertNotIn(bad, str(raised.exception))
+
+    def test_environment_advice_keys_use_public_fallback_without_rewriting_env(self):
+        self.write_env("PUBLIC_DATA_KEY='fake-common-key'\n")
+        before = (self.root / ".env").read_bytes()
+        settings = load_settings(self.root, environ={})
+        self.assertEqual(settings.weather_data_key, "fake-common-key")
+        self.assertEqual(settings.airkorea_data_key, "fake-common-key")
+        self.assertEqual(settings.airkorea_station_name, "중앙로")
+        self.assertEqual((self.root / ".env").read_bytes(), before)
+        self.assertNotIn("fake-common-key", repr(settings))
+        self.assertEqual(settings.configured(), {
+            "tmap_app_key": False, "public_data_key": True, "tago_api_key": True, "naver_map_client_id": False,
+        })
+
+    def test_environment_advice_keys_can_be_overridden_independently(self):
+        self.write_env("PUBLIC_DATA_KEY='fake-common'\nWEATHER_DATA_KEY='fake-file-weather'\n")
+        settings = load_settings(self.root, environ={
+            "WEATHER_DATA_KEY": "fake-env-weather", "AIRKOREA_DATA_KEY": "fake-air",
+            "AIRKOREA_STATION_NAME": "퇴계동",
+        })
+        self.assertEqual(settings.weather_data_key, "fake-env-weather")
+        self.assertEqual(settings.airkorea_data_key, "fake-air")
+        self.assertEqual(settings.airkorea_station_name, "퇴계동")
+        self.assertNotIn("fake-env-weather", repr(settings))
+        self.assertNotIn("fake-air", repr(settings))
 
 
 if __name__ == "__main__":

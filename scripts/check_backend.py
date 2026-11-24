@@ -1,7 +1,7 @@
 """키를 출력하지 않는 백엔드 준비/실제 호출 점검 도구.
 
 기본 실행은 GET /health만 로컬에서 확인한다. --live를 명시한 경우에만
-TMAP 장소 검색·보행과 공공데이터 도착 API를 호출하며 사용량이 발생한다.
+TMAP 장소 검색·보행과 TAGO 노선·정류소·도착 API를 호출하며 사용량이 발생한다.
 """
 
 import argparse
@@ -15,7 +15,8 @@ import sys
 
 SAFE_CODES = {
     "NETWORK", "INVALID_RESPONSE", "INCOMPLETE", "CSV_DATA", "ARRIVAL_KEY_MISSING",
-    "WALK_UNAVAILABLE", "POI_KEY_MISSING", "POI_NETWORK", "POI_UNAVAILABLE",
+    "WALK_UNAVAILABLE", "ROUTE_PERMISSION", "ROUTE_DATA", "PUBLIC_DATA_KEY_MISSING",
+    "POI_KEY_MISSING", "POI_NETWORK", "POI_UNAVAILABLE",
     "TMAP_KEY_MISSING", "TMAP_NETWORK", "TMAP_AUTH", "TMAP_QUOTA", "TMAP_TIMEOUT", "TMAP_HTTP", "TMAP_RESPONSE",
     "INVALID_REQUEST", "INVALID_ORIGIN", "INVALID_DESTINATION", "INVALID_CAMPUS",
     "20", "30", "31", "401", "403", "429",
@@ -65,7 +66,7 @@ def _check_arrivals(application, output):
     except Exception as error:
         code = str(getattr(error, "code", ""))
         code = code if code in SAFE_CODES else "ARRIVAL_CHECK_FAILED"
-        output(f"실시간 도착: 확인 실패 ({code}). CSV 경로 후보 조회와는 별개입니다.")
+        output(f"실시간 도착: 확인 실패 ({code}). 노선·정류소 조회와는 별개입니다.")
         return False
     count = len(rows) if isinstance(rows, list) else 0
     if count:
@@ -98,9 +99,9 @@ def run_checks(application, *, live=False, output=print):
             if not isinstance(configured, dict):
                 configured = {}
             tmap = configured.get("tmap_app_key") is True
-            public = configured.get("public_data_key") is True
+            public = configured.get("tago_api_key", configured.get("public_data_key")) is True
             naver = configured.get("naver_map_client_id") is True
-            output(f"설정: TMAP {'있음' if tmap else '없음'} / 버스 도착 {'있음' if public else '없음'} / 네이버 지도 {'있음' if naver else '없음'}")
+            output(f"설정: TMAP {'있음' if tmap else '없음'} / TAGO 버스 {'있음' if public else '없음'} / 네이버 지도 {'있음' if naver else '없음'}")
             output("설정 존재는 API 인증·연결 성공을 뜻하지 않습니다. 키 값은 출력하지 않습니다.")
             checks = health.get("checks", {})
             checks = checks if isinstance(checks, dict) else {}
@@ -111,8 +112,9 @@ def run_checks(application, *, live=False, output=print):
             count = csv_check.get("route_count") if isinstance(csv_check, dict) else None
             count_text = f" ({count}개 노선)" if isinstance(count, int) and not isinstance(count, bool) and count >= 0 else ""
             output(f"CSV: {'준비됨' if csv_ready else '확인 필요'}{count_text} / 캠퍼스 건물: {'준비됨' if campus_ready else '확인 필요'}")
-            if not tmap or not csv_ready or not campus_ready:
-                output("준비 미완료: .env의 TMAP_APP_KEY와 로컬 데이터 설정을 확인한 뒤 다시 실행하세요.")
+            official_mode = health.get("routing_mode") == "tago_route_candidates"
+            if not tmap or not csv_ready or not campus_ready or (official_mode and not public):
+                output("준비 미완료: .env의 TMAP_APP_KEY·TAGO_API_KEY(또는 기존 PUBLIC_DATA_KEY)와 로컬 데이터 설정을 확인한 뒤 다시 실행하세요.")
                 return 2
             if not public:
                 output("버스 도착 키가 없어 실시간 자료는 미확인입니다. CSV 경로 후보는 조회할 수 있습니다.")
@@ -164,11 +166,16 @@ def run_checks(application, *, live=False, output=print):
             if not journeys:
                 output("경로 조회 응답은 정상이나 검색 범위 내 후보 없음 (NO_JOURNEYS). 경로 성공 검증은 미완료입니다.")
                 return 3
-            output(f"경로 조회: CSV 기반 후보 {len(journeys)}개 확인 (도보 조회 포함).")
+            providers = body.get("providers", {}) if isinstance(body, dict) else {}
+            city_status = providers.get("city_bus", {}) if isinstance(providers, dict) else {}
+            if isinstance(city_status, dict) and city_status.get("status") == "error":
+                output(f"시내버스 경로 조회 실패: {_error_code(city_status, 502)}. 다른 교통수단 결과만 확인됐습니다.")
+                return 3
+            output(f"경로 조회: 후보 {len(journeys)}개 확인 (도보 조회 포함).")
             if not arrivals_ok:
-                output("부분 성공: 장소 검색·도보·CSV 후보는 확인했지만 공공데이터 도착 API 점검은 실패했습니다.")
+                output("부분 성공: 장소 검색·도보·경로 후보는 확인했지만 공공데이터 도착 API 점검은 실패했습니다.")
                 return 4
-            output("점검 완료. CSV의 상·하행·회차·시간표 미확인과 지도 화면 확인은 별도입니다.")
+            output("점검 완료. 실제 승차 방향·회차·시간표와 지도 화면 확인은 별도입니다.")
             return 0
     finally:
         logger.disabled = was_disabled

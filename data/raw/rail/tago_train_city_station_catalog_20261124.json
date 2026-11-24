@@ -1,0 +1,1564 @@
+{
+  "retrieved_at": "2026-11-24T19:33:06+09:00",
+  "source": "https://www.data.go.kr/data/15098552/openapi.do",
+  "cities": [
+    {
+      "citycode": "11",
+      "cityname": "서울특별시"
+    },
+    {
+      "citycode": "12",
+      "cityname": "세종특별자치시"
+    },
+    {
+      "citycode": "21",
+      "cityname": "부산광역시"
+    },
+    {
+      "citycode": "22",
+      "cityname": "대구광역시"
+    },
+    {
+      "citycode": "23",
+      "cityname": "인천광역시"
+    },
+    {
+      "citycode": "24",
+      "cityname": "광주광역시"
+    },
+    {
+      "citycode": "25",
+      "cityname": "대전광역시"
+    },
+    {
+      "citycode": "26",
+      "cityname": "울산광역시"
+    },
+    {
+      "citycode": "31",
+      "cityname": "경기도"
+    },
+    {
+      "citycode": "32",
+      "cityname": "강원특별자치도"
+    },
+    {
+      "citycode": "33",
+      "cityname": "충청북도"
+    },
+    {
+      "citycode": "34",
+      "cityname": "충청남도"
+    },
+    {
+      "citycode": "35",
+      "cityname": "전북특별자치도"
+    },
+    {
+      "citycode": "36",
+      "cityname": "전라남도"
+    },
+    {
+      "citycode": "37",
+      "cityname": "경상북도"
+    },
+    {
+      "citycode": "38",
+      "cityname": "경상남도"
+    }
+  ],
+  "stations_by_city": [
+    {
+      "citycode": "11",
+      "status": "downloaded",
+      "stations": [
+        {
+          "nodeid": "NAT010000",
+          "nodename": "서울"
+        },
+        {
+          "nodeid": "NAT010091",
+          "nodename": "영등포"
+        },
+        {
+          "nodeid": "NAT130126",
+          "nodename": "청량리"
+        },
+        {
+          "nodeid": "NAT010032",
+          "nodename": "용산"
+        },
+        {
+          "nodeid": "NAT130182",
+          "nodename": "광운대"
+        },
+        {
+          "nodeid": "NAT010058",
+          "nodename": "노량진"
+        },
+        {
+          "nodeid": "NATH30000",
+          "nodename": "수서"
+        },
+        {
+          "nodeid": "NAT020040",
+          "nodename": "상봉"
+        },
+        {
+          "nodeid": "NAT010106",
+          "nodename": "신도림"
+        },
+        {
+          "nodeid": "NAT130036",
+          "nodename": "서빙고"
+        },
+        {
+          "nodeid": "NAT130104",
+          "nodename": "왕십리"
+        },
+        {
+          "nodeid": "NAT130070",
+          "nodename": "옥수"
+        }
+      ]
+    },
+    {
+      "citycode": "12",
+      "status": "downloaded",
+      "stations": [
+        {
+          "nodeid": "NAT011154",
+          "nodename": "전의"
+        },
+        {
+          "nodeid": "NAT011298",
+          "nodename": "조치원"
+        },
+        {
+          "nodeid": "NAT011403",
+          "nodename": "부강"
+        },
+        {
+          "nodeid": "NAT011079",
+          "nodename": "소정리"
+        }
+      ]
+    },
+    {
+      "citycode": "21",
+      "status": "downloaded",
+      "stations": [
+        {
+          "nodeid": "NAT014281",
+          "nodename": "구포"
+        },
+        {
+          "nodeid": "NAT014445",
+          "nodename": "부산"
+        },
+        {
+          "nodeid": "NAT750412",
+          "nodename": "좌천"
+        },
+        {
+          "nodeid": "NAT750189",
+          "nodename": "신해운대"
+        },
+        {
+          "nodeid": "NAT014331",
+          "nodename": "사상"
+        },
+        {
+          "nodeid": "NAT750329",
+          "nodename": "기장"
+        },
+        {
+          "nodeid": "NAT750254",
+          "nodename": "송정"
+        },
+        {
+          "nodeid": "NAT750106",
+          "nodename": "동래"
+        },
+        {
+          "nodeid": "NAT750046",
+          "nodename": "부전"
+        },
+        {
+          "nodeid": "NAT014244",
+          "nodename": "화명"
+        },
+        {
+          "nodeid": "NAT750161",
+          "nodename": "센텀"
+        }
+      ]
+    },
+    {
+      "citycode": "22",
+      "status": "downloaded",
+      "stations": [
+        {
+          "nodeid": "NAT013271",
+          "nodename": "동대구"
+        },
+        {
+          "nodeid": "NAT013239",
+          "nodename": "대구"
+        },
+        {
+          "nodeid": "NAT023127",
+          "nodename": "화본"
+        },
+        {
+          "nodeid": "NAT013189",
+          "nodename": "서대구"
+        },
+        {
+          "nodeid": "NAT023073",
+          "nodename": "군위"
+        }
+      ]
+    },
+    {
+      "citycode": "23",
+      "status": "downloaded",
+      "stations": [
+        {
+          "nodeid": "NAT060231",
+          "nodename": "주안"
+        },
+        {
+          "nodeid": "NATC10325",
+          "nodename": "검암"
+        },
+        {
+          "nodeid": "NATC10580",
+          "nodename": "인천공항T1"
+        },
+        {
+          "nodeid": "NATC30058",
+          "nodename": "인천공항T2"
+        }
+      ]
+    },
+    {
+      "citycode": "24",
+      "status": "downloaded",
+      "stations": [
+        {
+          "nodeid": "NAT031857",
+          "nodename": "광주송정"
+        },
+        {
+          "nodeid": "NAT883012",
+          "nodename": "광주"
+        },
+        {
+          "nodeid": "NAT883086",
+          "nodename": "극락강"
+        },
+        {
+          "nodeid": "NAT882904",
+          "nodename": "효천"
+        },
+        {
+          "nodeid": "NAT882936",
+          "nodename": "서광주"
+        }
+      ]
+    },
+    {
+      "citycode": "25",
+      "status": "downloaded",
+      "stations": [
+        {
+          "nodeid": "NAT011524",
+          "nodename": "신탄진"
+        },
+        {
+          "nodeid": "NAT011668",
+          "nodename": "대전"
+        },
+        {
+          "nodeid": "NAT030057",
+          "nodename": "서대전"
+        },
+        {
+          "nodeid": "NAT030173",
+          "nodename": "흑석리"
+        }
+      ]
+    },
+    {
+      "citycode": "26",
+      "status": "downloaded",
+      "stations": [
+        {
+          "nodeid": "NAT750726",
+          "nodename": "태화강"
+        },
+        {
+          "nodeid": "NAT750560",
+          "nodename": "남창"
+        },
+        {
+          "nodeid": "NAT750653",
+          "nodename": "덕하"
+        },
+        {
+          "nodeid": "NAT750760",
+          "nodename": "효문"
+        },
+        {
+          "nodeid": "NATH13717",
+          "nodename": "울산"
+        },
+        {
+          "nodeid": "NAT750781",
+          "nodename": "북울산"
+        }
+      ]
+    },
+    {
+      "citycode": "31",
+      "status": "downloaded",
+      "stations": [
+        {
+          "nodeid": "NAT010415",
+          "nodename": "수원"
+        },
+        {
+          "nodeid": "NAT010754",
+          "nodename": "평택"
+        },
+        {
+          "nodeid": "NAT020524",
+          "nodename": "양평"
+        },
+        {
+          "nodeid": "NAT010239",
+          "nodename": "안양"
+        },
+        {
+          "nodeid": "NAT010570",
+          "nodename": "오산"
+        },
+        {
+          "nodeid": "NAT140098",
+          "nodename": "퇴계원"
+        },
+        {
+          "nodeid": "NAT140277",
+          "nodename": "마석"
+        },
+        {
+          "nodeid": "NAT140362",
+          "nodename": "대성리"
+        },
+        {
+          "nodeid": "NAT140436",
+          "nodename": "청평"
+        },
+        {
+          "nodeid": "NAT140576",
+          "nodename": "가평"
+        },
+        {
+          "nodeid": "NAT020178",
+          "nodename": "덕소"
+        },
+        {
+          "nodeid": "NAT020641",
+          "nodename": "용문"
+        },
+        {
+          "nodeid": "NAT020677",
+          "nodename": "지평"
+        },
+        {
+          "nodeid": "NAT020845",
+          "nodename": "양동"
+        },
+        {
+          "nodeid": "NAT020760",
+          "nodename": "일신"
+        },
+        {
+          "nodeid": "NAT010670",
+          "nodename": "서정리"
+        },
+        {
+          "nodeid": "NAT020803",
+          "nodename": "매곡"
+        },
+        {
+          "nodeid": "NAT020884",
+          "nodename": "삼산"
+        },
+        {
+          "nodeid": "NAT140133",
+          "nodename": "사릉"
+        },
+        {
+          "nodeid": "NAT140214",
+          "nodename": "평내호평"
+        },
+        {
+          "nodeid": "NAT130312",
+          "nodename": "의정부"
+        },
+        {
+          "nodeid": "NAT130888",
+          "nodename": "신탄리"
+        },
+        {
+          "nodeid": "NAT020471",
+          "nodename": "아신"
+        },
+        {
+          "nodeid": "NAT020717",
+          "nodename": "석불"
+        },
+        {
+          "nodeid": "NAT110147",
+          "nodename": "행신"
+        },
+        {
+          "nodeid": "NAT110165",
+          "nodename": "능곡"
+        },
+        {
+          "nodeid": "NAT110180",
+          "nodename": "대곡"
+        },
+        {
+          "nodeid": "NAT110249",
+          "nodename": "일산"
+        },
+        {
+          "nodeid": "NAT110265",
+          "nodename": "탄현"
+        },
+        {
+          "nodeid": "NAT110407",
+          "nodename": "파주"
+        },
+        {
+          "nodeid": "NAT110460",
+          "nodename": "문산"
+        },
+        {
+          "nodeid": "NAT110520",
+          "nodename": "임진강"
+        },
+        {
+          "nodeid": "NAT110557",
+          "nodename": "도라산"
+        },
+        {
+          "nodeid": "NAT130531",
+          "nodename": "동두천"
+        },
+        {
+          "nodeid": "NAT130556",
+          "nodename": "소요산"
+        },
+        {
+          "nodeid": "NAT130597",
+          "nodename": "초성리"
+        },
+        {
+          "nodeid": "NAT130627",
+          "nodename": "한탄강"
+        },
+        {
+          "nodeid": "NAT130652",
+          "nodename": "전곡"
+        },
+        {
+          "nodeid": "NAT130738",
+          "nodename": "연천"
+        },
+        {
+          "nodeid": "NAT130774",
+          "nodename": "신망리"
+        },
+        {
+          "nodeid": "NAT130844",
+          "nodename": "대광리"
+        },
+        {
+          "nodeid": "NAT150057",
+          "nodename": "원릉"
+        },
+        {
+          "nodeid": "NAT150167",
+          "nodename": "일영"
+        },
+        {
+          "nodeid": "NAT150191",
+          "nodename": "장흥"
+        },
+        {
+          "nodeid": "NAT150231",
+          "nodename": "송추"
+        },
+        {
+          "nodeid": "NATH10219",
+          "nodename": "광명"
+        },
+        {
+          "nodeid": "NAT250428",
+          "nodename": "부발"
+        },
+        {
+          "nodeid": "NAT280090",
+          "nodename": "가남"
+        },
+        {
+          "nodeid": "NAT250007",
+          "nodename": "판교(경기)"
+        },
+        {
+          "nodeid": "NAT460000",
+          "nodename": "서화성"
+        },
+        {
+          "nodeid": "NAT460073",
+          "nodename": "화성시청"
+        },
+        {
+          "nodeid": "NAT460187",
+          "nodename": "향남"
+        },
+        {
+          "nodeid": "NAT460378",
+          "nodename": "안중"
+        },
+        {
+          "nodeid": "NATH30326",
+          "nodename": "동탄"
+        },
+        {
+          "nodeid": "NAT110497",
+          "nodename": "운천"
+        },
+        {
+          "nodeid": "NAT060121",
+          "nodename": "부천"
+        }
+      ]
+    },
+    {
+      "citycode": "32",
+      "status": "downloaded",
+      "stations": [
+        {
+          "nodeid": "NAT601605",
+          "nodename": "망상"
+        },
+        {
+          "nodeid": "NAT600870",
+          "nodename": "철암"
+        },
+        {
+          "nodeid": "NAT601122",
+          "nodename": "도계"
+        },
+        {
+          "nodeid": "NAT601485",
+          "nodename": "동해"
+        },
+        {
+          "nodeid": "NAT601545",
+          "nodename": "묵호"
+        },
+        {
+          "nodeid": "NAT601936",
+          "nodename": "강릉"
+        },
+        {
+          "nodeid": "NAT650177",
+          "nodename": "쌍룡"
+        },
+        {
+          "nodeid": "NAT650341",
+          "nodename": "영월"
+        },
+        {
+          "nodeid": "NAT650515",
+          "nodename": "예미"
+        },
+        {
+          "nodeid": "NAT650722",
+          "nodename": "민둥산"
+        },
+        {
+          "nodeid": "NAT650782",
+          "nodename": "사북"
+        },
+        {
+          "nodeid": "NAT650828",
+          "nodename": "고한"
+        },
+        {
+          "nodeid": "NAT650978",
+          "nodename": "태백"
+        },
+        {
+          "nodeid": "NAT140701",
+          "nodename": "강촌"
+        },
+        {
+          "nodeid": "NAT140840",
+          "nodename": "남춘천"
+        },
+        {
+          "nodeid": "NAT140873",
+          "nodename": "춘천"
+        },
+        {
+          "nodeid": "NAT020986",
+          "nodename": "동화"
+        },
+        {
+          "nodeid": "NAT021357",
+          "nodename": "신림"
+        },
+        {
+          "nodeid": "NAT650253",
+          "nodename": "연당"
+        },
+        {
+          "nodeid": "NAT650567",
+          "nodename": "함백"
+        },
+        {
+          "nodeid": "NAT610064",
+          "nodename": "별어곡"
+        },
+        {
+          "nodeid": "NAT610137",
+          "nodename": "선평"
+        },
+        {
+          "nodeid": "NAT610226",
+          "nodename": "정선"
+        },
+        {
+          "nodeid": "NAT610326",
+          "nodename": "나전"
+        },
+        {
+          "nodeid": "NAT610387",
+          "nodename": "아우라지"
+        },
+        {
+          "nodeid": "NAT140787",
+          "nodename": "김유정"
+        },
+        {
+          "nodeid": "NAT140681",
+          "nodename": "백양리"
+        },
+        {
+          "nodeid": "NAT601774",
+          "nodename": "정동진"
+        },
+        {
+          "nodeid": "NAT601275",
+          "nodename": "신기"
+        },
+        {
+          "nodeid": "NAT630064",
+          "nodename": "추암"
+        },
+        {
+          "nodeid": "NAT630078",
+          "nodename": "삼척해변"
+        },
+        {
+          "nodeid": "NAT021033",
+          "nodename": "만종"
+        },
+        {
+          "nodeid": "NAT021175",
+          "nodename": "반곡"
+        },
+        {
+          "nodeid": "NAT600830",
+          "nodename": "동점"
+        },
+        {
+          "nodeid": "NAT630129",
+          "nodename": "삼척"
+        },
+        {
+          "nodeid": "NAT650918",
+          "nodename": "추전"
+        },
+        {
+          "nodeid": "NAT651053",
+          "nodename": "동백산"
+        },
+        {
+          "nodeid": "NATN10230",
+          "nodename": "횡성"
+        },
+        {
+          "nodeid": "NATN10428",
+          "nodename": "둔내"
+        },
+        {
+          "nodeid": "NATN10625",
+          "nodename": "평창"
+        },
+        {
+          "nodeid": "NATN10787",
+          "nodename": "진부"
+        },
+        {
+          "nodeid": "NAT020864",
+          "nodename": "서원주"
+        },
+        {
+          "nodeid": "NAT020947",
+          "nodename": "원주"
+        },
+        {
+          "nodeid": "NAT752946",
+          "nodename": "근덕"
+        },
+        {
+          "nodeid": "NAT752850",
+          "nodename": "임원"
+        },
+        {
+          "nodeid": "NAT752787",
+          "nodename": "옥원"
+        },
+        {
+          "nodeid": "NAT601602",
+          "nodename": "망상해변"
+        },
+        {
+          "nodeid": "NAT130944",
+          "nodename": "백마고지"
+        }
+      ]
+    },
+    {
+      "citycode": "33",
+      "status": "downloaded",
+      "stations": [
+        {
+          "nodeid": "NAT012124",
+          "nodename": "영동"
+        },
+        {
+          "nodeid": "NAT011833",
+          "nodename": "옥천"
+        },
+        {
+          "nodeid": "NAT050114",
+          "nodename": "청주"
+        },
+        {
+          "nodeid": "NAT050366",
+          "nodename": "증평"
+        },
+        {
+          "nodeid": "NAT050596",
+          "nodename": "음성"
+        },
+        {
+          "nodeid": "NAT050827",
+          "nodename": "충주"
+        },
+        {
+          "nodeid": "NAT050881",
+          "nodename": "목행"
+        },
+        {
+          "nodeid": "NAT021549",
+          "nodename": "제천"
+        },
+        {
+          "nodeid": "NAT021723",
+          "nodename": "도담"
+        },
+        {
+          "nodeid": "NAT021784",
+          "nodename": "단양"
+        },
+        {
+          "nodeid": "NAT012270",
+          "nodename": "황간"
+        },
+        {
+          "nodeid": "NAT012355",
+          "nodename": "추풍령"
+        },
+        {
+          "nodeid": "NAT050215",
+          "nodename": "오근장"
+        },
+        {
+          "nodeid": "NAT050719",
+          "nodename": "주덕"
+        },
+        {
+          "nodeid": "NAT021478",
+          "nodename": "봉양"
+        },
+        {
+          "nodeid": "NAT051006",
+          "nodename": "삼탄"
+        },
+        {
+          "nodeid": "NAT012016",
+          "nodename": "심천"
+        },
+        {
+          "nodeid": "NAT050244",
+          "nodename": "청주공항"
+        },
+        {
+          "nodeid": "NAT050044",
+          "nodename": "오송"
+        },
+        {
+          "nodeid": "NAT011916",
+          "nodename": "이원"
+        },
+        {
+          "nodeid": "NAT011972",
+          "nodename": "지탄"
+        },
+        {
+          "nodeid": "NAT012054",
+          "nodename": "각계"
+        },
+        {
+          "nodeid": "NAT650050",
+          "nodename": "장락"
+        },
+        {
+          "nodeid": "NAT280212",
+          "nodename": "감곡장호원"
+        },
+        {
+          "nodeid": "NAT280358",
+          "nodename": "앙성온천"
+        },
+        {
+          "nodeid": "NAT280666",
+          "nodename": "살미"
+        },
+        {
+          "nodeid": "NAT280751",
+          "nodename": "수안보온천"
+        },
+        {
+          "nodeid": "NAT280814",
+          "nodename": "연풍"
+        }
+      ]
+    },
+    {
+      "citycode": "34",
+      "status": "downloaded",
+      "stations": [
+        {
+          "nodeid": "NAT010971",
+          "nodename": "천안"
+        },
+        {
+          "nodeid": "NAT030396",
+          "nodename": "연산"
+        },
+        {
+          "nodeid": "NAT030508",
+          "nodename": "논산"
+        },
+        {
+          "nodeid": "NAT030607",
+          "nodename": "강경"
+        },
+        {
+          "nodeid": "NAT080147",
+          "nodename": "온양온천"
+        },
+        {
+          "nodeid": "NAT080309",
+          "nodename": "도고온천"
+        },
+        {
+          "nodeid": "NAT080353",
+          "nodename": "신례원"
+        },
+        {
+          "nodeid": "NAT080402",
+          "nodename": "예산"
+        },
+        {
+          "nodeid": "NAT080492",
+          "nodename": "삽교"
+        },
+        {
+          "nodeid": "NAT080622",
+          "nodename": "홍성"
+        },
+        {
+          "nodeid": "NAT080749",
+          "nodename": "광천"
+        },
+        {
+          "nodeid": "NAT080952",
+          "nodename": "대천"
+        },
+        {
+          "nodeid": "NAT081240",
+          "nodename": "판교(충남)"
+        },
+        {
+          "nodeid": "NAT081343",
+          "nodename": "서천"
+        },
+        {
+          "nodeid": "NAT030254",
+          "nodename": "계룡"
+        },
+        {
+          "nodeid": "NAT340090",
+          "nodename": "연무대"
+        },
+        {
+          "nodeid": "NAT010848",
+          "nodename": "성환"
+        },
+        {
+          "nodeid": "NAT080827",
+          "nodename": "청소"
+        },
+        {
+          "nodeid": "NAT080216",
+          "nodename": "신창"
+        },
+        {
+          "nodeid": "NATH10960",
+          "nodename": "천안아산"
+        },
+        {
+          "nodeid": "NAT080045",
+          "nodename": "아산"
+        },
+        {
+          "nodeid": "NAT081318",
+          "nodename": "장항"
+        },
+        {
+          "nodeid": "NATH20438",
+          "nodename": "공주"
+        },
+        {
+          "nodeid": "NAT081099",
+          "nodename": "웅천"
+        },
+        {
+          "nodeid": "NAT460553",
+          "nodename": "인주"
+        },
+        {
+          "nodeid": "NAT460641",
+          "nodename": "합덕"
+        }
+      ]
+    },
+    {
+      "citycode": "35",
+      "status": "downloaded",
+      "stations": [
+        {
+          "nodeid": "NAT030718",
+          "nodename": "함열"
+        },
+        {
+          "nodeid": "NAT030879",
+          "nodename": "익산"
+        },
+        {
+          "nodeid": "NAT031056",
+          "nodename": "김제"
+        },
+        {
+          "nodeid": "NAT031179",
+          "nodename": "신태인"
+        },
+        {
+          "nodeid": "NAT031314",
+          "nodename": "정읍"
+        },
+        {
+          "nodeid": "NAT040133",
+          "nodename": "삼례"
+        },
+        {
+          "nodeid": "NAT040257",
+          "nodename": "전주"
+        },
+        {
+          "nodeid": "NAT040536",
+          "nodename": "임실"
+        },
+        {
+          "nodeid": "NAT040667",
+          "nodename": "오수"
+        },
+        {
+          "nodeid": "NAT040868",
+          "nodename": "남원"
+        },
+        {
+          "nodeid": "NAT030667",
+          "nodename": "용동"
+        },
+        {
+          "nodeid": "NAT040173",
+          "nodename": "동산"
+        },
+        {
+          "nodeid": "NAT040352",
+          "nodename": "신리"
+        },
+        {
+          "nodeid": "NAT040496",
+          "nodename": "관촌"
+        },
+        {
+          "nodeid": "NAT081388",
+          "nodename": "군산"
+        },
+        {
+          "nodeid": "NAT320131",
+          "nodename": "대야"
+        }
+      ]
+    },
+    {
+      "citycode": "36",
+      "status": "downloaded",
+      "stations": [
+        {
+          "nodeid": "NAT031486",
+          "nodename": "백양사"
+        },
+        {
+          "nodeid": "NAT031638",
+          "nodename": "장성"
+        },
+        {
+          "nodeid": "NAT031998",
+          "nodename": "나주"
+        },
+        {
+          "nodeid": "NAT032212",
+          "nodename": "함평"
+        },
+        {
+          "nodeid": "NAT032422",
+          "nodename": "일로"
+        },
+        {
+          "nodeid": "NAT032563",
+          "nodename": "목포"
+        },
+        {
+          "nodeid": "NAT041072",
+          "nodename": "곡성"
+        },
+        {
+          "nodeid": "NAT041285",
+          "nodename": "구례구"
+        },
+        {
+          "nodeid": "NAT041595",
+          "nodename": "순천"
+        },
+        {
+          "nodeid": "NAT041993",
+          "nodename": "여수EXPO"
+        },
+        {
+          "nodeid": "NAT882755",
+          "nodename": "화순"
+        },
+        {
+          "nodeid": "NAT882544",
+          "nodename": "이양"
+        },
+        {
+          "nodeid": "NAT881538",
+          "nodename": "진상"
+        },
+        {
+          "nodeid": "NAT881584",
+          "nodename": "옥곡"
+        },
+        {
+          "nodeid": "NAT881708",
+          "nodename": "광양"
+        },
+        {
+          "nodeid": "NAT882328",
+          "nodename": "보성"
+        },
+        {
+          "nodeid": "NAT882194",
+          "nodename": "예당"
+        },
+        {
+          "nodeid": "NAT882141",
+          "nodename": "조성"
+        },
+        {
+          "nodeid": "NAT882034",
+          "nodename": "벌교"
+        },
+        {
+          "nodeid": "NAT882666",
+          "nodename": "능주"
+        },
+        {
+          "nodeid": "NAT041866",
+          "nodename": "여천"
+        },
+        {
+          "nodeid": "NAT882237",
+          "nodename": "득량"
+        },
+        {
+          "nodeid": "NAT032313",
+          "nodename": "몽탄"
+        },
+        {
+          "nodeid": "NAT882416",
+          "nodename": "명봉"
+        },
+        {
+          "nodeid": "NAT032273",
+          "nodename": "무안"
+        },
+        {
+          "nodeid": "NAT032099",
+          "nodename": "다시"
+        },
+        {
+          "nodeid": "NAT032489",
+          "nodename": "임성리"
+        },
+        {
+          "nodeid": "NAT041710",
+          "nodename": "율촌"
+        },
+        {
+          "nodeid": "NAT882847",
+          "nodename": "남평"
+        },
+        {
+          "nodeid": "NAT470133",
+          "nodename": "영암"
+        },
+        {
+          "nodeid": "NAT470312",
+          "nodename": "해남"
+        },
+        {
+          "nodeid": "NAT470446",
+          "nodename": "강진"
+        },
+        {
+          "nodeid": "NAT470584",
+          "nodename": "전남장흥"
+        },
+        {
+          "nodeid": "NAT470718",
+          "nodename": "장동"
+        },
+        {
+          "nodeid": "NAT470804",
+          "nodename": "신보성"
+        }
+      ]
+    },
+    {
+      "citycode": "37",
+      "status": "downloaded",
+      "stations": [
+        {
+          "nodeid": "NAT012546",
+          "nodename": "김천"
+        },
+        {
+          "nodeid": "NAT012775",
+          "nodename": "구미"
+        },
+        {
+          "nodeid": "NAT012968",
+          "nodename": "왜관"
+        },
+        {
+          "nodeid": "NAT013629",
+          "nodename": "청도"
+        },
+        {
+          "nodeid": "NAT013395",
+          "nodename": "경산"
+        },
+        {
+          "nodeid": "NAT022053",
+          "nodename": "풍기"
+        },
+        {
+          "nodeid": "NAT022188",
+          "nodename": "영주"
+        },
+        {
+          "nodeid": "NAT022844",
+          "nodename": "의성"
+        },
+        {
+          "nodeid": "NAT022961",
+          "nodename": "탑리"
+        },
+        {
+          "nodeid": "NAT023449",
+          "nodename": "영천"
+        },
+        {
+          "nodeid": "NAT600147",
+          "nodename": "봉화"
+        },
+        {
+          "nodeid": "NAT600379",
+          "nodename": "춘양"
+        },
+        {
+          "nodeid": "NAT600527",
+          "nodename": "현동"
+        },
+        {
+          "nodeid": "NAT600768",
+          "nodename": "석포"
+        },
+        {
+          "nodeid": "NAT300200",
+          "nodename": "옥산"
+        },
+        {
+          "nodeid": "NAT300271",
+          "nodename": "청리"
+        },
+        {
+          "nodeid": "NAT300360",
+          "nodename": "상주"
+        },
+        {
+          "nodeid": "NAT300558",
+          "nodename": "함창"
+        },
+        {
+          "nodeid": "NAT300600",
+          "nodename": "점촌"
+        },
+        {
+          "nodeid": "NAT300669",
+          "nodename": "용궁"
+        },
+        {
+          "nodeid": "NAT300733",
+          "nodename": "개포"
+        },
+        {
+          "nodeid": "NAT600692",
+          "nodename": "승부"
+        },
+        {
+          "nodeid": "NAT300850",
+          "nodename": "예천"
+        },
+        {
+          "nodeid": "NAT600476",
+          "nodename": "임기"
+        },
+        {
+          "nodeid": "NAT600593",
+          "nodename": "분천"
+        },
+        {
+          "nodeid": "NAT023279",
+          "nodename": "신녕"
+        },
+        {
+          "nodeid": "NAT751296",
+          "nodename": "구안강"
+        },
+        {
+          "nodeid": "NAT751238",
+          "nodename": "사방"
+        },
+        {
+          "nodeid": "NAT750933",
+          "nodename": "입실"
+        },
+        {
+          "nodeid": "NAT023424",
+          "nodename": "북영천"
+        },
+        {
+          "nodeid": "NAT013067",
+          "nodename": "신동"
+        },
+        {
+          "nodeid": "NAT012903",
+          "nodename": "약목"
+        },
+        {
+          "nodeid": "NAT830200",
+          "nodename": "하양"
+        },
+        {
+          "nodeid": "NAT012700",
+          "nodename": "아포"
+        },
+        {
+          "nodeid": "NAT012821",
+          "nodename": "사곡"
+        },
+        {
+          "nodeid": "NAT013542",
+          "nodename": "남성현"
+        },
+        {
+          "nodeid": "NAT023601",
+          "nodename": "아화"
+        },
+        {
+          "nodeid": "NAT023821",
+          "nodename": "구서경주"
+        },
+        {
+          "nodeid": "NAT600257",
+          "nodename": "봉성"
+        },
+        {
+          "nodeid": "NAT751325",
+          "nodename": "양자동"
+        },
+        {
+          "nodeid": "NAT751354",
+          "nodename": "부조"
+        },
+        {
+          "nodeid": "NATH12383",
+          "nodename": "김천구미"
+        },
+        {
+          "nodeid": "NATH13421",
+          "nodename": "경주"
+        },
+        {
+          "nodeid": "NAT8B0351",
+          "nodename": "포항"
+        },
+        {
+          "nodeid": "NAT8B0504",
+          "nodename": "월포"
+        },
+        {
+          "nodeid": "NAT8B0595",
+          "nodename": "장사"
+        },
+        {
+          "nodeid": "NAT8B0671",
+          "nodename": "강구"
+        },
+        {
+          "nodeid": "NAT8B0737",
+          "nodename": "영덕"
+        },
+        {
+          "nodeid": "NAT022558",
+          "nodename": "안동"
+        },
+        {
+          "nodeid": "NAT8B0082",
+          "nodename": "서경주"
+        },
+        {
+          "nodeid": "NAT8B0190",
+          "nodename": "안강"
+        },
+        {
+          "nodeid": "NAT280927",
+          "nodename": "문경"
+        },
+        {
+          "nodeid": "NAT752682",
+          "nodename": "흥부"
+        },
+        {
+          "nodeid": "NAT752618",
+          "nodename": "죽변"
+        },
+        {
+          "nodeid": "NAT752540",
+          "nodename": "울진"
+        },
+        {
+          "nodeid": "NAT752428",
+          "nodename": "매화"
+        },
+        {
+          "nodeid": "NAT752319",
+          "nodename": "기성"
+        },
+        {
+          "nodeid": "NAT752245",
+          "nodename": "평해"
+        },
+        {
+          "nodeid": "NAT752196",
+          "nodename": "후포"
+        },
+        {
+          "nodeid": "NAT752102",
+          "nodename": "고래불"
+        },
+        {
+          "nodeid": "NAT752029",
+          "nodename": "영해"
+        },
+        {
+          "nodeid": "NAT600635",
+          "nodename": "비동"
+        },
+        {
+          "nodeid": "NAT600655",
+          "nodename": "양원"
+        }
+      ]
+    },
+    {
+      "citycode": "38",
+      "status": "downloaded",
+      "stations": [
+        {
+          "nodeid": "NAT013841",
+          "nodename": "밀양"
+        },
+        {
+          "nodeid": "NAT013967",
+          "nodename": "삼랑진"
+        },
+        {
+          "nodeid": "NAT880177",
+          "nodename": "진영"
+        },
+        {
+          "nodeid": "NAT880310",
+          "nodename": "창원"
+        },
+        {
+          "nodeid": "NAT880345",
+          "nodename": "마산"
+        },
+        {
+          "nodeid": "NAT880520",
+          "nodename": "함안"
+        },
+        {
+          "nodeid": "NAT880608",
+          "nodename": "군북"
+        },
+        {
+          "nodeid": "NAT880766",
+          "nodename": "반성"
+        },
+        {
+          "nodeid": "NAT881014",
+          "nodename": "진주"
+        },
+        {
+          "nodeid": "NAT881269",
+          "nodename": "북천"
+        },
+        {
+          "nodeid": "NAT881460",
+          "nodename": "하동"
+        },
+        {
+          "nodeid": "NAT880099",
+          "nodename": "한림정"
+        },
+        {
+          "nodeid": "NAT880702",
+          "nodename": "평촌"
+        },
+        {
+          "nodeid": "NAT881386",
+          "nodename": "횡천"
+        },
+        {
+          "nodeid": "NAT810195",
+          "nodename": "진해"
+        },
+        {
+          "nodeid": "NAT014058",
+          "nodename": "원동"
+        },
+        {
+          "nodeid": "NAT014150",
+          "nodename": "물금"
+        },
+        {
+          "nodeid": "NAT880408",
+          "nodename": "중리"
+        },
+        {
+          "nodeid": "NAT013747",
+          "nodename": "상동"
+        },
+        {
+          "nodeid": "NAT810048",
+          "nodename": "신창원"
+        },
+        {
+          "nodeid": "NAT880644",
+          "nodename": "원북"
+        },
+        {
+          "nodeid": "NAT880825",
+          "nodename": "진성"
+        },
+        {
+          "nodeid": "NAT881168",
+          "nodename": "완사"
+        },
+        {
+          "nodeid": "NAT881323",
+          "nodename": "양보"
+        },
+        {
+          "nodeid": "NAT880179",
+          "nodename": "진례"
+        },
+        {
+          "nodeid": "NAT880281",
+          "nodename": "창원중앙"
+        }
+      ]
+    }
+  ]
+}

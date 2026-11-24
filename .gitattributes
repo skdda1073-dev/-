@@ -1,0 +1,2 @@
+/data/raw/** -text
+/data/raw/campus/한림대_셔틀버스.csv text eol=lf

@@ -11,7 +11,7 @@
 | 담당자 | 역할 | GitHub 브랜치 | 주로 만지는 파일 |
 | --- | --- | --- | --- |
 | 고경완 | UI/UX | `고경완` | `templates/index.html`, `static/css/**`, 화면 관련 `static/js/**` |
-| 권오준 | 데이터 | `권오준` | `data_preprocessing.ipynb`, 학교·건물 좌표 CSV 파일 |
+| 권오준 | 데이터 | `권오준` | `data/preparation/data_preprocessing.ipynb`, 학교·건물 좌표 CSV 파일 |
 | 이준엽 | 백엔드 | `이준엽` | `app.py`, `services/**`, `requirements.txt`, `static/js/api-service.js` |
 
 ### 역할별 파일 범위
@@ -30,10 +30,10 @@
 
 #### 권오준 — 데이터
 
-- `data_preprocessing.ipynb`: 데이터 전처리
-- `강원대학교 건물별 좌표.csv`
-- `한림대학교 건물별 좌표.csv`
-- `한림대_강원대_캠퍼스맵_통합_좌표.csv`
+- `data/preparation/data_preprocessing.ipynb`: 데이터 전처리
+- `data/raw/campus/강원대학교 건물별 좌표.csv`
+- `data/raw/campus/한림대학교 건물별 좌표.csv`
+- `data/normalized/campus/한림대_강원대_캠퍼스맵_통합_좌표.csv`
 
 CSV의 **열 이름, 좌표 형식, 파일명**을 바꿀 때에는 이준엽에게 먼저 알립니다. 백엔드가 그 형식을 읽고 있을 수 있기 때문입니다.
 
@@ -169,7 +169,7 @@ git switch --track origin/권오준
 ```bash
 git status --short
 git diff --check
-git add "한림대학교 건물별 좌표.csv" "한림대_강원대_캠퍼스맵_통합_좌표.csv"
+git add "data/raw/campus/한림대학교 건물별 좌표.csv" "data/normalized/campus/한림대_강원대_캠퍼스맵_통합_좌표.csv"
 git commit -m "data: 한림대 건물 좌표 보정"
 git push -u origin 권오준
 ```

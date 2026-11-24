@@ -141,6 +141,14 @@ class PlaceSearchServiceTests(unittest.TestCase):
         service, _ = self.service(response(values))
         self.assertEqual([row["name"] for row in service.search("역")], ["춘천역"])
 
+    def test_national_scope_keeps_non_local_poi_and_uses_original_query(self):
+        value = poi(name="부산역", upperAddrName="부산광역시", middleAddrName="동구",
+                    noorLat="35.115", noorLon="129.040")
+        service, requester = self.service(response([value]))
+        self.assertEqual(service.search("부산역", scope="national")[0]["name"], "부산역")
+        self.assertEqual(requester.call_args.kwargs["params"]["searchKeyword"], "부산역")
+        self.assertEqual(requester.call_args.kwargs["params"]["radius"], 0)
+
     def test_full_road_address_can_verify_chuncheon(self):
         value = poi(upperAddrName="", middleAddrName="", lowerAddrName="", newAddressList={
             "newAddress": [{"fullAddressRoad": "강원특별자치도 춘천시 평화로 1"}],

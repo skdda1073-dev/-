@@ -4,8 +4,11 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs/promises');
 const path = require('node:path');
 const { chromium } = require('playwright');
-const { openApp, chooseBuilding, selectDestination, clearDestination, noOverflow, resultContains,
+const { openApp: openBaseApp, activateRealMobility, chooseBuilding, selectDestination, clearDestination, noOverflow, resultContains,
     taxiFixture, journeyFixture, DESTINATION, INJECTION, BASE_URL } = require('./frontend_smoke.cjs');
+
+// These room checks opt into preserved room markup; all provider requests are mocked.
+const openApp = (browser, options = {}) => openBaseApp(browser, { ...options, realMobility: true });
 
 const tests = [];
 const test = (name, run) => tests.push({ name, run });
@@ -25,6 +28,7 @@ async function search(page) {
     await chooseBuilding(page);
     await selectDestination(page);
     await page.locator('#route-submit').click();
+    await page.locator('#taxi-refresh').click();
 }
 
 function mockRoom(options = {}) {
@@ -84,9 +88,11 @@ test('transit and taxi partial failures remain independent; building payload and
         assert.equal(app.taxiRequests[0].campus, app.requests[0].campus);
         assert.equal(app.taxiRequests[0].lat, undefined, 'Campus building coordinates are resolved by the server');
         await app.page.locator('#route-submit').click();
+        await app.page.locator('#taxi-refresh').click();
         await resultContains(app.page, '총 소요 추정');
         await visibleText(app.page, '#taxi-content', '택시 검증용 연결 실패');
         await app.page.locator('#route-submit').click();
+        await app.page.locator('#taxi-refresh').click();
         await visibleText(app.page, '#taxi-content', '요금 조회 불가');
         assert.match(await app.page.locator('#taxi-content').innerText(), /택시 이동 약 10분/);
         assert.doesNotMatch(await app.page.locator('#taxi-content').innerText(), /0원|NaN|undefined/);
@@ -118,12 +124,14 @@ for (const changed of ['destination', 'campus', 'building']) test(`uncancellable
             assert.ok(second);
             await app.page.locator('#building-select').selectOption(second);
         }
-        await app.page.locator('#taxi-section').waitFor({ state: 'hidden' });
+        assert.equal(await app.page.locator('#taxi-section').isVisible(), true);
+        assert.doesNotMatch(await app.page.locator('#taxi-content').innerText(), /12,345원/);
         const oldResponse = app.page.waitForResponse(response => new URL(response.url()).pathname === '/api/taxi/estimate');
         release(); await oldResponse;
         await app.page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
-        assert.equal(await app.page.locator('#taxi-section').isVisible(), false);
-        await app.page.locator('#route-submit').click();
+        assert.equal(await app.page.locator('#taxi-section').isVisible(), true);
+        assert.doesNotMatch(await app.page.locator('#taxi-content').innerText(), /12,345원/);
+        await app.page.locator('#taxi-refresh').click();
         await visibleText(app.page, '#taxi-content', '예상요금 약 20,001원');
         assert.doesNotMatch(await app.page.locator('#taxi-content').innerText(), /12,345/);
     } finally { release(); await app.close(); }
@@ -433,6 +441,7 @@ if (process.env.CAPSTONE_LIVE_ROOM_TESTS === '1') test('two isolated browsers us
         await preview(page, 'mobile-shared-ride-test-preview.png');
         hostTab = await first.context.newPage();
         await hostTab.goto(BASE_URL);
+        await activateRealMobility(hostTab);
         await hostTab.locator('#room-open-list').click();
         await hostTab.locator('#room-list .room-card').filter({ hasText: title }).locator('button').click();
         await visibleText(hostTab, '#room-detail-count', '현재 4명');

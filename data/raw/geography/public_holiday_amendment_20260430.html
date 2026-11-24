@@ -1,0 +1,3365 @@
+<!DOCTYPE html>
+<html lang="ko">
+ <head>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0" />  
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" /> 
+  <meta http-equiv="Content-Type" content="text/html;charset=utf-8" />  
+  <script type="text/javascript">
+        /* 화면 디스플레이 설정 코드 전역변수 선언
+        * - 브라우저 JS는 서버 세션을 직접 읽을 수 없으므로 JSP에서 세션값을 렌더링해서 winodw 전역변수로 내려준다.
+        * - 이 코드는 common.js 보다 먼저 선언되어야 한다.
+        * */
+        window.APP_THEME_INFO = {
+            // 로그인 여부
+            isLogin : false,
+            // 사용자 화면 디스플레이 설정 코드 (300001:라이트모드, 300002:다크모드, 300003:시스템모드)
+            scrnStngCd : ''
+        };
+        var kakaoKey = '7d9effab87b9126df39695ca304bba41';
+    </script>        
+  <script type="text/javascript" src="/LSW/assets/js/jquery-3.7.1.min.js"></script> 
+  <script type="text/javascript" src="/LSW/assets/js/jquery-ui.min.js"></script> 
+  <script type="text/javascript" src="/LSW/assets/js/swiper.js"></script> 
+  <script type="text/javascript" src="/LSW/assets/js/common/common.js?Time=1795516226752"></script> 
+  <script type="text/javascript" src="/LSW/assets/js/common/CookieUtil.js"></script> 
+  <script type="text/javascript" src="/LSW/assets/js/common/jquery-custom.js?Time=1795516226752"></script> 
+  <script type="text/javascript" src="/LSW/assets/js/jquery/jquery-ui_2017.js"></script>  
+  <script type="text/javascript">
+    //링크 체크
+    var webRoot = '/LSW';
+    var isAsGubun = "IS";
+    var layerDiv = ".layerPop > .inner .cont .bodySideContent";
+
+    function isOutUrl(url){
+        if(!url) return false;
+        url = url.trim();
+        if(url.indexOf('/LSW') === 0) return false;
+        if(url.indexOf('blob')>-1) return false;
+        if(url.charAt(0) === '/') return false;
+        if(/^https?:\/\//i.test(url)) return false;
+        if(url.indexOf('www.') === 0) return false;
+        if(/^(javascript|#)/i.test(url)) return false;
+        return true;
+    }
+
+    function resolveUrl(url){
+        return isOutUrl(url) ? webRoot + '/' + url : url;
+    }
+
+    function checkP(url){
+        if(!url) return false;
+        return /Info|Proc/i.test(url);
+    }
+    
+    (function (){
+        let originalOpen = window.open;
+
+        //window.open
+        window.open = function(url,name,specs){
+            let resolved = resolveUrl(url);
+
+            if(checkP(resolved) && !specs){
+                specs ='width=1000px,height=800px';
+            }else if(checkP(resolved)){
+            }
+            if(url.includes('listShowYn=Y')){
+                resolved = resolved.replace('listShowYn=Y','listShowYn=N')
+            }
+            return originalOpen.call(window,resolved , name, specs);
+        };
+
+        let originalSubmit = HTMLFormElement.prototype.submit;
+
+        HTMLFormElement.prototype.submit = function(){
+
+            let action = this.getAttribute('action');
+            if(action && isOutUrl(action)){
+                this.setAttribute('action',resolveUrl(action))
+            }
+            return originalSubmit.call(this);
+        }
+
+        let originalXhrOpen = XMLHttpRequest.prototype.open;
+        XMLHttpRequest.prototype.open = function(method,url){
+            arguments[1] = resolveUrl(url);
+            return originalXhrOpen.apply(this,arguments);
+        }
+
+    })();
+
+    //ajax
+    $.ajaxPrefilter(function (options){
+        options.url = resolveUrl(options.url);
+    });
+
+    //a태그 herf
+    $(document).on('click','a[href]',function(e){
+        let href = $(this).attr('href');
+
+/*
+        //view가 infoP호출이면 가로챔
+        if(checkP(href)){
+            e.preventDefault();
+            window.open(setListShowYn(resolveUrl(href)),'_blank','width=1000px,height=800px');
+        }
+*/
+
+        if(isOutUrl(href)){
+            e.preventDefault();
+            let newHref = resolveUrl(href);
+            let target = $(this).attr('target');
+
+            if(target === '_blank'){
+                window.open(newHref,'_blank','width=1000px,height=800px');
+            }else{
+                window.location.href = newHref;
+            }
+        }
+    })
+
+    $(document).on('submit','form',function(e){
+       let $form = $(this);
+       let action  = $form.attr('action');
+
+       if(checkP(action) && $form.attr('target') ==='_blank'){
+           e.preventDefault();
+           let popupName = 'popup_'+Date.now();
+           window.open('',popupName,'width=1000px,height=800px');
+           $form.attr('action',resolveUrl(action));
+           $form.attr('target',popupName);
+
+           let $listShowYn = $('<input>', {type : 'hidden', name:'listShowYn',value:'N'});
+           $form.append($listShowYn);
+           $form[0].submit();
+           $listShowYn.remove();
+           return;
+       }
+
+       if(isOutUrl(action)){
+           $form.attr('action',resolveUrl(action));
+       }
+    })
+
+</script>
+  <link rel="shortcut icon" type="text/css" href="/LSW/assets/images/ico_favorites.ico" />
+  <link rel="stylesheet" type="text/css" href="/LSW/assets/css/common.css?Time=1795516226752" />
+  <link rel="stylesheet" type="text/css" href="/LSW/assets/css/swiper.css" />
+  <link rel="stylesheet" type="text/css" href="/LSW/assets/css/jquery-ui.css" />
+  <link rel="stylesheet" type="text/css" href="/LSW/assets/css/jquery.mCustomScrollbar.css" />
+  <link rel="stylesheet" type="text/css" href="/LSW/assets/css/layout.css" />
+  <link rel="stylesheet" type="text/css" href="/LSW/assets/css/contents.css?Time=1795516226752" />
+  <link rel="stylesheet" type="text/css" href="/LSW/assets/css/dark.css" />
+  <link rel="stylesheet" type="text/css" href="/LSW/assets/js/jquery/jquery.fancybox-2.1.5.css" />
+  <link rel="stylesheet" type="text/css" href="/LSW/assets/css/lsw/commonForLs.css" />
+  <style type="text/css">
+        form { display:contents }
+    </style>
+  <title>관공서의 공휴일에 관한 규정 &gt; 법령 &gt; 제정·개정문 | 국가법령정보센터</title>
+ </head>  
+ <body id="bodyId"> 
+  <!-- loading --> 
+  <div class="loading" role="status" aria-label="로딩 중" style="display:none;"> 
+   <span aria-hidden="true"></span> 
+   <span aria-hidden="true"></span> 
+   <span aria-hidden="true"></span> 
+  </div> 
+  <!-- // loading --> 
+  <!-- 2026-09-23 --> 
+  <!-- skipNav --> 
+  <dl id="skipNav"> 
+   <dt>
+    바로가기 메뉴
+   </dt> 
+   <dd>
+    <a href="javascript:void(0)" onclick="fn_skipToViewCont()">본문 바로가기</a>
+   </dd> 
+   <dd>
+    <a href="javascript:void(0)" onclick="fn_skipToViewAside()">목록 바로가기</a>
+   </dd> 
+  </dl> 
+  <!-- //skipNav --> 
+  <input id="netPrivateYn" type="hidden" value="N" />       
+  <script type="text/javascript" src="/LSW/assets/js/jquery/jquery.form.js"></script> 
+  <script type="text/javascript" src="/LSW/assets/js/common/infoHistory.js"></script> 
+  <script type="text/javascript" src="/LSW/assets/js/ls/ls.js"></script> 
+  <script type="text/javascript" src="/LSW/assets/js/ls/fUpdate.js?Time=1795516226752"></script> 
+  <script type="text/javascript" src="/LSW/assets/js/ls/lsJo.js"></script> 
+  <script type="text/javascript" src="/LSW/assets/js/common/xmlHttpUtil.js"></script> 
+  <script type="text/javascript" src="/LSW/assets/js/common/common-ex.js"></script> 
+  <script type="text/javascript" src="/LSW/assets/js/ls/lsPopLayer.js"></script> 
+  <script type="text/javascript" src="/LSW/assets/js/ls/lsLink.js?Time=1795516226752"></script> 
+  <script type="text/javascript" src="/LSW/assets/js/common/commPop.js"></script> 
+  <script type="text/javascript" src="/LSW/assets/js/ls/lsOutPutJoNew.js?Time=1795516226752"></script> 
+  <script type="text/javascript" src="/LSW/assets/js/common/autocom.js"></script> 
+  <script type="text/javascript" src="/LSW/assets/js/ls/lsMakeJo.js"></script>
+  <!--누락된 js추가 --> 
+  <script type="text/javascript" src="/LSW/assets/js/common/diff_match_patch.js"></script> 
+  <script defer="defer" type="text/javascript" src="/LSW/assets/js/common/lawNavigation.js"></script> 
+  <script type="text/javascript" src="/LSW/EDotXPressHtml/js/edotxpress-html.min.js"></script> 
+  <script type="text/javascript" src="/LSW/EDotXPressHtml/js/edotxpress-common.js"></script> 
+  <script type="text/javascript" src="/LSW/EDotXPressHtml/js/edotxpress-config-law.js"></script> 
+  <script type="text/javascript" src="/LSW/assets/js/oneview/kakao.js"></script> 
+  <script type="text/javascript" src="/LSW/assets/js/common/speechUtil.js"></script> 
+  <script type="text/javascript" src="/LSW/assets/js/jquery/jquery-ui_2017.js"></script> 
+  <script type="text/javascript" src="/LSW/assets/js/common.js"></script> 
+  <script type="text/javascript">
+        //<![CDATA[
+        $(document).ready(function () {
+            if(false){
+                searchList('','');
+            }
+            setInfoR();
+        })
+        var lsOneLookUsrSeq = "";
+        var publicLine = !"220.66.155.42".startsWith("10.");
+        var lsRvsChk = 'false';
+        var unOrdinEmailLink = false;
+        var isEng = "";
+        // 서브와 탭 메뉴 초기값 (팝업은 없어서 0으로 설정)
+        var subMenuIdx = '0';
+        var subMenuId = '0';
+        var tabMenuIdx = '0';
+
+        function admRulInfo(obj, admRulNum) {
+            var ret = new Object();
+            var rect = obj.getBoundingClientRect();
+            ret.left = rect.left + (document.documentElement.scrollLeft || document.body.scrollLeft) - 60;
+            ret.top = rect.top + (document.documentElement.scrollTop || document.body.scrollTop);
+
+            for (var i = 1; i < 2; i++) {
+                var admRulInfo = "admRulInfo_" + i;
+                document.getElementById(admRulInfo).style.display = "none";
+            }
+            var tempNum = "admRulInfo_" + admRulNum; // 좌측 카테고리의 보여줄 번호를 뿌려준다.
+            var admRulView = document.getElementById(tempNum);
+
+            admRulView.style.left = ret.left + "px";
+            admRulView.style.top = ret.top + 19 + "px";
+            admRulView.style.display = "block";
+        }
+
+        function admRulClose() {
+            for (var i = 1; i < 2; i++) {
+                var admRulInfo = "admRulInfo_" + i;
+                document.getElementById(admRulInfo).style.display = "none";
+            }
+        }
+
+        ///////////////////////////////////
+        // 조례위임조문, 위임조례 말풍선
+        function lsScInfo(obj, lsScNum) {
+            var ret = new Object();
+            var rect = obj.getBoundingClientRect();
+            var leftObj = leftListWidthGet();
+            ret.left = rect.left + (document.documentElement.scrollLeft || document.body.scrollLeft);
+            for (var i = 1; i <= 2; i++) {
+                var lsScInfo = "lsScInfo_" + i;
+                document.getElementById(lsScInfo).style.display = "none";
+            }
+            var tempNum = "lsScInfo_" + lsScNum; // 좌측 카테고리의 보여줄 번호를 뿌려준다.
+            var admRulView = document.getElementById(tempNum);
+            var ua = navigator.userAgent.toLowerCase();
+            // 첫번째 버튼의 기준으로 위치를 잡는다. (좌측 목록의 리스트를 객체로 가져와서)
+
+            admRulView.style.left = ret.left - leftObj.width + "px";
+            admRulView.style.display = "block";
+        }
+
+        function lsScClose() {
+            for (var i = 1; i <= 2; i++) {
+                var lsScInfo = "lsScInfo_" + i;
+                document.getElementById(lsScInfo).style.display = "none";
+            }
+        }
+
+        // 좌측 목록 넓이 구해오기
+        function leftListWidthGet() {
+            var rec = new Object();
+            var leftObj = document.getElementById("leftContent");
+            if (leftObj != null) {
+                var rect = leftObj.getBoundingClientRect();
+                rec.width = rect.right - rect.left
+            } else {
+                rec.width = 0;
+            }
+
+            return rec;
+        }
+
+        function fn_hideFourCmp() {
+            $("#admrulTh").hide();
+            $("#tbodyTable tr").find("td:eq(3)").each(function () {
+                $(this).hide();
+            });
+            $("#fourHide").hide();
+            $("#fourPlus").show();
+        }
+
+        function fn_showFourCmp() {
+            $("#admrulTh").show();
+            $("#tbodyTable tr").find("td:eq(3)").each(function () {
+                $(this).show();
+            });
+            $("#fourPlus").hide();
+            $("#fourHide").show();
+        }
+
+        function fn_thdCmpResize() {
+            var sideWidth = 0;
+            var divTableHeight = 53;
+
+            if (gIsWide == 'default') {
+                sideWidth = 245;
+                divTableHeight = 73;
+            }
+
+            // 3단비교 부분에 제목부분인 Theadtable을 감싸고 있는 DIV
+            var divTable = document.getElementById("theadDiv");
+
+            // Thead부분의 테이블과 Tbody부분의 테이블의 영역을 맞추기 위해 해당 객체값을 가져옴
+            var theadTh1 = $("#theadTable thead tr th:eq(0)");
+            var theadTh2 = $("#theadTable thead tr th:eq(1)");
+            var theadTh3 = $("#theadTable thead tr th:eq(2)");	// 4단추가
+            var tbodyTd1 = $("#tbodyTable tbody tr td:eq(0)");
+            var tbodyTd2 = $("#tbodyTable tbody tr td:eq(1)");
+            var tbodyTd3 = $("#tbodyTable tbody tr td:eq(2)");	// 4단추가
+
+            // Thead부분과 Tbody부분에 td 영역을 할당해주기 위해 팝업의 넓이를 가져옴
+            var popWidth = document.documentElement.clientWidth;
+
+            // 해당 팝업크기의 넓이의 33%를 할당해준다 16은 스크롤바의 Pix크기.
+            var tdWidth1 = (parseInt(popWidth) - 15 - sideWidth) * 0.33;
+            var tdWidth2 = (parseInt(popWidth) - 15 - sideWidth) * 0.32;
+
+            // 첫번째와 두번째의 TH 및 TD를 변경해주면 나머지의 영역은 알아서 바뀐다.
+            theadTh1.width("32%");
+            theadTh2.width("32%");
+            theadTh3.width("33%");
+            tbodyTd1.width(tdWidth1);
+            tbodyTd2.width(tdWidth1);
+            tbodyTd3.width(tdWidth2);
+
+            // Tbody부분의 테이블을 고정하여준다 (테이블 안에 데이터가 없을 경우에도 Width를 설정해주기 위해서)
+            if (document.getElementById("tbodyTable")) {
+                document.getElementById("tbodyTable").style.tableLayout = "fixed";
+            }
+        }
+
+        /**
+         * <pre>
+         *    3단비교 테이블 리사이징
+         * </pre>
+         * @author brKim
+         * @since 2017. 7. 7.
+         * @param gubun
+         */
+        function table_Resize(gubun) {
+
+            if (gubun == "LIST") {
+                $("#leftSlideImg").hide();
+            } else {
+                $("#leftSlideImg").show();
+            }
+
+            // 3단비교 초입 목록
+            if (gubun == "LIST") {
+
+                var popWidth = (parseInt(document.documentElement.clientWidth) - 15);
+
+                var tdWidth1 = popWidth * 0.58;
+                var tdWidth2 = popWidth * 0.1;
+                var tdWidth3 = popWidth * 0.07;
+
+                var theadTh1 = $("#dataListTopTable thead tr th:eq(0)");
+                var theadTh2 = $("#dataListTopTable thead tr th:eq(1)");
+                var theadTh3 = $("#dataListTopTable thead tr th:eq(2)");
+                var tbodyTd1 = $("#dataListContentTable tbody tr td:eq(0)");
+                var tbodyTd2 = $("#dataListContentTable tbody tr td:eq(1)");
+                var tbodyTd3 = $("#dataListContentTable tbody tr td:eq(2)");
+
+                theadTh1.width(tdWidth1);
+                theadTh2.width(tdWidth2);
+                theadTh3.width(tdWidth3);
+                tbodyTd1.width(tdWidth1);
+                tbodyTd2.width(tdWidth2);
+                tbodyTd3.width(tdWidth3);
+
+            } else if (gubun == "LSCOMPARE") {
+                // 전체 영역
+                var bodyheight = document.documentElement.clientHeight;
+                // 탭 영역
+                var thdTab = document.getElementById("divThreeCmpHead").offsetHeight;
+                // Thead 제목 영역
+                var thdThead = document.getElementById("infoRThead").offsetHeight;
+                // select 영역
+                var thdSel = document.getElementById("divLJo").offsetHeight;
+
+                // div 영역
+                var divL = document.getElementById("viewwrapCenterL");
+                var divO = document.getElementById("viewwrapCenterO");
+                var divR = document.getElementById("viewwrapCenterR");
+
+                // 높이 셋팅
+                var thdCmpHeight = parseInt(bodyheight) - parseInt(thdTab) - parseInt(thdThead) - parseInt(thdSel) - 88;
+
+                // 높이 할당
+                divL.style.height = thdCmpHeight + "px";
+                divO.style.height = thdCmpHeight + "px";
+                divR.style.height = thdCmpHeight + "px";
+                // lsInfoR에서도 같은 메소드를 호출해주기 때문에 구분 값을 사용함
+            } else if (gubun == "LS") {
+
+                // 전체 영역
+                var bodyheight = document.documentElement.clientHeight;
+                // 탭 영역
+                var thdTab = document.getElementById("divThreeCmpHead").offsetHeight;
+                // Thead 제목 영역
+                var thdThead = document.getElementById("infoRThead").offsetHeight;
+                // select 영역
+                var thdSel = document.getElementById("divLJo").offsetHeight;
+
+                // div 영역
+                var divL = document.getElementById("viewwrapCenterL");
+                var divO = document.getElementById("viewwrapCenterO");
+                var divR = document.getElementById("viewwrapCenterR");
+
+                // 높이 셋팅
+                var thdCmpHeight = parseInt(bodyheight) - parseInt(thdTab) - parseInt(thdThead) - parseInt(thdSel) - 88;
+
+                // 높이 할당
+                divL.style.height = thdCmpHeight + "px";
+                divO.style.height = thdCmpHeight + "px";
+                divR.style.height = thdCmpHeight + "px";
+
+            } else if (gubun == "JO") {
+
+                var sideWidth = 0;
+                var divTableHeight = 53;
+
+                if (gIsWide == 'default') {
+                    sideWidth = 245;
+                    divTableHeight = 73;
+                }
+
+                // 3단비교 부분에 제목부분인 Theadtable을 감싸고 있는 DIV
+                var divTable = document.getElementById("theadDiv");
+
+                // Thead부분의 테이블과 Tbody부분의 테이블의 영역을 맞추기 위해 해당 객체값을 가져옴
+                var theadTh1 = $("#theadTable thead tr th:eq(0)");
+                var theadTh2 = $("#theadTable thead tr th:eq(1)");
+                var tbodyTd1 = $("#tbodyTable tbody tr td:eq(0)");
+                var tbodyTd2 = $("#tbodyTable tbody tr td:eq(1)");
+
+                // Thead부분과 Tbody부분에 td 영역을 할당해주기 위해 팝업의 넓이를 가져옴
+                var popWidth = document.documentElement.clientWidth;
+
+                // 해당 팝업크기의 넓이의 33%를 할당해준다 16은 스크롤바의 Pix크기.
+                var tdWidth = (parseInt(popWidth) - 15 - sideWidth) * 0.33;
+
+                // 첫번째와 두번째의 TH 및 TD를 변경해주면 나머지의 영역은 알아서 바뀐다.
+                theadTh1.width(tdWidth);
+                theadTh2.width(tdWidth);
+                tbodyTd1.width(tdWidth);
+                tbodyTd2.width(tdWidth);
+
+                // Tbody부분의 테이블을 고정하여준다 (테이블 안에 데이터가 없을 경우에도 Width를 설정해주기 위해서)
+                if (document.getElementById("tbodyTable")) {
+                    document.getElementById("tbodyTable").style.tableLayout = "fixed";
+                }
+
+            } else {
+                /** 4단비교 */
+                if ($("#admrulTh").css("display") == "none") {
+                    fn_thdCmpResize();
+                } else {
+                    fn_fourCmpResize()
+                }
+            }
+        }
+        var dtlSchEngYn; // new 상세검색시 사용
+        var lsVO = new LsValueObj();
+        var lsSearchObj = new LsSearchObj();
+        var netPrivateYn = $("#netPrivateYn").val();
+
+        $(document).ready(function () {
+            $("#myLawJo").show();
+
+            //IE 일때 음성지원 X IE가 아닐때는 버튼 보여주기
+            var isIE = navigator.userAgent.indexOf("Trident") > -1 || navigator.userAgent.indexOf("MSIE") > -1;
+            if(!isIE){
+                $("#lsTtsBtn").show();
+            }
+
+            lsVO.lsValue.lsId = getValue("lsId");
+            lsVO.lsValue.lsiSeq = getValue("lsiSeq");
+            lsVO.bdyUpdValue.updateContentNm = "lsBdy";
+
+            // 본문 버튼 이벤트 등록
+            eventObj.topBtn.init();
+            
+            // 본문 조회 시 출력 여부 설정
+            lsVO.bdyUpdValue.updateContentNm = "lsBdy";
+            lsVO.bdyType = "lsBdy";  // 법령 본문 컨텐츠 명 인쇄시 사용
+
+            // 기본언어 한글로 세팅
+            if (!lsVO.LangType) {
+                lsVO.LangType = "010202";
+            }
+
+            lsVO.lsValue.chrClsCd = lsVO.lsValue.chrClsCd == "" ? lsVO.LangType : lsVO.lsValue.chrClsCd;
+
+            // 현행일 경우 3단비교 보여주고 그 외엔 숨김
+            eventObj.topBtn.getViewBtn({
+                id: 'thdLsView'
+                , dpYnFunc: function () {
+                    return $("#nwYn").val() == 'Y' ? true : false;
+                }
+            });
+
+            //전자점자 버튼 설정
+            initEDotXPress('\uAD00\uACF5\uC11C\uC758 \uACF5\uD734\uC77C\uC5D0 \uAD00\uD55C \uADDC\uC815');
+
+            const viewCls = $("#viewCls").val();
+
+            if (netPrivateYn == 'N') {
+                if (viewCls == "lsInfoP" || viewCls == "engLsInfoR" || viewCls == "" && $("#efDvPop").val() != "Y") {
+                    $('#west-toggler').click();
+                }
+            }
+
+            if(viewCls === 'engLsInfoR' || viewCls === 'thdCmpNewScP'){
+                $('#btnEnlargeJo').hide();
+                $('#myLawJo').hide();
+                $('#btnCopyJo').hide();
+                $('#lsTtsBtn').hide();
+                $('#langType').hide();
+                if(viewCls === 'thdCmpNewScP'){
+                    $('#eDotViewr').hide();
+                }
+            }
+
+            //모달창 open 여부 결정
+            checkReferrer();
+        });
+
+        //모달창 open 여부 결정
+        function checkReferrer() {
+            try {
+                var referrer = "";
+                try {
+                    referrer = window.parent.document.referrer;
+                } catch (ex) {
+                    // law.go.kr을 이용한 경우. window.parent.document 접근 시 Security Exception 발생. (www.law.go.kr은 문제가 없는데..)
+                    referrer = "";
+                }
+                var domain = "law.go.kr".toUpperCase();
+                var nwYn = 'Y';
+                var rrClsCd = '110402';
+                var efYd = '20260501';
+                var lapYd = '';
+                var apiGubun = '';
+                var existLsIdCnt = $('input[id=existLsIdCnt]').val();
+
+                var today = new Date();
+                var todayStr = '' + today.getFullYear()
+                    + String(today.getMonth() + 1).padStart(2, '0')
+                    + String(today.getDate()).padStart(2, '0');
+
+                if (apiGubun == 'api') {
+                    referrer = window.location.href;
+                }
+                if (!referrer) {
+                  /*  closeInfoPModal();*/
+                } else {
+                    var hostName = referrer.split('/')[2];
+                    var viewCls = getViewClsFromUrl(referrer);
+                    if (hostName.toUpperCase().indexOf(domain) > -1 && apiGubun != 'api') {
+                     /*   closeInfoPModal();*/
+                    } else {
+                        $("#infoP_tit").text('법령');
+                        if (nwYn == "Y") {
+                      /*      closeInfoPModal();*/
+                        } else if (rrClsCd == "110404" || rrClsCd == "110407" || rrClsCd == "110410") { //폐지여부체크
+                            if (efYd != "99991231" && efYd > todayStr) {
+                                modal('lsInfoPModal', '이 법은 현행이 아닙니다.', 'LsCurMove', '현행법령이동', existLsIdCnt);
+                            } else {
+                                modal('lsInfoPModal', '이 법은 폐지된 법령입니다.');
+                            }
+                        } else if (lapYd != '' && lapYd <= todayStr) {
+                            if (existLsIdCnt > 0) {
+                                modal('lsInfoPModal', '이 법은 현행이 아닙니다.', 'LsCurMove', '현행법령이동', existLsIdCnt);
+                            } else {
+                                modal('lsInfoPModal', '이 법은 현행이 아닙니다..');
+                            }
+                        } else {
+                            if (!viewCls || viewCls == "lsInfoP") {
+                                viewCls = getViewClsFromUrl(location.href);
+                                if (!viewCls || viewCls == "lsInfoP") {
+                                    modal('lsInfoPModal', '이 법은 현행이 아닙니다.', 'LsCurMove', '현행법령이동', existLsIdCnt);
+                                } else {
+                                   /* closeInfoPModal();*/
+                                }
+                            } else {
+                           /*     closeInfoPModal();*/
+                            }
+                        }
+                    }
+                }
+            } catch (e) {
+                console.log(e);
+                closeInfoPModal();
+            }
+        }
+
+        function getViewClsFromUrl(url) {
+            var parser = document.createElement("a");
+            parser.href = url;
+            var search = parser.search.substring(1);
+            var viewCls = "";
+            if (search) {
+                viewCls = getUrlParam(search, "viewCls");
+            }
+            return viewCls;
+        }
+
+        function getUrlParam(search, paramName) {
+            var paramValue = "";
+            var params = search.split("&");
+            var searchParams = {};
+
+            for (var i = 0; i < params.length; i++) {
+                var searchParam = params[i].split("=");
+                searchParams[searchParam[0]] = searchParam[1];
+            }
+            if (searchParams[paramName]) {
+                paramValue = searchParams[paramName];
+            }
+            return paramValue;
+        }
+
+        function imgDisplay() {
+            var img = document.getElementById("oldAndNewImg");
+            if (img != null) {
+                img.style.display = "none";
+            }
+        }
+
+        /**
+         *    본문 이외의 정보 조회 (신구법, 제개정문 등)
+         * @author brKim
+         * @since 2017. 10. 11.
+         * @param url
+         * @param tmpLsiSeq
+         */
+        function sideInfo(url, tmpLsiSeq, openPop) {
+
+            $("#leftSlideImg").show();	// LUM
+
+            // 신구법비교 대상 법령 시퀀스
+            lsVO.currentChgSeq = tmpLsiSeq;
+
+            // 제정·개정문 제정·개정 이유만 보여줄경우에 파라미터 넘겨줘서 구분.
+            if (url == 'lsRvsOnlyDocInfoR') {
+                lsVO.lsValue.lsRvsGubun = "Doc";
+                url = "lsRvsDocInfoR";
+            } else if (url == 'lsRvsOnlyRsnInfoR') {
+                lsVO.lsValue.lsRvsGubun = "Rsn";
+                url = "lsRvsDocInfoR";
+            } else {
+                lsVO.lsValue.lsRvsGubun = "";
+            }
+
+            var seq = "";
+
+            try {
+
+                if (tmpLsiSeq) {
+                    seq = tmpLsiSeq;
+                } else {
+                    seq = el("lsiSeq").value;
+                }
+
+            } catch (e) {
+                seq = "";
+            }
+
+            //제정·개정이유 버튼을 누르면 현행 기준이 아닌 신구법비교 대상 법령을 기준으로 가져올 수 있도록 개선
+            var chgSeqLsRvsDoc = "sideInfo('lsRvsDocInfoR'," + tmpLsiSeq + ");return false;";
+            var chgSeqLsOldAndNew = "sideInfo('lsOldAndNew'," + tmpLsiSeq + ");return false;";
+
+            if (openPop && openPop === "Y") {
+                lsVO.openPopValue.popMode = url;
+                fPopContent();
+                return "";
+            }
+
+            if (seq != "") {
+
+                if (url == 'lsOldAndNew' || url.indexOf('lsOldAndNew') > -1) {
+                    if (url.indexOf('Prev') > -1) {
+                        lsVO.lsValue.lsId = el("prevLsId").value;
+                        lsVO.lsValue.ancYd = el("prevAncYd").value;
+                        lsVO.lsValue.ancNo = el("prevAncNo").value;
+                        document.querySelector("#lsRvsDocInfo").removeAttribute("onclick");
+                        document.querySelector("#lsRvsDocInfo").setAttribute("onclick", chgSeqLsRvsDoc);
+                    } else if (url.indexOf('Next') > -1) {
+                        lsVO.lsValue.lsId = el("nextLsId").value;
+                        lsVO.lsValue.ancYd = el("nextAncYd").value;
+                        lsVO.lsValue.ancNo = el("nextAncNo").value;
+                        document.querySelector("#lsRvsDocInfo").removeAttribute("onclick");
+                        document.querySelector("#lsRvsDocInfo").setAttribute("onclick", chgSeqLsRvsDoc);
+                    } else {
+                        lsVO.lsValue.lsId = el("lsId").value;
+                        lsVO.lsValue.ancYd = el("ancYd").value;
+                        lsVO.lsValue.ancNo = el("ancNo").value;
+                        fn_layer('layer_compareNewOldNotice', this, 360); // 신구법비교 안내레이어
+                    }
+
+                    url = 'lsOldAndNew';
+                    $("#eDotViewr").css("display", "none"); // 신구법비교시 전자 점자 비활성화
+                } else {
+                    lsVO.lsValue.lsId = "";
+                    lsVO.lsValue.ancYd = "";
+                    lsVO.lsValue.ancNo = "";
+                    $("#eDotViewr").css("display", "");
+                }
+
+                if (url == 'lsRvsDocInfoR' && tmpLsiSeq) { // 제개정이유을 현재 신구법비교 시점의 법령으로 보여주기
+                    lsVO.openPopValue.popMode = url;
+                    lsVO.openPopValue.lsiSeq = tmpLsiSeq;
+                    lsVO.lsValue.efYd = "";
+                    document.querySelector("#lsOldAndNew").removeAttribute("onclick");
+                    document.querySelector("#lsOldAndNew").setAttribute("onclick", chgSeqLsOldAndNew);
+                } else {
+                    setPopValue(url);
+                    if (el("efYd")) {
+                        lsVO.lsValue.efYd = el("efYd").value;
+                    }
+                }
+                lsVO.bdyUpdValue.updateContentNm = url;  // 인쇄 저장시 출력 구분하기 위한
+                lsVO.lsValue.lsiSeq = seq;
+
+                lsVO.conValue.bdyMode = false;
+                lsVO.updateValue.updateDiv = "bodySideContent";
+                lsVO.updateValue.actionUrl = url + ".do";
+                lsVO.updateValue.updateMode = "sideContent";
+                lsVO.bdyUpdValue.updateDiv = "";
+
+                if (url == "engLsInfoR") {
+                    lsVO.updateValue.updateMode = "lsBdy";
+                    lsVO.updateValue.updateDiv = "bodyContent";
+                }
+
+                if (url == "lsChgJoInfoR") {
+
+                    var lsefyd = lsVO.openPopValue.lsJoEfYdSeq;
+
+                    if (lsefyd == '') {
+                        lsVO.openPopValue.lsJoEfYdSeq = 0;
+                    }
+
+                    fLsUpdate(lsVO.updateValue.updateDiv, lsVO.updateValue.actionUrl, makeParam(lsVO.lsValue) +
+                        "&lsJoEfYdSeq=" + lsVO.openPopValue.lsJoEfYdSeq, lsVO.updateValue.updateMode);
+
+                } else {
+                    fLsUpdate(lsVO.updateValue.updateDiv, lsVO.updateValue.actionUrl, makeParam(lsVO.lsValue), lsVO.updateValue.updateMode);
+                }
+
+            } else {
+                alert(lsVO.msg);
+            }
+
+            // 본문, 영문본문 토글
+            if (url == "engLsInfoR") {
+                var $btnTitle = $('#bdyBtnKO').text();
+                $btnTitle = $btnTitle.substring(1, 3);
+                if ($btnTitle == '한글') {
+                    $('#bdyBtnKO').text('(한글)본문');
+                } else {
+                    $('#bdyBtnKO').text('(영문)본문');
+                }
+            }
+
+            /** setHeadTitle 2010 11 05 **/
+            var headTtl = el("lsNm").value;
+            if (url == 'lsOldAndNew') {
+                setHeadTitle(headTtl + " > 법령 > 신구조문대비표");
+            } else if (url == 'lsRvsDocInfoR') {
+                setHeadTitle(headTtl + " > 법령 > 제정·개정문");
+            } else if (url == 'engLsInfoR') {
+                setHeadTitle(headTtl + " > 영문법령 > 본문");
+            }
+        }
+
+        /**
+         * <pre>
+         *    법령 팝업 UPDATE
+         * </pre>
+         * @author brKim
+         * @since 2017. 7. 6.
+         * @param divLayId
+         * @param urlName
+         * @param parameter
+         * @param mode
+         @author : 옥지훈
+         @history : 신구법 팝업 창에서 안내 풍선말 사라지지않는현상 처리 원인:setTimeout함수를 잘못사용함.
+          (#11066 신구법비교스타일개선)
+         */
+        function oldAndNewImgHide() {
+            document.getElementById("oldAndNewImg").style.display = 'none';
+        }
+
+        function fLsUpdate(divLayId, urlName, parameter, mode) {
+
+            if (urlName == 'lsOldAndNew.do') {
+
+                var oldAndNewImg = document.getElementById("oldAndNewImg");
+
+                if (oldAndNewImg != null && oldAndNewImg != "") {
+
+                    var north = document.getElementById("north-top");
+
+                    if (north != null) {
+                        document.getElementById("north-top").style.zIndex = 999;
+                    }
+
+                    oldAndNewImg.style.left = 240 + "px";
+                    oldAndNewImg.style.top = 65 + "px";
+                    oldAndNewImg.style.display = "";
+
+                    setTimeout("oldAndNewImgHide()", 6000);
+
+                }
+            } else {
+
+                var img = document.getElementById("oldAndNewImg");
+
+                if (img != null) {
+                    img.style.display = "none";
+                }
+            }
+
+            lsDpInitialize(mode);
+
+
+            if (urlName == 'lsInfoR.do' && parameter.indexOf("_") > 0) {
+
+                urlName = "lsEfInfoR.do";
+
+                lsVO.openPopValue.lsJoEfYdSeq = parameter.split("_")[1];
+
+                parameter = parameter.replace("_", "&lsJoEfYdSeq=");
+                parameter += "&nwJoYn=1";
+
+                lsVO.openPopValue.lsEfYn = true;
+                lsVO.openPopValue.lsEfSeq = parameter;
+
+            } else if (urlName == 'lsOutPutLayer.do' && parameter.indexOf("_") > 0) {
+
+                lsVO.openPopValue.lsJoEfYdSeq = parameter.split("_")[1];
+
+                parameter = parameter.replace("_", "&lsJoEfYdSeq=");
+                parameter += "&nwJoYn=1";
+
+                lsVO.openPopValue.lsEfYn = true;
+                lsVO.openPopValue.lsEfSeq = parameter;
+
+            } else {
+
+                lsVO.openPopValue.lsEfYn = false;
+                lsVO.openPopValue.lsEfSeq = "";
+
+            }
+
+            layoutLoadMask();
+            $.ajax({
+
+                url: urlName
+                , timeout: 240000 // 240 seconds
+                , data: parameter
+                , dataType: "html"
+                , method: "POST"
+                , success: function (responseText) {
+
+                    $('#' + divLayId).html(responseText);
+
+                    if (mode == "lsBdy" || mode == "lsJoBdy" || mode == "lsJoAllBdy"
+                        || mode == "lsArAllBdy") {
+
+                        lsVO.bdyType = mode;
+                        lsVO.bdyUpdValue.updateContentNm = mode;
+
+                        $("#bodyContentTOP").css('display', '');
+                        $("#bodySideContent").css('display', 'none');
+
+                        // 연혁 및 별표/서식이 없을 경우 숨기기
+                        eventObj.topBtn.getViewBtn({
+                            id: 'hstView'
+                            , dpYnFunc: function () {
+                                return $('#hstLnkDpYn').val() == '0';
+                            }
+                        }, {
+                            id: 'bylView'
+                            , dpYnFunc: function () {
+                                return $('#bylLnkDpYn').val() == '0';
+                            }
+                        });
+                    } else {
+
+                        if (mode == 'output' || mode == 'tts') {
+                            $("#bodyContentTOP").css('display', '');
+                            $(".viewTop").css('display', '');
+                            $("#bodySideContent").css('display', 'none');
+                        } else {
+                            $("#bodyContentTOP").css('display', 'none');
+                            $("#bodySideContent").css('display', 'block');
+                        }
+
+                    }
+
+                    if (mode == "output") {
+
+                        if (lsVO.lsValue.joChgYn == 'Y') { // 변경조문 목록 요청
+                            getLsJoOutPutList('outPutJoListDiv', '5', '1', el('lsiSeq').value);
+                        } else {
+                            getJoOutPutList('outPutJoListDiv', '99', '1', el('lsiSeq').value);
+                        }
+                        fn_layer('lsOutPutDivWrite',this,'450');
+                    }
+
+                    if (mode == "tts") {
+                        makeTtsLayer();
+                        fn_layer("lsTtsLayer", this, '400');
+                    }
+
+
+                    if (urlName.indexOf("lsOldAndNew") > -1) {
+                        //-- 사이드 메뉴가 열려있으면 content네임을 신구법으로 변경해준다.
+                        lsVO.bdyUpdValue.updateContentNm = "lsOldAndNew";
+                        // 신조문의 글씨색을 파란색으로 변경해준다.
+                        var agent = navigator.userAgent.toLowerCase();
+                        if ((navigator.appName == 'Netscape' && navigator.userAgent.search('Trident') != -1) || (agent.indexOf("msie") != -1)) {
+                            $('[style="padding: 0px; border-right-color: currentColor; border-right-width: 0px; border-right-style: none;"] span[style="color: rgb(255, 0, 0);').css('color', 'rgb(0, 0, 205)');
+                        } else {
+                            $('[style="border-right:0;padding:0 0 0 0;"] span[style="color:#ff0000;"]').css('color', '#0000cd');
+                        }
+                    }
+
+                    // 24.05.23 시각장애인협회 웹접근성 검토의견 조치 - 범위설정,용지/폰트설정 상위탭 선택 정보 인식
+                    if (divLayId == 'lsOutPutLayer') {
+                        el("maClsBtn").focus();
+                    }
+
+                    if (divLayId != 'lsOutPutLayer') {
+                        layoutUnMask();
+                    }
+                }
+                , error: function (e) {
+                    layoutUnMask();
+                }
+            });
+        }
+
+        function lsViewLsHst(seq) {
+            window.location.href = "lsInfoP.do?lsiSeq=" + seq;
+        }
+
+        function fBtnLsSystem() {
+            if (lsVO.lsValue.lsiSeq != "") {
+                f_lsSystem('ls', lsVO.lsValue.lsiSeq);
+
+            } else {
+                alert("msg");
+            }
+        }
+
+        function bdySavePrint(mode, obj, xValue, lang) {
+
+            // LUM 3단비교 부가가치세법 비교 저장,인쇄 예외처리
+            if ($("#JoCmpNew1") != null && $("#JoCmpNew1").attr("class") == "on") {
+                alert("조문연계3단비교는 저장, 인쇄기능을 제공하지않습니다.");
+                return false;
+            }
+            if ($("#JoCmpNew2") != null && $("#JoCmpNew2").attr("class") == "on") {
+                alert("조문연계3단비교는 저장, 인쇄기능을 제공하지않습니다.");
+                return false;
+            }
+            // LUM 3단비교 부가가치세법 비교 저장,인쇄 예외처리
+
+            var bdyContentNm = lsVO.bdyUpdValue.updateContentNm;
+
+            if(lang == "010203") {
+                lsVO.lsValue.chrClsCd = "010203";
+            }
+
+            if (lsVO.lsValue.lsiSeq != "") {
+                if (bdyContentNm == 'lsBdy' || bdyContentNm == 'lsJoBdy' || bdyContentNm == 'lsJoAllBdy' || bdyContentNm == 'lsChgJoInfoR') {
+                    if (bdyContentNm == 'lsChgJoInfoR') {
+                        lsVO.lsValue.joChgYn = 'Y';
+                    }
+
+                    //법령 저장시 시행예정조문 여부 체크
+                    if ($(".babl").length > 0) {
+                        lsVO.lsValue.efLsGubun = 'Y';
+                    } else {
+                        lsVO.lsValue.efLsGubun = '';
+                    }
+
+                    fLsUpdate("lsOutPutLayer", "lsOutPutLayer.do", makeParam(lsVO.lsValue) + "&mode=" + mode, 'output');
+
+                } else {
+                    var contentNm = "";
+
+                    if (bdyContentNm == "engLsInfoR") {
+                        contentNm = "영문법령";
+                    } else if (bdyContentNm == "lsRvsDocInfoR") {
+                        contentNm = "개정문";
+
+                    } else if (bdyContentNm == "lsRvsDocInfoR") {
+                        contentNm = "개정이유";
+
+                    } else if (bdyContentNm == "lsOgCorInfoR") {
+                        contentNm = "관보정정";
+
+                    } else if (bdyContentNm == "lsOldAndNew") {
+
+                        contentNm = "신구조문대비표";
+
+                        titleNm1 = $("#tmpWidth2").html();
+                        titleNm2 = $("#tmpWidth3").html();
+
+                    } else if (bdyContentNm == "thdCmp") {
+
+                        var thdCmpLsSeq = el('thdCmpLsSeq').value;
+                        var thdCmpCls = el('thdCmpCls').value;
+                        var thdUrl = "";
+
+                        if (el('LsCmp').className == 'on') {
+                            if (mode == 0) {
+                                listLsSave('LSTmp', thdCmpLsSeq, thdCmpCls, getLsId(), obj);
+
+                            } else {
+                                thdUrl = "thdCmpLsInfoPrint.do?thdCmpLsSeq=" + thdCmpLsSeq + "&thdCmpCls=" + thdCmpCls + "&lsId=" + getLsId();
+                                openScrollPop(thdUrl);
+                            }
+
+                        } else if (el('JoCmp').className == 'on') {
+
+                            lsThdCmpNewJoAllSave('JONEW', thdCmpLsSeq, thdCmpCls, getLsId(), obj, mode);
+
+                        } else {
+
+                            if (mode == 0) {
+                                listLsSave('JO', thdCmpLsSeq, thdCmpCls, getLsId(), obj);
+
+                            } else {
+                                thdUrl = "thdCmpJoAllInfoPrint.do?thdCmpLsSeq=" + thdCmpLsSeq + "&thdCmpCls=" + thdCmpCls + "&lsId=" + getLsId();
+                                openScrollPop(thdUrl);
+                            }
+                        }
+
+                        return false;
+
+                    } else if (bdyContentNm == "thdCmpNew") {
+
+                        // LUM 3단비교 대상 법령 없음 처리 Start
+                        if ($("#isLumThdCmp").val() == "N") {
+                            alert("3단비교 대상 법령이 없습니다.");
+                            return false;
+                        }
+                        // LUM 3단비교 대상 법령 없음 처리 End
+
+                        var thdCmpLsSeq = el('thdCmpLsSeq').value;
+                        var thdCmpCls = el('thdCmpCls').value;
+                        var thdUrl = "";
+                        if (el('LsCmp').className == 'on') {
+                            if (mode == 0) {
+                                listLsSave('LSNEW', thdCmpLsSeq, thdCmpCls, getLsId(), obj);
+                            } else {
+                                thdUrl = "thdCmpNewLsInfoPrint.do?thdCmpLsSeq=" + thdCmpLsSeq + "&thdCmpCls=" + thdCmpCls + "&lsId=" + getLsId();
+                                openScrollPop(thdUrl);
+                            }
+
+                        } else if (el('JoCmp').className == 'on') {
+                            lsThdCmpNewJoAllSave('JONEW', thdCmpLsSeq, thdCmpCls, getLsId(), obj, mode);
+
+                        } else {
+
+                            if (mode == 0) {
+                                listLsSave('JO', thdCmpLsSeq, thdCmpCls, getLsId(), obj);
+                            } else {
+                                thdUrl = "thdCmpNewJoAllInfoPrintPHtml.do?thdCmpLsSeq=" + thdCmpLsSeq + "&thdCmpCls=" + thdCmpCls + "&lsId=" + getLsId();
+                                openScrollPop(thdUrl);
+                            }
+                        }
+
+                        return false;
+                    }
+                    // LUM 3단비교, 법령단위비교 저장 인쇄 처리 Start
+                    else if (bdyContentNm == "lumThdCmp") {
+
+                        if (!document.getElementById("tbodyTable")) {
+                            alert("3단비교 대상 법령이 없습니다.");
+                            return false;
+                        }
+                        var lsId = $("#lsId", $("#printForm")).val();
+                        var thdCmpCls = $("#lsThdCmpCls", $("#printForm")).val();
+                        var t1RlatSeq = $("#t1LsThdCmpRlatLsSeq", $("#printForm")).val();
+                        var t2RlatSeq = $("#t2LsThdCmpRlatLsSeq", $("#printForm")).val();
+                        var t3RlatSeq = $("#t3LsThdCmpRlatLsSeq", $("#printForm")).val();
+                        var edtGb = $("#thdCmpEdtGb", $("#printForm")).val();
+                        var usrThdCmpSeq = $("#usrThdCmpSeq", $("#printForm")).val();
+
+                        lumThdCmpSave(lsId, thdCmpCls, t1RlatSeq, t2RlatSeq, t3RlatSeq, edtGb, usrThdCmpSeq, obj, mode);
+
+                        return false;
+
+                    } else if (bdyContentNm == "lumThdCmpSc") {
+
+                        var lsId = $("#lsId", $("#printForm")).val(); // 3단비교 XML 서비스 전환시 해제
+                        var thdCmpCls = $("#lsThdCmpCls", $("#printForm")).val();
+                        var t1RlatSeq = $("#t1LsThdCmpRlatLsSeq", $("#printForm")).val();
+                        var t2RlatSeq = $("#t2LsThdCmpRlatLsSeq", $("#printForm")).val();
+                        var t3RlatSeq = $("#t3LsThdCmpRlatLsSeq", $("#printForm")).val();
+                        var edtGb = $("#thdCmpEdtGb", $("#printForm")).val();
+                        var usrThdCmpSeq = $("#usrThdCmpSeq", $("#printForm")).val();
+
+                        var prslPrintId = $("#prslId").val();
+                        var prmlPrintId = $("#prmlId").val();
+
+                        if (mode == 0) {	// 저장
+                            lumThdCmpScSave(lsId, thdCmpCls, t1RlatSeq, t2RlatSeq, t3RlatSeq, edtGb, usrThdCmpSeq, obj);
+                        } else {	// 인쇄
+                            thdUrl = "lumThdCmpScPrintXml.do"
+                                + "?lsId=" + lsId
+                                + "&lsThdCmpCls=" + thdCmpCls
+                                + "&t1LsThdCmpRlatLsSeq=" + t1RlatSeq
+                                + "&t2LsThdCmpRlatLsSeq=" + t2RlatSeq
+                                + "&t3LsThdCmpRlatLsSeq=" + t3RlatSeq
+                                + "&thdCmpEdtGb=" + edtGb
+                                + "&usrThdCmpSeq=" + usrThdCmpSeq
+                                + "&chrClsCd=" + sParam.chrClsCd
+                                + "&prslId=" + prslPrintId
+                                + "&prmlId=" + prmlPrintId;
+                            openScrollPop(thdUrl);
+                        }
+
+                        return false;
+
+                    }
+                        // LUM 3단비교, 법령단위비교 저장 인쇄 처리 End
+                    // 위임법령 3단비교 저장 및 인쇄 처리
+                    else if (bdyContentNm == "lsPtnThdCmp") {
+
+                        var lsPtnThdTable = document.getElementById("tbodyTable");
+
+                        var lsId = $("#searchLsId").val();
+                        var highLsId = $("#highLsId").val();
+
+                        if (!lsPtnThdTable) {
+                            alert("3단비교 대상법령이 없습니다.");
+                            return;
+                        } else {
+                            lsPtnThdCmpSave(lsId, highLsId, obj, mode);
+                        }
+
+                        return false;
+                    }
+                    // 위임법령 3단비교 저장 및 인쇄 처리 END
+                    if (mode == 0) {
+                        var goUrl = lsVO.updateValue.actionUrl;
+
+                        if (bdyContentNm == "lsRvsDocInfoR") {
+                            goUrl = "lsRvsHwpSave.do";
+                        } else if (bdyContentNm == "engLsInfoR") {
+                            goUrl = "engLsInfoR.do";
+                        } else {
+                            goUrl = "lsRvsDocInfoR.do";
+                        }
+
+                        if (bdyContentNm == "lsOldAndNew") {
+                            goUrl = "lsOldAndNewSave.do";
+                            LsOldAndNewSave(goUrl, obj, lsVO.lsValue);
+
+                        } else {
+                            if (goUrl == "engLsInfoR.do") {
+                                EngLsContentSave(goUrl, obj, lsVO.lsValue);
+                            } else {
+                                LsContentSave(goUrl, obj, lsVO.lsValue);
+                            }
+                        }
+
+                        return true;
+                    }
+
+                    if (bdyContentNm == "lsOldAndNew") {
+                        openScrollPop("lsSideInfoPrint.do?contentNm=" + encodeURIComponent(contentNm)
+                            + "&titleNm1=" + encodeURIComponent(titleNm1) + "&titleNm2=" + encodeURIComponent(titleNm2));
+
+                    } else {
+                        openScrollPop("lsSideInfoPrint.do?contentNm=" + encodeURIComponent(contentNm));
+                    }
+                }
+
+            } else {
+                alert(lsVO.msg);
+            }
+        }
+
+        /**
+         * @param mode
+         * @param obj
+         * @param xValue
+         * @param lang
+         * @returns {Boolean}
+         */
+        function bdyTtsLayer(mode, obj) {
+
+            if (lsVO.lsValue.lsiSeq == '' && el("lsiSeq")) {
+                lsVO.lsValue.lsiSeq = el("lsiSeq").value;
+            }
+
+            if (lsVO.lsValue.chrClsCd != "010202") {
+                alert('한글만 음성지원이 가능합니다.');
+                return false;
+            }
+
+            var bdyContentNm = lsVO.bdyUpdValue.updateContentNm;
+
+
+            if (lsVO.lsValue.lsiSeq != "") {
+
+                if (bdyContentNm == 'lsBdy' || bdyContentNm == 'lsJoBdy' || bdyContentNm == 'lsJoAllBdy' || bdyContentNm == 'lsChgJoInfoR') {
+
+                    if (bdyContentNm == 'lsChgJoInfoR') {
+                        lsVO.lsValue.joChgYn = 'Y';
+                    }
+
+                    if (bdyContentNm == 'lsJoAllBdy' || bdyContentNm == 'lsJoBdy') {
+                        lsVO.lsValue.joBdyYn = 'Y';
+                        lsVO.lsValue.efYd = el("efYd").value;
+                    } else {
+                        lsVO.lsValue.joBdyYn = '';
+                    }
+
+                    setSpeechKeyElement('ls');
+
+                    fLsUpdate("lsTtsLayer" + layerDiv, "lsTtsLayer.do", makeParam(lsVO.lsValue) + "&mode=" + mode, 'tts');
+                } else {
+                    alert("음성지원은 본문만 지원합니다.");
+                }
+            } else {
+                alert(lsVO.msg);
+            }
+        }
+
+
+        function bdyPrint(mode) {
+            if (mode == 'pdf') {
+                openPop("lsPdfPrint.do?lsiSeq=" + el("lsiSeq").value);
+
+            } else if (mode == 'hwp') {
+                el("lsBdyLsiSeq").value = el("lsiSeq").value;
+                el("lsBdySaveChrCls").value = el("lsBdyChrCls").value;
+                var frm = el("bdyPrintForm");
+                frm.action = "lsHwpSave.do";
+                frm.target = "_self";
+                frm.submit();
+
+            } else {
+                openPop("lsRtfPrint.do?lsiSeq=" + el("lsiSeq").value);
+            }
+
+            bdySavePrint();
+        }
+
+        function setListClass(obj) {
+            if (obj.id != lsVO.conValue.preChkId) {
+                obj.className = "";
+
+            } else {
+                obj.className = "on";
+            }
+        }
+
+        var tmpShowHideCls = true;
+
+        function setPopCheckBox(obj) {
+            el("popCheckBox").checked = obj.checked;
+        }
+
+        // 관련사례 목록조회 팝업
+        function lsEmpList(empCls) {
+            var lsiId = getLsId();
+
+            if (lsiId != null) {
+                var ancYd = el("ancYd").value;
+                var ancNo = el("ancNo").value;
+
+                if (empCls == "prec")
+                    openScrollPopM("conLsPrecInfoP.do?lsiSeq=" + el("lsiSeq").value + "&lsId=" + lsiId + "&ancYd=" + ancYd + "&ancNo=" + ancNo + "&resultMode=" + empCls);
+                else if (empCls == "decc")
+                    openScrollPopM("conLsDeccInfoP.do?lsiSeq=" + el("lsiSeq").value + "&lsId=" + lsiId + "&ancYd=" + ancYd + "&ancNo=" + ancNo + "&resultMode=" + empCls);
+                else if (empCls == "detc")
+                    openScrollPopM("conLsDetcInfoP.do?lsiSeq=" + el("lsiSeq").value + "&lsId=" + lsiId + "&ancYd=" + ancYd + "&ancNo=" + ancNo + "&resultMode=" + empCls);
+                else if (empCls == "expc")
+                    openScrollPopM("conLsExpcInfoP.do?lsiSeq=" + el("lsiSeq").value + "&lsId=" + lsiId + "&ancYd=" + ancYd + "&ancNo=" + ancNo + "&resultMode=" + empCls);
+
+            } else {
+                alert(msg);
+            }
+        }
+
+        function bookmark() {
+            var title = el("lsNm").value;
+            var No = el("ancNo").value;
+            //var gourl = location.href;
+            // /법령/자동차관리법/(8358)
+            var gourl = "http://" + location.host + "/법령/" + Space_All(title) + "/(" + Space_All(No) + ")";
+            ;
+            lawBookmark(title, gourl);
+        }
+
+        /* title 지정 */
+        function popChk() {
+            if (el("popCheckBox").checked == false) {
+                el("bdyBtnKO").title = "";
+                el("lsRvsDocInfo").title = "";
+                el("thdLsView0").title = "";
+                el("lsOldAndNew0").title = "";
+            } else {
+                el("bdyBtnKO").title = "팝업으로 이동";
+                el("lsRvsDocInfo").title = "팝업으로 이동";
+                el("thdLsView0").title = "팝업으로 이동";
+                el("lsOldAndNew0").title = "팝업으로 이동";
+            }
+        }
+
+        /*
+	 * 영문연혁 팝업
+	 */
+        function lsViewEngLsHst(seq, chrClsCd) {
+            LsPopLayer.hiddenLsHstLayer();
+            var chrClsCd = chrClsCd != undefined ? chrClsCd : lsVO.LangType;
+            window.open("lsInfoP.do?lsiSeq=" + seq
+                + "&chrClsCd=" + chrClsCd
+                + "&urlMode=engLsInfoR&viewCls=engLsInfoR", "_blank");
+        }
+
+        /*
+	 * 이미지 팝업
+	 */
+        function fLawImgMake(url) {
+            opencenterScroll(url, '600', '300');
+        }
+
+        function interestLaw() {
+            var pDivision = 'II';
+            var pApplicationId = 1;
+            var pListName = 'interest';
+            var pTitle = el("lsNm").value;
+            var pLsId = el("lsId").value;
+            var pAncNo = el("ancNo").value;
+            var pLsiSeq = lsVO.lsValue.lsiSeq;
+            var pEfYd = el("efYd").value;
+            var pKndClsCd = '010101';
+            var pGourl = "http://" + location.host + "/법령/" + Space_All(pTitle) + "/(" + Space_All(pAncNo) + ")";
+            var pFolderName = "법령";
+
+            if ('' != 'null') {
+                interestLawSave(pDivision, pApplicationId, pListName, pTitle, pLsId, pAncNo, pLsiSeq, pEfYd, pKndClsCd, pGourl, pFolderName);
+            } else {
+                document.location.href = "/login.do??menuId=6";
+            }
+        }
+
+        function s_layoutMove(f_type) {
+            if (!f_type) {
+                document.getElementById("Maximize").style.display = 'none';
+                document.getElementById("Minimize").style.display = '';
+                jo_show('H');
+
+
+            } else {
+                document.getElementById("Maximize").style.display = '';
+                document.getElementById("Minimize").style.display = 'none';
+                jo_show('S');
+
+            }
+        }
+
+        var jo_div = new Array();
+        var jo_divlen = 0;
+        var modalwindowDoc;
+        var gAllHTML1 = "", gAllHTML2 = "";
+
+        function logdiv_write(s1) {
+            return;
+            var s = document.getElementById("logdiv").innerHTML;
+
+            s = s + "<BR/>" + s1;
+            document.getElementById("logdiv").innerHTML = s;
+        }
+
+        function jo_show(ptype) {
+            var iPos = 0;
+            var oObj = document.getElementsByName('njx');
+
+
+            for (iPos = 0; iPos < oObj.length; iPos++) {
+
+
+                if (ptype == "S") oObj[iPos].style.display = "inline";
+                if (ptype == "H") oObj[iPos].style.display = "none";
+            }
+
+
+        }
+
+
+        function jo_changeALL(pStype, lsID) {		// 새로운 조번호로 변경
+            jo_change_reg('O', pStype, 1);
+            jo_change_reg('R', pStype, 2);
+
+            // LUM 3단비교 개선 innerHTML기능 재구현 Start
+            $("div[id='thdCmpTab']").find("a").each(function () {
+                $(this).removeClass();
+            });
+            if (pStype == '1') $("#JoCmpNew1").addClass("on");
+            if (pStype == '2') $("#JoCmpNew2").addClass("on");
+            // LUM 3단비교 개선 innerHTML기능 재구현 End
+        }
+
+
+        function jo_cvt(pType, pJoStr) {
+            var jo_O_data = new Array("", "1-1", "2-1", "2-2", "2-3", "2-4", "5-1", "5-2", "6-1", "6-2", "6-3", "8-1", "8-2", "8-3", "8-4", "8-5", "8-6", "8-7", "9-1", "10-1", "10-2", "10-3", "10-4", "10-5", "10-6", "11-1", "12-1", "13-1", "15-1", "16-1", "17-1", "21-1", "23-1", "24-1", "26-1", "26-2", "26-3", "26-4", "26-5", "26-6", "26-7", "26-8", "26-9", "26-10", "26-11", "26-12", "26-13", "26-14", "26-15", "27-1", "27-2", "27-3", "27-4", "27-5", "27-6", "27-7", "27-8", "28-1", "28-2", "29-1", "29-2", "29-3", "29-4", "29-5", "29-6", "29-7", "29-8", "32-1", "32-2", "32-3", "32-4", "33-1", "35-1", "36-1", "39-1", "39-2", "39-3", "39-4", "39-5", "39-6", "39-7", "40-1", "40-2", "41-1", "42-1", "43-1", "44-1", "45-1", "46-1", "47-1", "48-1", "49-1", "51-1", "51-2", "51-3", "52-1", "53-1", "54-1", "54-2", "54-3", "55-1", "56-1", "57-1", "57-2", "57-3", "58-1", "59-1", "59-2", "60-1", "61-1", "62-1", "63-1", "64-1", "65-1", "66-1", "69-1", "70-1", "71-1", "73-1", "74-1", "74-2");
+            var jo_R_data = new Array("", "1-1-1", "2-2-1", "6-1-1", "6-1-2", "6-1-3", "6-1-4", "6-2-1", "6-3-1", "8-1-1", "8-3-1", "8-4-1", "8-4-2", "8-4-3", "8-7-1", "9-1-1", "10-5-1", "15-1-1", "15-1-2", "16-1-1", "16-1-2", "21-1-1", "24-1-1", "24-1-2", "26-1-1", "26-4-1", "26-5-1", "26-7-1", "26-7-2", "26-9-1", "26-9-2", "26-9-3", "26-9-4", "26-9-5", "26-12-1", "26-13-1", "26-15-1", "27-1-1", "27-2-1", "27-3-1", "27-3-2", "27-3-3", "27-8-1", "27-8-2", "28-1-1", "28-2-1", "29-7-1", "29-7-2", "29-7-3", "32-1-1", "32-2-1", "32-3-1", "33-1-1", "36-1-1", "40-1-1", "41-1-1", "42-1-1", "43-1-1", "43-1-2", "44-1-1", "45-1-1", "47-1-1", "48-1-1", "51-1-1", "51-2-1", "51-3-1", "52-1-1", "54-1-1", "55-1-1", "56-1-1", "59-2-1", "61-1-1", "64-1-1", "65-1-1", "66-1-1", "70-1-1", "71-1-1", "73-1-1");
+
+            var sJo = "";	//조번호
+            var sJoNew = "";	//새로운 조번호
+            var iJo = 0;	//조번호
+            var jo_data;	// 배열
+
+
+            if (pType == "O") {	// 시행령
+                jo_data = jo_O_data;
+            }
+            if (pType == "R") {	// 시행규칙
+                jo_data = jo_R_data;
+            }
+
+            sJo = pJoStr.replace("제", "").replace("조", "");
+
+            sJoNew = "제" + jo_data[parseInt(sJo)] + "조";
+
+            return sJoNew
+
+
+        }
+
+        function jo_newHtml(pJoStr, pNewJoStr, pStyle) {
+            var s2 = "";
+            var sNewjoHtml = "";
+
+            if (pStyle == "1") {
+                s2 = "현행 [" + pJoStr + "]";
+                sNewjoHtml = "<span  class='nj' title='" + s2 + "' >" + pNewJoStr + "</span>";
+            }
+            if (pStyle == "2") {
+                s2 = "(현행 " + pJoStr + ")";
+                sNewjoHtml = "<span  class='nj' >" + pNewJoStr + s2 + "</span>";
+            }
+            return sNewjoHtml;
+        }
+
+        function jo_change_reg(pType, pStyle, pOrder) {	// 정규표현식 조번호 변경
+            var s1 = "";
+            var sAllHtml = "";		//전체  html
+            var sAllHtmlNew = "";		// 수정된전체  html
+            var iPos = 0;		// 반복용
+            var sRgExp = "";	// 조제목의 조번호가 포함된 html 를 찾는 정규식
+            var raHeadHtml;		// 정규식 결과
+            var sHeadHtml = "";	// 조제목의  조번호가 포함된  html
+            var sHeadHtmlNew = "";	// 조제목의  조번호가 포함된  html
+
+            var iPosJo = 0;		// 반복용
+            var sRgExpJo = "";	// 조제목의 조번호가 포함된 html 를 찾는 정규식
+            var raJo;			// 정규식 결과
+            var sJoStr = "";	// 조번호가  들어있는 문자
+            var sNewJoStr = "";   // 변경된 조
+
+            var sJoStrEx = "";		// 제외 패턴
+            var sNewJoHtml = "";		// 변경된 최종 조 HTML
+
+            if (gAllHTML1 == "") gAllHTML1 = document.body.innerHTML;
+            sAllHtml = gAllHTML1;
+            if (pOrder == 2) sAllHtml = gAllHTML2;
+
+            sAllHtmlNew = sAllHtml;
+
+            // ------------------------------------------
+            // ------------------------------------------   시행령 조제목의  조문번호 변경
+            // ------------------------------------------
+
+            sRgExp = /(#O.*?제[0-9]+조\()/g;
+            if (pType == "O") sRgExp = /(#O.*\s+.*\s+.*제[0-9]+조\()/g;
+            if (pType == "R") sRgExp = /(#R.*\s+.*\s+.*제[0-9]+조\()/g;
+            if (pType == "O") sRgExp = /(#O.*?제[0-9]+조\()/g;
+            if (pType == "R") sRgExp = /(#R.*?제[0-9]+조\()/g;
+            sRgExpJo = /(제[0-9]+조)/g;
+
+            raHeadHtml = sAllHtml.match(sRgExp);
+            //logdiv_write( "일치한 갯수:" + raHeadHtml.length   );
+
+            for (iPos = 0; iPos < raHeadHtml.length; iPos++) {
+                sHeadHtml = raHeadHtml[iPos];
+                raJo = sHeadHtml.match(sRgExpJo);
+                sJoStr = raJo[0];
+                sNewJoStr = jo_cvt(pType, sJoStr);	 				// ------------- 이전 조문번호를 새로운 조문번호로 변경
+                sNewJoHtml = jo_newHtml(sJoStr, sNewJoStr, pStyle);	// ----------------- 새로운 조문번호를 html 형태로 생성
+                sHeadHtmlNew = sHeadHtml.replace(sJoStr, sNewJoHtml);
+                sAllHtmlNew = sAllHtmlNew.replace(sHeadHtml, sHeadHtmlNew);
+                logdiv_write("변경[" + iPos + "]" + sJoStr + "=>" + sNewJoStr);
+            }
+            document.body.innerHTML = sAllHtmlNew;
+
+
+            // ------------------------------------------
+            // ------------------------------------------   시행령 조내용의  조문번호 변경
+            // ------------------------------------------
+            sAllHtml = document.body.innerHTML;
+            sAllHtmlNew = sAllHtml;
+
+            sRgExp = /(divO.*?<\/span>)/g;
+            if (pType == "O") sRgExp = /(divO.*?<\/span>)/ig;
+            if (pType == "R") sRgExp = /(divR.*?<\/span>)/ig;
+            sRgExpJo = /(제[0-9]+조)/g;
+
+
+            raHeadHtml = sAllHtml.match(sRgExp);
+            if (raHeadHtml != null) {
+                logdiv_write("일치한 갯수:" + raHeadHtml.length);
+
+                for (iPos = 0; iPos < raHeadHtml.length; iPos++) {
+                    sHeadHtml = raHeadHtml[iPos];
+                    raJo = sHeadHtml.match(sRgExpJo);
+                    // if( ("」 "== s2) || ("법 "== s2) || (") "== s2) ) {
+                    if (raJo != null) {
+                        for (iPosJo = 0; iPosJo < raJo.length; iPosJo++) {
+                            sJoStr = raJo[0];
+                            sJoStrEx = "";
+                            if (pType == "O") {
+                                if (sHeadHtml.indexOf("법 " + sJoStr) >= 0) sJoStrEx = "법";
+                                if (sHeadHtml.indexOf(") " + sJoStr) >= 0) sJoStrEx = ")";
+                                if (sHeadHtml.indexOf("」 " + sJoStr) >= 0) sJoStrEx = "」";
+                            }
+                            if (pType == "R") {
+                                if (sHeadHtml.indexOf("법 " + sJoStr) >= 0) sJoStrEx = "법";
+                                if (sHeadHtml.indexOf("영 " + sJoStr) >= 0) sJoStrEx = "영";
+                                if (sHeadHtml.indexOf(") " + sJoStr) >= 0) sJoStrEx = ")";
+                                if (sHeadHtml.indexOf("」 " + sJoStr) >= 0) sJoStrEx = "」";
+                                if (sHeadHtml.indexOf("」(이하 \"영\"이라 한다) " + sJoStr) >= 0) sJoStrEx = "영";
+                            }
+                            if (pType == "R" && sJoStrEx == "영") {		// --------------- 시행규칙을 변경하다 영 제OO조가 나오면  영의  신규조문번호로 변경
+                                sNewJoStr = jo_cvt("O", sJoStr);	 				// ------------- 이전 조문번호를 새로운 조문번호로 변경
+                                sNewJoHtml = jo_newHtml(sJoStr, sNewJoStr, pStyle);	// ----------------- 새로운 조문번호를 html 형태로 생성
+                                sHeadHtmlNew = sHeadHtml.replace(sJoStr, sNewJoHtml);
+                                sAllHtmlNew = sAllHtmlNew.replace(sHeadHtml, sHeadHtmlNew);
+                                logdiv_write("변경 조[" + iPos + "]조내용[" + iPosJo + "]" + sJoStr + "=>" + sNewJoStr);
+                            }
+                            if (sJoStrEx == "") {
+                                sNewJoStr = jo_cvt(pType, sJoStr);	 				// ------------- 이전 조문번호를 새로운 조문번호로 변경
+                                sNewJoHtml = jo_newHtml(sJoStr, sNewJoStr, pStyle);	// ----------------- 새로운 조문번호를 html 형태로 생성
+                                sHeadHtmlNew = sHeadHtml.replace(sJoStr, sNewJoHtml);
+                                sAllHtmlNew = sAllHtmlNew.replace(sHeadHtml, sHeadHtmlNew);
+                                logdiv_write("변경 조[" + iPos + "]조내용[" + iPosJo + "]" + sJoStr + "=>" + sNewJoStr);
+                            }
+                        }  // iPosJo
+                    } // if
+                }
+            } // if not null
+
+
+            document.body.innerHTML = sAllHtmlNew;
+            gAllHTML2 = document.body.innerHTML;
+        }
+
+        function errBrd() {
+            var winHeight = document.body.clientHeight; // 현재창의 높이
+            var winWidth = document.body.clientWidth;   // 현재창의 너비
+            var winX = window.screenLeft || window.screenX || 0;   // 현재창의 x좌표
+            var winY = window.screenTop || window.screenY || 0;    // 현재창의 y좌표
+
+            var popWidth = 400;
+            var popHeight = 300;
+            var popX = winX + (winWidth - popWidth) / 2;
+            var popY = winY + (winHeight - popHeight) / 2;
+
+            var popUrl = "lawPetitionLoginChk.do";
+            var popOption = "width=" + popWidth + "px,height=" + popHeight + "px,top=" + popY + ",left=" + popX + "resizable=no, toolbar=no, location=no ,scrollbars=no, status=no";
+            window.open(popUrl, "", popOption);
+        }
+
+        /* 2013법령지식 - 법령 상하위 조문 편집 */
+        function modiLsTemp() {
+            //$("#thdForm").attr("action","/LSW/thdCmpInfoP.do");
+            //$("#thdForm").submit();
+            openPop("/LSW/thdCmpInfoP.do?lsId=" + $("#lsId", $("#thdForm")).val(), '1040', '630');
+        }
+
+        // 삼단비교 마우스 오버시
+        function thdCmpHelpMent(option, display) {
+            var lsPtnThdCmpImg = document.getElementById("LsPtnThdCmpHelpImg");  //위임3단비교
+            var addCmpImg = document.getElementById("AddCmpHelpImg");	 	  //3단비교
+            var lsCmpHelpImg = document.getElementById("LsCmpHelpImg");	 	  //법령단위비교
+
+            if (display == 'on') {
+                if (option == 'LsPtnThdCmp') {
+                    lsPtnThdCmpImg.style.display = "";
+                    addCmpImg.style.display = "none";
+                    lsCmpHelpImg.style.display = "none";
+                }
+                if (option == 'AddCmp') {
+                    lsPtnThdCmpImg.style.display = "none";
+                    addCmpImg.style.display = "";
+                    lsCmpHelpImg.style.display = "none";
+                } else if (option == 'LsCmp') {
+                    lsPtnThdCmpImg.style.display = "none";
+                    addCmpImg.style.display = "none";
+                    lsCmpHelpImg.style.display = "";
+                }
+            } else {
+                lsPtnThdCmpImg.style.display = "none";
+                addCmpImg.style.display = "none";
+                lsCmpHelpImg.style.display = "none";
+            }
+        }
+
+        //3단비교 도움말 팝업
+        function thdCmpHelpPop(name) {
+            var url = "/LSW/html/thdCmpHelp.html#" + name;
+            window.open(url, '', 'width=1080, height=593, menubar=no, status=no, toolbar=no, scrollbars=yes');
+        }
+
+        // 법령 비교팝업
+        function lawComparePop() {
+            var lsNm = el("lsNm").value;
+            var ancYnChk = "";
+
+            if (typeof $("#ancYnChk").val() == 'undefined') {
+                ancYnChk = lsVO.lsValue.ancYnChk;
+            } else {
+                ancYnChk = $("#ancYnChk").val();
+            }
+
+            var popUrl = "lawBodyCompareInfoP.do?lsNm=" + lsNm + "&gubun=Ls" + "&ancYnChk=" + ancYnChk;
+
+            //영문법령에서 한글법령비교 버튼을 클릭하였을 경우
+            if (lsVO.updateValue.actionUrl.indexOf("engLsInfoR") > -1) {
+                popUrl = "lawEngBodyCompareInfoP.do?lsNm=" + lsNm + "&lsId=" + getLsId()
+                    + "&efYd=" + lsVO.lsValue.efYd
+                    + "&lsiSeq=" + lsVO.lsValue.lsiSeq
+                    + "&gubun=EngLs"
+                    + "&ancYnChk=" + ancYnChk;
+            }
+
+            var width = "1300px";
+            height = "800px";
+            window.open(popUrl, "_blank", "width=" + width + ", height=" + height + ", toolbar=no, resizable=no, scrollbars=no, location=no");
+        }
+
+        function myLawJo() {
+            if ('' != 'null') {
+                var joNoLists = "";
+                $("input:checkbox[name='joNoList']:checked").each(function () {
+                    joNoLists = joNoLists + $(this).val() + ',';
+                });
+
+                var pDivision = 'JI';
+                var pApplicationId = 3;
+                var pListName = 'myLawJo';
+                var pTitle = el("lsNm").value;
+                var pLsId = el("lsId").value;
+                var pAncNo = el("ancNo").value;
+                var pLsiSeq = lsVO.lsValue.lsiSeq;
+                var pAncYd = el("ancYd").value;
+                var pEfYd = el("efYd").value;
+                var pKndClsCd = '010122';
+                var chrClsCd = lsVO.LangType;
+                var pGourl = "https://" + location.host + "/법령/" + Space_All(pTitle) + "/(" + pEfYd + "," + Space_All(pAncNo) + "," + pAncYd + ")/";
+                ;
+                var pFolderName = "법령";
+                var children = joNoLists;
+
+                interestLawSave(pDivision, pApplicationId, pListName, pTitle, pLsId, pAncNo, pLsiSeq, pEfYd, pKndClsCd, pGourl, pFolderName, chrClsCd, children);
+            } else {
+                document.location.href = "/login.do??menuId=6";
+            }
+        }
+
+        //목록검색
+        function searchList (pg, query2, cb, showImmYn, clearQuery) {
+            //상세검색 , 법률명약칭 , 일반검색에 따른 목록조회 .do 분리
+            let url = false ?  "dtlSch.do" :  false ? "abrvSc.do" : "lsSc.do";
+            if ('' == '21') {
+                if ('' == '1') {
+                    url = "engLsSc.do";
+                } else {
+                    url = "etcLsSc.do";
+                }
+            }
+            $("#frm_pg").val(pg);
+            $("#frm_query2").val(query2);
+
+            //검색 버튼으로 호출한 경우에만 query초기화
+            if (clearQuery === true){
+                $("#frm_query").val("");
+            }
+
+            //일치검색시 바로 본문띄우기 여부
+            $("#frm_showImmYn").val(showImmYn);
+
+            // layoutLoadMask();
+
+            hNavigating = false;
+
+            $.ajax({
+                url : url,
+                type:'POST',
+                data: $.param($("#infoFrm").serializeArray().filter(function(ele){ return ele.value !== ''})) ,
+                success : function(responseData) {
+                    $("#lsSearchResult").html(responseData);
+
+
+                    //일치하는 검색결과가 없을때
+                    setTimeout(function (){
+                        if(!hNavigating && cb) cb();
+                    },0);
+
+                    // requestAnimationFrame(function(){
+                    //     requestAnimationFrame(function(){
+                    //         layoutUnMask();
+                    //     });
+                    // });
+                }
+            })
+        }
+        //법령팝업 open
+        function lawInfoPop(lsiSeq,ancYd,ancNo,efYd, nwJoYnInfo, ancYnChk,joNo,joBrNo,arSeq,chk,bylSeq){
+            $("#frm_lsiSeq").val(lsiSeq);
+            $("#frm_ancYd").val(ancYd);
+            $("#frm_ancNo").val(ancNo);
+            $("#frm_efYd").val(efYd);
+            $("#frm_nwJoYnInfo").val(nwJoYnInfo);
+            $("#frm_ancYnChk").val(ancYnChk);
+
+
+            if(joNo !== null && joNo !== ''){
+                if (bylSeq) {
+                    $("#frm_urlMode").val('lsBylBdy');
+                    $("#frm_bylSeq").val(bylSeq);
+                } else {
+                    $("#frm_urlMode").val('lsScJoRltInfoR');
+                    $("#frm_joNo").val(joNo);
+                    $("#frm_joBrNo").val(joBrNo);
+                }
+            }
+            if(arSeq !== null && arSeq !== ''){
+                $("#frm_urlMode").val('lsArAllBdy');
+                $("#frm_arSeq").val(arSeq);
+            }
+
+            $("#frm_joNo").val((joNo !== null && joNo !== '') ? joNo : '');
+            $("#frm_joBrNo").val((joBrNo !== null && joBrNo !== '') ? joBrNo : '');
+            $("#frm_bylSeq").val((bylSeq !== null && bylSeq !== '') ? bylSeq : '');
+            $("#frm_arSeq").val((arSeq !== null && arSeq !== '') ? arSeq : '');
+
+            if(chk === 'Y' || $("#blankChk").is(":checked")){
+                $("#infoFrm").attr('target','_blank');
+            }else{
+                $("#infoFrm").attr('target','');
+            }
+            $("#infoFrm").submit();
+        }
+
+        // 비영어 법령팝업 open
+        function etcLawInfoPop(lsiSeq,chk){
+            $("#frm_lsiSeq").val(lsiSeq);
+
+            if(chk === 'Y' || $("#blankChk").is(":checked")){
+                $("#infoFrm").attr('target','_blank');
+            }else{
+                $("#infoFrm").attr('target','');
+            }
+
+            $("#infoFrm").attr("action", "etcLsInfoP.do");
+
+            $("#infoFrm").submit();
+        }
+
+        // 목록에서 현재 조회중인 법령의 조문을 클릭시 스크롤
+        function scrollToJoFromList(el,docType,joNo,joBrNo,datSeq){
+            $(".listBox ul li ul  .curr").removeClass("curr");
+            $(el).addClass("curr");
+            if(docType == 'JO'){
+                let joId= 'J'+joNo.replace(/^0+/, '')+':'+(joBrNo.replace(/^0+/, '') ? joBrNo.replace(/^0+/, '') :'0');
+                scrollToJo(joId);
+                //부칙,별표,서식
+            }else{
+                scrollToJo('J'+datSeq);
+                bylInfoDiv(datSeq);
+            }
+        }
+
+
+        //]]>
+    </script>   
+  <form id="infoFrm" name="infoFrm" method="get" action="lsInfoP.do" onsubmit="removeEmptyParams(this);"> 
+   <input type="hidden" id="frm_lsiSeq" name="lsiSeq" value="285779" /> 
+   <input type="hidden" id="frm_ancYd" name="ancYd" value="" /> 
+   <input type="hidden" id="frm_efYdStart" name="efYdStart" value="" /> 
+   <input type="hidden" id="frm_efYdEnd" name="efYdEnd" value="" /> 
+   <input type="hidden" id="frm_ancNo" name="ancNo" value="" /> 
+   <input type="hidden" id="frm_ancYdStart" name="ancYdStart" value="" /> 
+   <input type="hidden" id="frm_ancYdEnd" name="ancYdEnd" value="" /> 
+   <input type="hidden" id="frm_efYd" name="efYd" value="20260511" /> 
+   <input type="hidden" id="frm_nwJoYnInfo" name="nwJoYnInfo" value="Y" /> 
+   <input type="hidden" id="frm_ancYnChk " name="ancYnChk" value="0" /> 
+   <input type="hidden" id="frm_efGubun" name="efGubun" value="" /> 
+   <input type="hidden" id="frm_bylSeq" name="bylSeq" value="" /> 
+   <input type="hidden" id="frm_joNo" name="joNo" value="" /> 
+   <input type="hidden" id="frm_joBrNo" name="joBrNo" value="" /> 
+   <input type="hidden" id="frm_arSeq" name="arSeq" value="" /> 
+   <input type="hidden" id="frm_urlMode" name="urlMode" value="" /> 
+   <input type="hidden" id="frm_listShowYn" name="listShowYn" value="N" /> 
+   <input type="hidden" id="frm_abrvYn" name="abrvYn" value="" /> 
+   <input type="hidden" id="frm_showImmYn" name="showImmYn" /> 
+   <input type="hidden" id="frm_subMenuId" name="subMenuId" value="" /> 
+   <input type="hidden" id="frm_tabMenuId" name="tabMenuId" value="" /> 
+   <input type="hidden" id="frm_tabMenuIdx" name="tabMenuIdx" value="" /> 
+   <input type="hidden" id="frm_query" name="query" value="" /> 
+   <input type="hidden" id="frm_bdyQuery" name="bdyQuery" value="" /> 
+   <input type="hidden" id="frm_query2" name="query2" value="" /> 
+   <input type="hidden" id="frm_pg" name="pg" value="" /> 
+   <input type="hidden" name="popYn" value="Y" /> 
+   <input class="setDefault" type="hidden" id="frm_outmax" name="outmax" value="15" /> 
+   <input class="setDefault" type="hidden" id="frm_efCheck" name="efCheck" value="Y" /> 
+   <input class="setDefault" type="hidden" id="frm_lsCls" name="lsCls" value="" /> 
+   <input class="setDefault" type="hidden" id="frm_cptOfis" name="cptOfis" value="" /> 
+   <input class="setDefault" type="hidden" id="frm_selSort" name="selSort" value="" /> 
+   <input class="setDefault" type="hidden" id="frm_lsType" name="lsType" value="" /> 
+   <input class="setDefault" type="hidden" id="frm_lawClass" name="lawClass" value="" /> 
+   <input class="setDefault" type="hidden" id="frm_rrClsCd" name="rrClsCd" value="" /> 
+   <input class="setDefault" type="hidden" id="frm_lsCoDbY" name="lsCoDbY" value="" /> 
+   <input class="setDefault" type="hidden" id="frm_lsExWord" name="lsExWord" value="" /> 
+   <input class="setDefault" type="hidden" id="frm_lsNwY" name="lsNwY" value="" /> 
+   <input class="setDefault" type="hidden" id="frm_lsEfY" name="lsEfY" value="" /> 
+   <input class="setDefault" type="hidden" id="frm_lsNwN" name="lsNwN" value="" /> 
+  </form> 
+  <script type="text/javascript">
+//<![CDATA[
+	
+	// lsList.js 에서 이사옴
+	function lsJoLayView(linkParam, linkLawNm){
+		
+		
+		try{
+			if(linkLawNm == "Ordin"){
+			    fSlimUpdateByAjax("lsLinkLayer","ordinLinkProc.do",makeParam(linkParam));
+			    
+			} else {
+			    fSlimUpdateByAjax("lsLinkLayer","lsLinkProc.do",makeParam(linkParam));
+			}
+			
+		}catch(e){
+			logger.err("오류:조문링크 update중..." + e);
+		}
+	
+		var title = "<div class=\"towp2\" id=\"towp2Link\"><DIV class=ltit2 id=\"ltit2Link\">조문정보 </DIV>"
+					+"<DIV class=btn11><A href=\"#AJAX\" onclick=\"javascript:fJoHstAll();return false;\" title=\"팝업으로 이동\"><IMG alt=전체보기 src=\"/LSW/images/button/btn_view1.gif\"></A>"
+					+"&nbsp;<A href=\"#AJAX\" onclick=\"javascript:fJoLnkInfoPrint('"+makeParam(linkParam)+"','"+linkParam.mode+"');return false;\" title=\"팝업으로 이동\"><IMG alt=인쇄 src=\"/LSW/images/button/btn_print3.gif\"></A>" 
+					+"</DIV><div class=\"btn22\" style=\"float:right;\">"
+					+"<A href=\"#AJAX\" onclick=\"javascript:LsLinkLayer.hiddenLsLinkLayer();return false;\"><IMG class=maJoHst alt=닫기 src=\"/LSW/images/button/btn_close8.gif\">"
+					+"</A></DIV></div>";
+					//+"</div>";
+	//	Jeon Hyun Wook 웹 접근성인 경우 팝업으로 엽니다.
+		LsLinkLayer.showLsLinkLayer(0,title);
+		
+	}
+
+//]]>
+</script> 
+  <script type="text/javascript">
+//<![CDATA[
+	
+	function setHeadTitle(str) {
+		document.title = str + " | 국가법령정보센터";
+	}
+	
+	// 화면내 검색 글자 처리
+	function setTRangeSelectOn(){
+		TRange.execCommand("RemoveFormat");
+		TRange.execCommand("ForeColor", false, "#FFFFFF");
+		TRange.execCommand("BackColor", false, "#FF0000");
+	}
+
+	function setTRangeSelectOff(){
+		TRange.execCommand("RemoveFormat");
+		TRange.execCommand("ForeColor", false, "#FF0000");
+	} 
+
+	function setTRangeSelectOffUp(){
+		TRangeCopy.execCommand("RemoveFormat");
+		TRangeCopy.execCommand("ForeColor", false, "#a30200");
+	}
+
+	function setTRangeOn(){
+		TRange.execCommand("ForeColor", false, "#FF0000");
+	}
+	
+	// 화면내검색시 "|" 문자열를 활용해 찾은 검색어 글자 BackColor처리
+	function setTRangeOnAddColor(obj,setColorValue){
+		if(setColorValue == 0){
+			TRange.execCommand("BackColor", false, "#FF0000");
+		}else if(setColorValue == 1){
+			TRange.execCommand("BackColor", false, "#FF8C00");
+		}else if(setColorValue == 2){
+			TRange.execCommand("BackColor", false, "#FFD700");
+		}else if(setColorValue == 3){
+			TRange.execCommand("BackColor", false, "#33CC33");
+		}else if(setColorValue == 4){
+			TRange.execCommand("BackColor", false, "#33CCFF");
+		}
+	}
+
+    // 화면내검색시 "|" 다중 검색어 하이라이트 (IE 이외 브라우저용)
+    function bodyAddSearchHighlight(targetEl, keyword, setColorValue){
+        var color = getBodyAddSearchColor(setColorValue);
+        if (color == null || keyword == null || keyword == "") {
+            return; // 6번째 검색어부터는 IE와 동일하게 색상 처리 안 함
+        }
+
+        // targetEl 안의 글자 추출하여 textNodes에 set
+        var textNodes = [];
+        var treeWalker = document.createTreeWalker(targetEl, NodeFilter.SHOW_TEXT, null, false);
+        while (treeWalker.nextNode()) {
+            textNodes.push(treeWalker.currentNode);
+        }
+
+        //textNodes안에 입력한 검색어가 있는지 확인
+        for (var i=0; i<textNodes.length; i++) {
+            var textNode = textNodes[i];
+            var parentTag = textNode.parentNode.nodeName;
+
+            //스크립트는 제외
+            if (parentTag == "SCRIPT" || parentTag == "STYLE" || parentTag == "TEXTAREA") {
+                continue;
+            }
+
+            //keyword 기준으로 split처리
+            var text = textNode.nodeValue.split(keyword);
+            if (text.length == 1) {
+                continue;
+            }
+
+            var frag = document.createDocumentFragment();
+            for (var j = 0; j < text.length; j++) {
+                if (j > 0) {
+                    var span = document.createElement("span");
+                    span.className = "bdyAddSearchHl";
+                    span.style.backgroundColor = color;
+                    span.appendChild(document.createTextNode(keyword));
+                    frag.appendChild(span);
+                }
+                if (text[j] != "") {
+                    frag.appendChild(document.createTextNode((text[j])));
+                }
+            }
+
+            textNode.parentNode.replaceChild(frag, textNode);
+        }
+    }
+
+    // 화면내검색시 "|" 다중 검색어 하이라이트 제거 (IE 이외 브라우저용)
+    function bodyAddSearchClear(targetEl){
+        var hlList = targetEl.querySelectorAll("span.bdyAddSearchHl");
+        if (hlList.length == 0) {
+            return;
+        }
+        // 중첩 하이라이트 대비 뒤에서부터 제거
+        for (var i=hlList.length-1; i>=0; i--) {
+            var hl = hlList[i];
+            var parent = hl.parentNode;
+            if (parent == null) {
+                continue;
+            }
+            while (hl.firstChild) {
+                parent.insertBefore(hl.firstChild, hl);
+            }
+            parent.removeChild(hl);
+        }
+        // 분리된 텍스트 노드 병합 (재검색 시 단어가 쪼개져 못 찾는 현상 방지)
+        targetEl.normalize();
+    }
+
+    // IE 브라우저 에서만 사용되었던 기존함수인 setTRangeOnAddColor 를 대체
+    function getBodyAddSearchColor(setColorValue){
+        if (setColorValue == 0) {
+            return "#FF0000";
+        } else if (setColorValue == 1) {
+            return "#FF8C00";
+        } else if (setColorValue == 2) {
+            return "#FFD700";
+        } else if (setColorValue == 3) {
+            return "#33CC33";
+        } else if (setColorValue == 4) {
+            return "#33CCFF";
+        }
+
+        return null;
+    }
+
+    function initEDotXPress(name) {
+        $("#eDotViewr").css("display", "");
+        $("#eDotViewr").removeAttr("onclick");
+        $("#eDotViewr").attr("onclick", "openBrlViewer('"+name+"', null, brlConfArray);return false;");
+
+    }
+
+    function setLayerTitle(title) {
+        var $layerTitle = $("#layerPop > .inner > .tit");
+        if (title && $layerTitle) {
+            $layerTitle.text(title);
+        } else {
+            return false;
+        }
+    }
+//]]>
+</script> 
+  <input type="hidden" id="lsClsCd" value="L" /> 
+  <input type="hidden" id="lsiSeq" value="285779" /> 
+  <input type="hidden" id="ancYd" value="20260430" /> 
+  <input type="hidden" id="ancNo" value="36290" /> 
+  <input type="hidden" id="lsNm" value="관공서의 공휴일에 관한 규정" /> 
+  <input type="hidden" id="lsBdyChrCls" value="010102" /> 
+  <input type="hidden" id="target" value="N" /> 
+  <input type="hidden" id="lsNmTrim" value="관공서의공휴일에관한규정" /> 
+  <input type="hidden" id="ancYnDv" value="" /> 
+  <input type="hidden" id="nwYn" value="Y" /> 
+  <input type="hidden" id="viewCls" value="lsRvsDocInfoR" /> 
+  <input type="hidden" id="efDvPop" value="" /> 
+  <input type="hidden" id="thdCmpLsGuBun" value="A0007" /> 
+  <input type="hidden" id="oneviewChk" value="off" /> 
+  <input type="hidden" id="existLsIdCnt" value="1" /> 
+  <input type="hidden" id="urlMode" value="" /> 
+  <input type="hidden" id="joNo" value="" /> 
+  <input type="hidden" id="joBrNo" value="" /> 
+  <input type="hidden" id="arSeq" value="" /> 
+  <input type="hidden" id="bylSeq" value="" /> 
+  <form id="thdForm" method="post" action=""> 
+   <input type="hidden" id="lsId" name="lsId" value="002404" /> 
+  </form> 
+  <input type="image" alt="전송" style="display:none;" /> 
+  <!-- north --> 
+  <div id="topDiv" class="ui-layout-north"> 
+   <noscript>
+    <p>자바스크립트를 지원하지 않아 일부 기능을 사용할 수 없습니다.</p>
+   </noscript> 
+  </div> 
+  <!-- north //--> 
+  <!-- viewWrap --> 
+  <div id="viewWrap" class="casePop"> 
+   <!-- viewContainer --> 
+   <div id="viewContainer"> 
+    <!-- content --> 
+    <div id="center" style="display: contents;"> 
+     <!-- 본문 버튼 영역 --> 
+     <div class="body_top_area" style="display: contents;"> 
+      <!-- viewHeader --> 
+      <div class="viewHeader"> 
+       <button type="button" class="btnBack">이전 페이지</button> 
+       <h2 id="viewerTitle"></h2> 
+      </div> 
+      <!--/ viewHeader --> 
+      <!-- viewTop --> 
+      <div class="viewTop"> 
+       <!-- dropDown (태블릿 ~ 모바일) --> 
+       <div class="dropDown tView"> 
+        <button type="button" onclick="hstView()" class="btnBotPop" data-id="history"> 관공서의 공휴일에 관한 규정 [시행 2026. 5. 11.] [대통령령 제36290호, 2026. 4. 30., 일부개정] </button> 
+        <div class="mPop" pop-title="연혁" data-id="history"> 
+         <div class="inner"> 
+          <div class="lsHstLayer"> 
+          </div> 
+         </div> 
+        </div> 
+       </div> 
+       <!--/ dropDown --> 
+       <!-- searchArea (태블릿 ~ 모바일) --> 
+       <!--/ searchArea --> 
+       <!-- tabWrap --> 
+       <div class="tabWrap sub"> 
+        <!-- tabBtn --> 
+        <div class="tabBtn"> 
+         <div class="swiper-wrapper"> 
+          <a id="lsRvsDocInfo" class="swiper-slide type8" href="javascript:;" title="제정개정이유 새 창 열림" target="_blank" onclick="sideInfo('lsRvsDocInfoR','', 'Y');return false;">제정·개정이유</a> 
+          <a id="thdLsView" class="swiper-slide type8" href="javascript:;" title="3단비교 새 창 열림" target="_blank" onclick="thdLsNewView();return false;">3단비교</a> 
+          <a id="lsOldAndNew" class="swiper-slide type8" href="javascript:;" title="신구법비교 새 창 열림" target="_blank" onclick="sideInfo('lsOldAndNew', '', 'Y');return false;">신구법비교</a> 
+          <a id="lsStmdBtn" class="swiper-slide type8" href="javascript:;" title="법령체계도 새 창 열림" target="_blank" onclick="lsStmdPop(lsVO.lsValue.lsiSeq, lsVO.lsValue.ancYnChk);return false;">법령체계도</a>
+          <!-- <shcho> 시행일/공포 서비스개선 : 시행,연혁(ancYnChk: 0=시행, 1=공포) 파라미터 추가 --> 
+          <a id="lawCompare" class="swiper-slide type8" href="javascript:;" title="법령비교 새 창 열림" onclick="lawComparePop();return false;">법령비교</a> 
+          <a id="csmLnkBtn" class="swiper-slide type8" href="javascript:;" style="display: none;" onclick="fn_layer('csmLnkDivWrite', this, '450')" title="생활법령정보">생활법령정보</a> 
+          <a id="unOrdinLnkBtn" class="swiper-slide type10" href="javascript:;" tooltip-tit="조례위임조문" tooltip="법령에서 자치법규로 위임한 사항이 있는 조문의 목록을 제공하고 바로가기 기능을 제공합니다." style="display: none;" title="조례위임조문" onclick="unOrdinView(this); return false;">조례위임조문</a> 
+          <a id="unOrdinLsLnkBtn" class="swiper-slide type10" href="javascript:;" style="display: none;" tooltip-tit="위임조례" tooltip="현재 보고있는 법에서 위임한 사항이 있는 자치법규에 대한 자치법규를 검색하여 목록을 제공합니다." title="위임조례" onclick="joDelegateLsPop(lsVO.lsValue.lsiSeq, el('lsId').value); return false;">위임조례</a> 
+          <a id="oneViewBtn" class="swiper-slide type8" href="javascript:void(0);" style="display: none;" tooltip-tit="한눈에 이해되는 법령정보" tooltip="법령 속 어려운 내용을 그림이나 표로 표현하여 알기 쉽게 제공합니다. 한눈보기는 법제처에서 제공하는 가공된 법령정보로 법령 그 자체는 아닙니다." title="한눈보기" onclick="showOneView(this); return false;">한눈보기</a> 
+         </div> 
+        </div> 
+        <!--/ tabBtn --> 
+       </div> 
+       <!--/ tabWrap --> 
+       <!-- right --> 
+       <div class="right"> 
+        <span class="tNone">연혁</span> 
+        <!-- dropDown (PC) --> 
+        <div class="dropDown tNone"> 
+         <button type="button" onclick="hstView()" class="btnBotPop" data-id="history2"> 관공서의 공휴일에 관한 규정 [시행 2026. 5. 11.] [대통령령 제36290호, 2026. 4. 30., 일부개정] </button> 
+         <div class="mPop" pop-title="연혁" data-id="history2"> 
+          <div class="inner"> 
+           <div class="lsHstLayer"></div> 
+          </div> 
+         </div> 
+        </div> 
+        <!--/ dropDown --> 
+        <div class="mTopFix"> 
+         <!-- screenControls --> 
+         <div class="screenControls"> 
+          <button type="button" class="btnMinus">글자 축소</button> 
+          <span>100%</span> 
+          <button type="button" class="btnPlus">글자 확대</button> 
+         </div> 
+         <!--/ screenControls --> 
+        </div> 
+        <!--/ mTopFix --> 
+       </div> 
+       <!--/ right --> 
+      </div> 
+      <!-- viewTop --> 
+     </div> 
+     <button type="button" class="btnBotPop case" data-id="select">선택</button> 
+     <div class="topArea mPop" pop-title="선택하세요" data-id="select"> 
+      <!-- inner --> 
+      <div class="inner"> 
+       <!-- searchArea (PC) --> 
+       <button type="button" class="btn btnSm btnSearch tNone" onclick="lsBodySearch(this);return false;"><span>화면내 검색</span></button> 
+       <!--/ searchArea --> 
+       <!-- btnArea --> 
+       <div class="btnArea"> 
+        <a id="btnEnlargeJo" class="btn btnSm btnWhite mNone" data-viewer-check="false" title="돋보기"><img alt="돋보기" src="/LSW/assets/images/viewer/ico0100.svg" /><span class="blind">돋보기</span></a> 
+        <a class="btn btnSm btnWhite" id="myLawJo" onclick="myLawJo();" data-viewer-check="false" title="조문저장"><img alt="조문저장" src="/LSW/assets/images/viewer/ico0101.svg" /><span class="blind">조문저장</span></a> 
+        <a class="btn btnSm btnWhite" id="btnCopyJo" title="복사" data-viewer-check="false"><img alt="" src="/LSW/assets/images/viewer/ico0109.svg" /><span class="blind">복사</span></a> 
+        <a class="btn btnSm btnWhite" id="lsTtsBtn" onclick="bdyTtsLayer(0, this);return false;" title="음성지원"><img alt="음성지원" src="/LSW/assets/images/ico-voice.svg" /><span class="blind">음성지원</span></a> 
+        <a class="btn btnSm btnWhite" id="eDotViewr" onclick="openBrlViewer('법령');" title="점자뷰어"><img alt="점자뷰어" src="/LSW/assets/images/ico-braille.svg" /><span class="blind">점자뷰어</span></a> 
+        <!-- 2026-06-11 --> 
+        <div class="share"> 
+         <a class="btn btnSm btnWhite" id="share" onclick="snsShareLayer(1)" title="공유"><img alt="공유" src="/LSW/assets/images/viewer/ico0106.svg" /><span class="blind">공유</span></a> 
+         <div class="shareBox"> 
+          <script src="/LSW/assets/js/oneview/kakao.js"></script> 
+          <input type="hidden" class="snsAddress" value="" /> 
+          <div class="inBox"> 
+           <ul> 
+            <li><a href="javascript:shareOnKakao();" title="카카오톡 새 창 열림"><img src="/LSW/assets/images/ico-sns01.svg" alt="카카오톡" />카카오톡</a></li> 
+            <li><a title="페이스북 새 창 열림" href="javascript:shareOnFacebook();"><img src="/LSW/assets/images/ico-sns02.svg" alt="페이스북" />페이스북</a></li> 
+            <li><a title="트위터 새 창 열림" href="javascript:shareOnTwitter();"><img src="/LSW/assets/images/ico-sns03.svg" alt="트위터" />트위터</a></li> 
+            <li><a title="라인 새 창 열림" href="javascript:shareOnLine();"><img src="/LSW/assets/images/ico-sns04.svg" alt="라인" />라인</a></li> 
+            <li><a href="javascript: shareUrl();"><img src="/LSW/assets/images/ico-sns05.svg" alt="주소링크" />주소복사</a></li> 
+           </ul> 
+           <button type="button" class="btnSnsClose">닫기</button> 
+          </div> 
+         </div> 
+        </div> 
+        <a class="btn btnSm btnWhite" id="interestLaw" onclick="interestLaw();" title="관심법령"><img alt="관심법령추가" src="/LSW/assets/images/viewer/ico0107.svg" /><span class="blind">관심법령</span></a> 
+        <a class="btn btnSm btnWhite" id="langType" onclick="chrChange(this);return false;" title="한자변환"><img alt="한자변환" src="/LSW/assets/images/viewer/ico0103.svg" /><span class="blind">한자변환</span></a> 
+        <a class="btn btnSm btnWhite" id="oriTxtBtn" href="javascript:;" style="display: none;" title="원문다운로드"><img alt="원문다운로드" src="/LSW/assets/images/viewer/ico0108.svg" /><span class="blind">원문저장</span></a> 
+        <a class="btn btnSm btnWhite" id="bdySaveBtn" onclick="bdySavePrint(0, this ,0, '');return false;" title="내려받기"><img alt="내려받기" src="/LSW/assets/images/viewer/ico0104.svg" /><span class="blind">파일저장</span></a> 
+        <a class="btn btnSm btnWhite" id="bdyPrintBtn" onclick="bdySavePrint(1, this ,20, '');return false;" title="프린트"><img alt="프린트" src="/LSW/assets/images/viewer/ico0105.svg" /><span class="blind">프린트</span></a> 
+       </div> 
+       <!--/ btnArea --> 
+      </div> 
+      <!--/ inner --> 
+     </div> 
+     <!-- 본문 선택 영역  //--> 
+     <style>
+	.main_pop_type1 {
+		position: absolute;
+		left: 50%;
+		top: 50vh;
+		transform: translate(-50%, -50%);
+		border: 1px solid var(--color-border-2-layer);
+		box-sizing: border-box;
+	}
+
+	.main_pop_type1 .main_pop_btn {
+		display: flex; align-items: center; justify-content: space-between; gap:12px;
+		padding:12px 16px;
+		border-top:1px solid #DBDBDB;
+		background: #fff;
+	}
+
+	.main_pop_type1 .main_pop_btn .checkboxWrap {
+		gap: 4px 24px;
+	}
+
+	.main_pop_type1 .main_pop_btn .checkbox input[type=checkbox] + label {
+		min-height: 40px;
+		font-size: 15px;
+	}
+	.main_pop_type1 .main_pop_btn .btn {flex-shrink: 0; min-width: 64px; text-align: center;}
+</style> 
+     <!--  법령해석례 팝업  --> 
+     <!-- viewContents --> 
+     <div class="viewContents off" id="bodyContentTOP"> 
+      <!-- aside --> 
+      <div class="aside mPop" data-id="aside"> 
+       <div class="inner" id="west"> 
+        <h3 id="asideLawNm"> 관공서의 공휴일에 관한 규정 </h3> 
+        <p class="subTit">[시행 2026. 5. 11.] [대통령령 제36290호, 2026. 4. 30., 일부개정]</p> 
+        <div class="inBox"> 
+         <a href="javascript:;" class="btn btnWhite2 btnXs inBoxTreeBtn btnJoTreeToggle" onclick="toggleJoTree('liBgcolorSpanJo');return false;">본문 전체 열기</a> 
+         <div class="list_bx_in"> 
+          <ul class="inner"> 
+           <li> <a href="javascript:;" onclick="fSelectJoListAncInfoPTree('liBgcolorSpanJo','999','3','285779','20260511','','0');return false;"> <span class="ico">본문목록열림</span>본문 </a> 
+            <div id="liBgcolorSpanJo" class="depth_bx" style="padding: 0;"></div> </li> 
+           <li> <a href="javascript:;" onclick="fSelectJoListAncInfoPTree('liBgcolorSpanAr','2','3','285779','20260511','','0');return false;"> <span class="ico">부칙목록열림</span>부칙 </a> 
+            <div id="liBgcolorSpanAr" class="depth_bx" style="padding: 0;"></div> </li> 
+          </ul> 
+         </div> 
+        </div> 
+       </div> 
+      </div> 
+      <!--/ aside --> 
+      <button type="button" class="btnToggleAside btnBotPop" data-id="aside">법령 리스트 열기</button> 
+      <!-- cont --> 
+      <div class="viewwrap cont" id="viewwrapCenter"> 
+       <div id="bodyContent" style="display: contents;"> 
+        <div class="contentBody"> 
+         <div class="viewerNodata"> 
+          <div class="menuGuidePage"> 
+           <strong class="title" role="heading">법령정보</strong> 
+           <b>현재 시행되고 있는 헌법, 법률, 대통령령, 총리령, 부령과 국회규칙, 대법원규칙, 헌법재판소규칙, 선거관리위원회규칙, 감사원규칙을 찾아볼 수 있습니다.</b> 
+           <p>법령내용이나 법령명에 포함된 용어를 입력하거나, 공포번호 및 공포일자를 입력하십시오</p> 
+           <div class="keywords"> 
+            <span># 법령내용</span> 
+            <span># 법령명</span> 
+            <span># 법령명에 포함된 용어</span> 
+            <span># 공포번호</span> 
+            <span># 공포일자</span> 
+           </div> 
+          </div> 
+         </div> 
+        </div> 
+       </div> 
+       <div id="bodyContentError" style="display:none;"> 
+        <div class="contentBody"> 
+         <div class="viewerNodata"> 
+          <div class="menuGuidePage"> 
+           <strong class="title" role="heading">법령정보</strong> 
+           <b>현재 시행되고 있는 헌법, 법률, 대통령령, 총리령, 부령과 국회규칙, 대법원규칙, 헌법재판소규칙, 선거관리위원회규칙, 감사원규칙을 찾아볼 수 있습니다.</b> 
+           <p>법령내용이나 법령명에 포함된 용어를 입력하거나, 공포번호 및 공포일자를 입력하십시오</p> 
+           <div class="keywords"> 
+            <span># 법령내용</span> 
+            <span># 법령명</span> 
+            <span># 법령명에 포함된 용어</span> 
+            <span># 공포번호</span> 
+            <span># 공포일자</span> 
+           </div> 
+          </div> 
+         </div> 
+        </div> 
+       </div> 
+      </div> 
+      <!-- /cont --> 
+     </div> 
+     <div id="bodySideContent" class="bodySideContent" style="display: none;"> 
+      <div class="viewwrap3"> 
+       <div class="viewerNodata"> 
+        <div class="menuGuidePage"> 
+         <strong class="title" role="heading">법령정보</strong> 
+         <b>현재 시행되고 있는 헌법, 법률, 대통령령, 총리령, 부령과 국회규칙, 대법원규칙, 헌법재판소규칙, 선거관리위원회규칙, 감사원규칙을 찾아볼 수 있습니다.</b> 
+         <p>법령내용이나 법령명에 포함된 용어를 입력하거나, 공포번호 및 공포일자를 입력하십시오</p> 
+         <div class="keywords"> 
+          <span># 법령내용</span> 
+          <span># 법령명</span> 
+          <span># 법령명에 포함된 용어</span> 
+          <span># 공포번호</span> 
+          <span># 공포일자</span> 
+         </div> 
+        </div> 
+       </div> 
+      </div> 
+     </div> 
+    </div> 
+    <!-- content //--> 
+   </div> 
+   <!--/ viewContainer --> 
+  </div> 
+  <!--/ viewWrap --> 
+  <!-- 인쇄 layer --> 
+  <!-- 화면내 검색 layer --> 
+  <script type="text/javaScript" language="javascript" defer="defer">
+<!--
+$(document).ready(function()
+{
+    // 화면내 검색 Layer의 별표본문내용 체크박스 Click Event
+    $("#bdySearchLayer").delegate("input:checkbox[id=selectSearchByl]", "click", function(e) {
+        isBylChkChg = true;
+    });
+});
+//-->
+</script> 
+  <div id="bdySearchLayer" class="layerPop on" style="display: none;"> 
+   <div class="inner" style="width: 450px;"> 
+    <strong class="tit">화면 내 검색</strong> 
+    <!-- cont --> 
+    <div class="cont" tabindex="0" style="max-height: 185.5px;"> 
+     <!-- lsBodySearch --> 
+     <div class="lsBodySearch"> 
+      <!-- listTop --> 
+      <div class="listTop"> 
+       <!-- left --> 
+       <div class="left"> 
+        <!-- checkboxWrap --> 
+        <div class="checkboxWrap"> 
+         <div class="checkbox"> 
+          <input type="radio" id="preBtn" name="srcBtn" class="radio" value="1" /> 
+          <label for="preBtn">위로</label> 
+         </div> 
+         <div class="checkbox"> 
+          <input type="radio" id="nextBtn" name="srcBtn" class="radio" value="2" checked="checked" /> 
+          <label for="nextBtn">아래로</label> 
+         </div> 
+        </div> 
+        <!-- // checkboxWrap --> 
+       </div> 
+       <!--// left --> 
+       <!-- right --> 
+       <div class="right"> 
+        <div class="checkbox"> 
+         <input type="checkbox" id="selectSearchJo" /> 
+         <label for="selectSearchJo" id="labelSelectSearchJo"> 검색조문선택</label> 
+        </div> 
+       </div> 
+       <!--// right --> 
+      </div> 
+      <!--// listTop --> 
+      <div class="formItem"> 
+       <!-- formItem --> 
+       <div class="withBtn"> 
+        <input type="text" title="검색어" placeholder="화면 내 검색어를 입력하세요" id="bdySearch" name="bdySearch" onkeypress="if(event.keyCode==13){enterBdySearch(event,document.getElementsByName('srcBtn'));return false;}" /> 
+        <button type="button" class="btn" href="javascript:void(0);" onclick="window.bdySearch(document.getElementsByName('srcBtn'));return false;">검색</button> 
+       </div> 
+      </div> 
+      <!-- // formItem --> 
+      <!-- btnLabel --> 
+      <ul class="btnLabel noLink" id="bdyKeyVal"> 
+      </ul> 
+      <!--// btnLabel --> 
+     </div> 
+     <!-- // lsBodySearch --> 
+    </div> 
+    <!-- // cont --> 
+    <a class="clsBtn" href="javascript:void(0)" onclick="fn_layer_close(this)">닫기</a> 
+   </div> 
+  </div> 
+  <!-- 화면내 layer //--> 
+  <!-- 본문 검색 후 조문 출력 layer --> 
+  <div id="divSearchLayer" class="layerPop"> 
+   <div class="inner"> 
+    <strong class="tit">화면 내 검색결과</strong> 
+    <div class="cont"> 
+     <div class="listTable responsive" id="searchList"></div> 
+    </div> 
+    <div class="btnBottom right"> 
+     <button class="btn btnInBlue btnSm clsBtn" type="button" onclick="fn_layer_close(this)">닫기</button> 
+    </div> 
+    <a href="javascript:void(0)" onclick="fn_layer_close(this)">닫기</a> 
+   </div> 
+  </div> 
+  <!-- 본문 검색 후 조문 출력 layer //--> 
+  <!-- Wide 목록저장 layer --> 
+  <div class="layerPop layerType" id="listSaveLayer"> 
+   <div class="inner"> 
+    <div class="cont"> 
+     <form id="saveForm" name="saveForm" target="_self" action="#"> 
+      <input type="image" title="전송" style="display:none;" alt="전송" /> 
+      <input type="hidden" name="save" value="save" /> 
+      <input type="hidden" id="saveTabMenuId" name="tabMenuId" /> 
+      <input type="hidden" id="saveQuery" name="query" /> 
+      <input type="hidden" id="savePg" name="pg" /> 
+      <input type="hidden" id="saveOutmax" name="outmax" /> 
+      <input type="hidden" id="saveSelSort" name="selSort" /> 
+      <input type="hidden" id="saveTabMenuIdx" name="tabMenuIdx" /> 
+      <input type="hidden" id="saveSubMenuId" name="subMenuId" /> 
+      <input type="hidden" id="lsAstMode2" name="lsAstMode" value="1" />
+      <label for="lsAstMode2" class="blind">모드</label> 
+      <input type="hidden" id="saveWhole" name="saveTarget" value="whole" />
+      <label for="saveWhole" class="blind">전체저장</label> 
+      <input type="hidden" id="saveSection" name="section" /> 
+      <input type="hidden" id="saveCmt" name="cmt" /> 
+      <input type="hidden" id="saveDeccType" name="deccType" /> 
+      <div class="typeBox"> 
+       <!-- checkboxWrap --> 
+       <div class="checkboxWrap caseCol"> 
+        <div class="checkbox"> 
+         <input type="radio" id="saveListXLS" name="saveExt" value="xls" checked="checked" /> 
+         <label for="saveListXLS">XLS(엑셀)</label> 
+        </div> 
+        <div class="checkbox"> 
+         <input type="radio" id="saveListTXT" name="saveExt" value="txt" /> 
+         <label for="saveListTXT">TXT(텍스트)</label> 
+        </div> 
+       </div> 
+       <!-- // checkboxWrap --> 
+      </div> 
+      <div id="inputContainer" style="display:none;"></div> 
+     </form> 
+    </div> 
+    <div class="btnBottom right"> 
+     <button type="button" class="btn btnSm btnWhite clsBtn" onclick="fn_layer_close(this);">취소</button> 
+     <button type="button" class="btn btnSm btnInBlue" onclick="submitListSave();return false;">저장</button> 
+    </div> 
+   </div> 
+  </div> 
+  <!-- Wide 목록저장 layer //--> 
+  <!-- 법령 조문 목록저장 layer --> 
+  <div class="layerPop layerType" id="joListSaveLayer"> 
+   <div class="inner"> 
+    <div class="cont"> 
+     <form id="joSaveForm" name="joSaveForm" target="_self" action="#"> 
+      <input type="image" title="전송" style="display:none;" alt="전송" /> 
+      <input type="hidden" name="save" value="save" /> 
+      <input type="hidden" id="lsAstMode3" name="lsAstMode" value="1" /> 
+      <input type="hidden" id="saveWhole2" name="saveTarget" value="whole" /> 
+      <div class="typeBox"> 
+       <!-- checkboxWrap --> 
+       <div class="checkboxWrap caseCol"> 
+        <div class="checkbox"> 
+         <input type="radio" id="saveJoListXLS" name="saveExt" value="xls" checked="checked" /> 
+         <label for="saveJoListXLS">XLS(엑셀)</label> 
+        </div> 
+        <div class="checkbox"> 
+         <input type="radio" id="saveJoListTXT" name="saveExt" value="txt" /> 
+         <label for="saveJoListTXT">TXT(텍스트)</label> 
+        </div> 
+        <div class="checkbox"> 
+         <input type="radio" id="saveHWPList" name="saveExt" value="hwp" /> 
+         <label for="saveHWPList">한글(본문)</label> 
+        </div> 
+       </div> 
+      </div> 
+     </form> 
+    </div> 
+    <!-- // checkboxWrap --> 
+    <div class="btnBottom right"> 
+     <button type="button" class="btn btnSm btnWhite clsBtn" onclick="fn_layer_close(this)">취소</button> 
+     <button type="button" class="btn btnSm btnInBlue" onclick="submitJoListSave();return false;">저장</button> 
+    </div> 
+   </div> 
+  </div> 
+  <!-- 법령 조문 목록저장 layer //--> 
+  <!-- 법령 조문 본문 저장 layer --> 
+  <div class="layerPop layerType" id="joInfoSaveLayer"> 
+   <div class="inner"> 
+    <div class="cont"> 
+     <form id="joInfoSaveForm" name="joInfoSaveForm" target="_self" action="#"> 
+      <input type="image" title="전송" alt="전송" style="display:none;" /> 
+      <div class="typeBox"> 
+       <!-- checkboxWrap --> 
+       <div class="checkboxWrap caseCol"> 
+        <div class="checkbox"> 
+         <input type="radio" name="saveExt" id="joDocSelectIdHWP" value="hwp" checked="" /> 
+         <label for="joDocSelectIdHWP">HWP(한글)</label> 
+        </div> 
+        <div class="checkbox"> 
+         <input type="radio" name="saveExt" id="joDocSelectIdPDF" value="pdf" /> 
+         <label for="joDocSelectIdPDF">PDF</label> 
+        </div> 
+        <div class="checkbox"> 
+         <input type="radio" name="saveExt" id="joDocSelectIdDOC" value="doc" /> 
+         <label for="joDocSelectIdDOC">오피스(DOC)</label> 
+        </div> 
+       </div> 
+       <!-- // checkboxWrap --> 
+      </div> 
+     </form> 
+    </div> 
+    <div class="btnBottom right"> 
+     <button type="button" class="btn btnSm btnWhite clsBtn" onclick="fn_layer_close(this)">취소</button> 
+     <button type="button" class="btn btnSm btnInBlue" onclick="joBeforeSavePrint();return false;">저장</button> 
+    </div> 
+   </div> 
+  </div> 
+  <!-- 법령 조문 본문 저장 layer //--> 
+  <div class="layerPop layerType" id="htmlSaveLayer"> 
+   <div class="inner"> 
+    <div class="cont"> 
+     <form id="htmlsaveForm" name="htmlsaveForm" target="_self" action="#"> 
+      <fieldset> 
+       <legend>파일형식 선택</legend> 
+       <input type="image" title="전송" alt="전송" style="display:none;" /> 
+       <input type="hidden" name="save" value="save" /> 
+       <!-- id="save" --> 
+       <div class="contwrap" style="margin:1px 0;"> 
+        <div class="viewla"> 
+         <div class="ins"> 
+          <div class="inctn"> 
+           <ul> 
+            <li class="itit">파일형식</li> 
+            <li class="rdi"> <input type="radio" id="saveHtmlHTML" name="saveExt" class="radio" value="html" checked="checked" /><label for="saveHtmlHTML">HTML</label> <input type="radio" id="saveHtmlXLSb" name="saveExt" class="radio" value="xls" /><label for="saveHtmlXLSb">XLS(엑셀)</label> </li> 
+           </ul> 
+          </div> 
+         </div> 
+        </div> 
+       </div> 
+      </fieldset> 
+     </form> 
+    </div> 
+    <!-- button --> 
+    <div class="btnBottom right"> 
+     <button type="button" class="btn btnSm btnWhite clsBtn" onclick="fn_layer_close(this);">취소</button> 
+     <button type="button" class="btn btnSm btnInBlue" onclick="submitHtmlContent();return false;">저장</button> 
+    </div> 
+    <!-- button //--> 
+   </div> 
+  </div> 
+  <!-- 목록저장 layer //--> 
+  <!-- 신구조문 저장 layer --> 
+  <div class="layerPop layerType" id="newSaveLayer"> 
+   <div class="inner"> 
+    <div class="cont"> 
+     <form id="newSaveForm" name="newSaveForm" target="_self" action="#"> 
+      <input type="image" title="전송" alt="전송" style="display:none;" /> 
+      <input type="hidden" name="save" value="save" /> 
+      <div class="typeBox"> 
+       <!-- checkboxWrap --> 
+       <div class="checkboxWrap caseCol"> 
+        <div class="checkbox"> 
+         <input type="radio" name="newSaveExt" id="newSaveHTML" value="html" checked="" /> 
+         <label for="newSaveHTML">HTML</label> 
+        </div> 
+        <div class="checkbox"> 
+         <input type="radio" name="newSaveExt" id="newSaveHWP" value="hwp" /> 
+         <label for="newSaveHWP">HWP(한글)</label> 
+        </div> 
+        <div class="checkbox"> 
+         <input type="radio" name="newSaveExt" id="newSaveXLS" value="xls" /> 
+         <label for="newSaveXLS">XLS(엑셀)</label> 
+        </div> 
+        <div class="checkbox"> 
+         <input type="radio" name="newSaveExt" id="newSavePDF" value="pdf" /> 
+         <label for="newSavePDF">PDF</label> 
+        </div> 
+       </div> 
+       <!-- // checkboxWrap --> 
+      </div> 
+     </form> 
+    </div> 
+    <div class="btnBottom right"> 
+     <button type="button" class="btn btnSm btnWhite clsBtn" onclick="fn_layer_close(this);">취소</button> 
+     <button type="button" class="btn btnSm btnInBlue" onclick="submitNewContent();return false;">저장</button> 
+    </div> 
+   </div> 
+  </div> 
+  <!-- 신구조문저장 layer //--> 
+  <!-- 법령비교 저장 layer --> 
+  <div class="layerPop layerType" id="lawCompareSaveLayer"> 
+   <div class="inner"> 
+    <div class="cont"> 
+     <form id="lawCompareSaveForm" name="lawCompareSaveForm" target="_self" action="#"> 
+      <input type="image" title="전송" alt="전송" style="display:none;" /> 
+      <input type="hidden" name="save" value="save" /> 
+      <div class="typeBox"> 
+       <!-- checkboxWrap --> 
+       <div class="checkboxWrap caseCol"> 
+        <div class="checkbox"> 
+         <input type="radio" name="lawCmpSaveExt" id="lawCmpSaveHWP" class="lawCmpSaveExt" value="hwp" checked="" /> 
+         <label for="lawCmpSaveHWP">HWP(한글)</label> 
+        </div> 
+        <div class="checkbox"> 
+         <input type="radio" name="lawCmpSaveExt" id="lawCmpSavePDF" class="lawCmpSaveExt" value="pdf" /> 
+         <label for="lawCmpSavePDF">PDF</label> 
+        </div> 
+        <div class="checkbox"> 
+         <input type="radio" name="lawCmpSaveExt" id="lawCmpSaveDOC" class="lawCmpSaveExt" value="doc" /> 
+         <label for="lawCmpSaveDOC">오피스(DOC)</label> 
+        </div> 
+       </div> 
+       <!-- // checkboxWrap --> 
+      </div> 
+     </form> 
+    </div> 
+    <div class="btnBottom right"> 
+     <button type="button" class="btn btnSm btnWhite clsBtn" onclick="fn_layer_close(this);">취소</button> 
+     <button type="button" class="btn btnSm btnInBlue" onclick="submitLawCompareContent();return false;">저장</button> 
+    </div> 
+   </div> 
+  </div> 
+  <!-- 법령비교저장 layer //--> 
+  <!-- 본문 저장 layer --> 
+  <div class="layerPop layerType" id="infoSaveLayer"> 
+   <div class="inner"> 
+    <div class="cont"> 
+     <form id="infoSaveForm" name="infoSaveForm" target="_self" action="#"> 
+      <input type="image" title="전송" alt="전송" style="display:none;" /> 
+      <input type="hidden" name="save" value="save" /> 
+      <!-- checkboxWrap --> 
+      <div class="checkboxWrap caseCol"> 
+       <div class="checkbox"> 
+        <input type="radio" name="saveExt" id="saveHWP" value="hwp" checked="" /> 
+        <label for="saveHWP">HWP(한글)</label> 
+       </div> 
+       <div class="checkbox"> 
+        <input type="radio" name="saveExt" id="saveTXTb" value="txt" /> 
+        <label for="saveTXTb">TXT(텍스트)</label> 
+       </div> 
+      </div> 
+      <!-- // checkboxWrap --> 
+     </form> 
+    </div> 
+    <div class="btnBottom right"> 
+     <button type="button" class="btn btnSm btnWhite clsBtn" onclick="fn_layer_close(this);">취소</button> 
+     <button type="button" class="btn btnSm btnInBlue" onclick="submitContent();return false;">저장</button> 
+    </div> 
+   </div> 
+  </div> 
+  <!-- 본문 저장 layer //--> 
+  <!-- 전체 제개정이유 저장 layer --> 
+  <div class="layerPop layerType" id="lsRvsRsnInfoSaveLayer"> 
+   <div class="inner"> 
+    <div class="cont"> 
+     <form id="lsRvsRsnInfoSaveForm" name="lsRvsRsnInfoSaveForm" target="_self" action="#"> 
+      <input type="image" title="전송" alt="전송" style="display:none;" /> 
+      <input type="hidden" name="save" value="save" /> 
+      <input type="hidden" name="lsRvsGubun" value="" /> 
+      <!-- checkboxWrap --> 
+      <div class="checkboxWrap caseCol"> 
+       <div class="checkbox"> 
+        <input type="radio" id="saveRvsRsnHWP" name="saveExt" value="hwp" checked="checked" /> 
+        <label for="saveRvsRsnHWP">HWP(한글)</label> 
+       </div> 
+       <div class="checkbox"> 
+        <input type="radio" id="saveRvsRsnTXTb" name="saveExt" value="txt" /> 
+        <label for="saveRvsRsnTXTb">TXT(텍스트)</label> 
+       </div> 
+      </div> 
+      <!-- // checkboxWrap --> 
+     </form> 
+    </div> 
+    <div class="btnBottom right"> 
+     <button type="button" class="btn btnSm btnInBlue" onclick="submitRvsRsnContent();">저장</button> 
+     <button type="button" class="btn btnSm btnWhite clsBtn" onclick="SaveWindow.hideLsRvsRsnSave();">닫기</button> 
+    </div> 
+   </div> 
+  </div> 
+  <!-- 전체 제개정이유 저장 layer --> 
+  <!-- 학칙공단 제개정문 저장 layer --> 
+  <div class="layerPop layerType" id="schlRvsRsnSaveLayer"> 
+   <div class="inner"> 
+    <div class="cont"> 
+     <form id="schlPubRulSaveForm" name="schlPubRulSaveForm" target="_self" action="#"> 
+      <input type="image" title="전송" alt="전송" style="display:none;" /> 
+      <input type="hidden" name="save" value="save" /> 
+      <input type="hidden" id="seq" name="schlPubRulSeq" value="" /> 
+      <!-- checkboxWrap --> 
+      <div class="checkboxWrap caseCol"> 
+       <div class="checkbox"> 
+        <input type="radio" id="saveSchlHWP" name="saveExt" value="hwp" checked="checked" /> 
+        <label for="saveSchlHWP">HWP(한글)</label> 
+       </div> 
+       <div class="checkbox"> 
+        <input type="radio" id="saveSchlTXTb" name="saveExt" value="txt" /> 
+        <label for="saveSchlTXTb">TXT(텍스트)</label> 
+       </div> 
+      </div> 
+      <!-- // checkboxWrap --> 
+     </form> 
+    </div> 
+    <div class="btnBottom right"> 
+     <button type="button" class="btn btnSm btnInBlue" onclick="submitSchlPubRulContent();">저장</button> 
+     <button type="button" class="btn btnSm btnWhite clsBtn" onclick="SaveWindow.hideSchlPubRulRvsRsnSave();">닫기</button> 
+    </div> 
+   </div> 
+  </div> 
+  <!-- 학칙공단 제개정문 저장 layer //--> 
+  <!-- 영문 본문 저장 layer --> 
+  <div class="layerPop layerType" id="engInfoSaveLayer"> 
+   <div class="inner"> 
+    <div class="cont"> 
+     <form id="engInfoSaveForm" name="engInfoSaveForm" target="_self" action="#"> 
+      <input type="image" title="전송" alt="전송" style="display:none;" /> 
+      <input type="hidden" name="save" value="save" /> 
+      <!-- checkboxWrap --> 
+      <div class="checkboxWrap caseCol"> 
+       <div class="checkbox"> 
+        <input type="radio" id="docSelectIdHWP" name="docSelectId" class="radio" value="hwp" checked="checked" /> 
+        <label for="docSelectIdHWP">한글(HWP)</label> 
+       </div> 
+       <div class="checkbox"> 
+        <input type="radio" id="docSelectIdPDF" name="docSelectId" class="radio" value="pdf" /> 
+        <label for="docSelectIdPDF">PDF</label> 
+       </div> 
+       <div class="checkbox"> 
+        <input type="radio" id="docSelectIdDOC" name="docSelectId" class="radio" value="doc" /> 
+        <label for="docSelectIdDOC">오피스(DOC)</label> 
+       </div> 
+      </div> 
+      <!-- // checkboxWrap --> 
+     </form> 
+    </div> 
+    <div class="btnBottom right"> 
+     <button type="button" class="btn btnSm btnInBlue" onclick="engLsBeforeSavePrint();">저장</button> 
+     <button type="button" class="btn btnSm btnWhite clsBtn" onclick="SaveWindow.hideEngInfoSave();">닫기</button> 
+    </div> 
+   </div> 
+  </div> 
+  <!-- 영문 본문 저장 layer //--> 
+  <!-- 다국어 본문 저장 layer --> 
+  <div class="layerPop layerType" id="multiLingualActInfoSaveLayer"> 
+   <div class="inner"> 
+    <div class="cont"> 
+     <form id="multiLingualActInfoSaveForm" name="multiLingualActInfoSaveForm" target="_self" action="#"> 
+      <input type="image" title="전송" alt="전송" style="display:none;" /> 
+      <input type="hidden" name="save" value="save" /> 
+      <!-- checkboxWrap --> 
+      <div class="checkboxWrap caseCol"> 
+       <div class="checkbox"> 
+        <input type="radio" id="multiLsHwp" name="docSelectId" class="radio" value="hwp" checked="checked" /> 
+        <label for="multiLsHwp">한글(HWP)</label> 
+       </div> 
+       <div class="checkbox"> 
+        <input type="radio" id="multiLsPdf" name="docSelectId" class="radio" value="pdf" /> 
+        <label for="multiLsPdf">PDF</label> 
+       </div> 
+       <div class="checkbox"> 
+        <input type="radio" id="multiLsDoc" name="docSelectId" class="radio" value="doc" /> 
+        <label for="multiLsDoc">오피스(DOC)</label> 
+       </div> 
+      </div> 
+      <!-- // checkboxWrap --> 
+     </form> 
+    </div> 
+    <div class="btnBottom right"> 
+     <button type="button" class="btn btnSm btnInBlue" onclick="multiLingualActSavePrint();">저장</button> 
+     <button type="button" class="btn btnSm btnWhite clsBtn" onclick="SaveWindow.hideMultiLingualActInfoSave();">닫기</button> 
+    </div> 
+   </div> 
+  </div> 
+  <!-- 다국어 본문 저장 layer //--> 
+  <!-- 법령용어 저장 layer --> 
+  <div class="layerPop layerType" id="lsTrmInfoSaveLayer"> 
+   <div class="inner"> 
+    <div class="cont"> 
+     <form id="lsTrmInfoSaveForm" name="lsTrmInfoSaveForm" target="_self" action="#" onsubmit="return lsTrmBeforeSavePrint()"> 
+      <fieldset> 
+       <legend>파일형식 선택</legend> 
+       <input type="image" title="전송" alt="전송" style="display:none;" /> 
+       <input type="hidden" id="saveQuery" name="lsTrm" />
+       <label for="saveQuery" style="display:none">법령용어명</label> 
+       <input type="hidden" name="save" value="save" /> 
+       <!--  id="save" --> 
+       <!-- checkboxWrap --> 
+       <div class="checkboxWrap caseCol"> 
+        <div class="checkbox"> 
+         <input type="radio" id="lsTrmDocSelectIdHWP" name="lsTrmDocSelectId" class="radio" value="hwp" checked="checked" /> 
+         <label for="lsTrmDocSelectIdHWP">한글(HWP)</label> 
+        </div> 
+        <div class="checkbox"> 
+         <input type="radio" id="lsTrmDocSelectIdPDF" name="lsTrmDocSelectId" class="radio" value="pdf" /> 
+         <label for="lsTrmDocSelectIdPDF">PDF</label> 
+        </div> 
+       </div> 
+       <!-- // checkboxWrap --> 
+      </fieldset> 
+     </form> 
+    </div> 
+    <div class="btnBottom right"> 
+     <button type="button" class="btn btnSm btnInBlue" onclick="lsTrmBeforeSavePrint();">저장</button> 
+     <button type="button" class="btn btnSm btnWhite clsBtn" onclick="SaveWindow.hideInfoSaveNew();">닫기</button> 
+    </div> 
+   </div> 
+  </div> 
+  <!-- 법령용어 저장 layer TXT(텍스트) 저장 추가 //--> 
+  <!-- 법령용어 저장 layer --> 
+  <div class="layerPop layerType" id="lsTrmInfoSaveLayer2"> 
+   <div class="inner"> 
+    <div class="cont"> 
+     <form id="lsTrmInfoSaveForm2" name="lsTrmInfoSaveForm2" target="_self" action="#" onsubmit="return lsTrmBeforeSavePrint2()"> 
+      <input type="image" title="전송" alt="전송" style="display:none;" /> 
+      <input type="hidden" id="saveQuery1" name="lsTrm" />
+      <label for="saveQuery1" style="display:none">법령용어명</label> 
+      <input type="hidden" name="save" value="save" /> 
+      <!-- checkboxWrap --> 
+      <div class="checkboxWrap caseCol"> 
+       <div class="checkbox"> 
+        <input type="radio" id="lsTrmDocSelectIdHWP1" name="saveExt" class="radio" value="hwp" checked="checked" /> 
+        <label for="lsTrmDocSelectIdHWP1">한글(HWP)</label> 
+       </div> 
+       <div class="checkbox"> 
+        <input type="radio" id="lsTrmDocSelectIdTXT1" name="saveExt" class="radio" value="txt" /> 
+        <label for="lsTrmDocSelectIdTXT1">TXT(텍스트)</label> 
+       </div> 
+      </div> 
+      <!-- // checkboxWrap --> 
+     </form> 
+    </div> 
+    <div class="btnBottom right"> 
+     <button type="button" class="btn btnSm btnInBlue" onclick="lsTrmBeforeSavePrint2();">저장</button> 
+     <button type="button" class="btn btnSm btnWhite clsBtn" onclick="SaveWindow.hideInfoSaveNew();">닫기</button> 
+    </div> 
+   </div> 
+  </div> 
+  <!-- 법령용어 저장 layer layer TXT(텍스트) 저장 추가 //--> 
+  <!-- 3단비교  저장 layer --> 
+  <div class="layerPop layerType" id="thdCmpSaveLayer"> 
+   <div class="inner"> 
+    <div class="cont"> 
+     <form id="thdCmpSaveForm" name="thdCmpSaveForm" target="_self" action="#"> 
+      <fieldset> 
+       <legend>파일형식 선택</legend> 
+       <input type="image" title="전송" alt="전송" style="display:none;" /> 
+       <input type="hidden" name="save" value="save" /> 
+       <!-- id="save" --> 
+       <!-- checkboxWrap --> 
+       <div class="checkboxWrap caseCol"> 
+        <div class="checkbox"> 
+         <input type="radio" id="saveThdCmpHTML" name="saveExt" class="radio" value="html" checked="checked" />
+         <label for="saveThdCmpHTML">HTML</label> 
+        </div> 
+        <div class="checkbox"> 
+         <input type="radio" id="saveThdCmpHWP" name="saveExt" class="radio" value="hwp" />
+         <label for="saveThdCmpHWP">HWP(한글)</label> 
+        </div> 
+        <div class="checkbox"> 
+         <input type="radio" id="saveThdCmpXLSb" name="saveExt" class="radio" value="xls" />
+         <label for="saveThdCmpXLSb">XLS(엑셀)</label> 
+        </div> 
+       </div> 
+       <!-- // checkboxWrap --> 
+      </fieldset> 
+     </form> 
+    </div> 
+    <div class="btnBottom right"> 
+     <button type="button" class="btn btnSm btnInBlue" onclick="submitListSaveThdCmpPrc();return false;">저장</button> 
+     <button type="button" class="btn btnSm btnWhite clsBtn" onclick="SaveWindow.hideThdCmpSave();">닫기</button> 
+    </div> 
+   </div> 
+  </div> 
+  <!-- LUM 3단비교, 법령단위비교 저장 Layer --> 
+  <div class="layerPop layerType" id="thdCmpNewSaveLayer"> 
+   <div class="inner"> 
+    <div class="cont"> 
+     <form id="thdCmpNewSaveForm" name="thdCmpNewSaveForm" target="_self" action="#"> 
+      <input type="image" title="전송" alt="전송" style="display:none;" /> 
+      <input type="hidden" name="save" value="save" /> 
+      <input type="hidden" name="chrClsCd" value="010202" /> 
+      <!-- checkboxWrap --> 
+      <div class="checkboxWrap caseCol"> 
+       <div class="checkbox"> 
+        <input type="radio" id="saveThdCmpNewHTML" name="saveExt" value="html" checked="checked" /> 
+        <label for="saveThdCmpNewHTML">HTML</label> 
+       </div> 
+       <div class="checkbox"> 
+        <input type="radio" id="saveThdCmpNewHWP" name="saveExt" value="hwp" /> 
+        <label for="saveThdCmpNewHWP">HWP(한글)</label> 
+       </div> 
+       <div class="checkbox"> 
+        <input type="radio" id="saveThdCmpNewXLSb" name="saveExt" value="xls" /> 
+        <label for="saveThdCmpNewXLSb">XLS(엑셀)</label> 
+       </div> 
+       <div class="checkbox"> 
+        <input type="radio" id="saveThdCmpNewPDF" name="saveExt" value="pdf" /> 
+        <label for="saveThdCmpNewPDF">PDF</label> 
+       </div> 
+       <div class="checkbox"> 
+        <input type="radio" id="saveThdCmpDOC" name="saveExt" value="doc" /> 
+        <label for="saveThdCmpDOC">DOC</label> 
+       </div> 
+      </div> 
+      <!-- // checkboxWrap --> 
+     </form> 
+    </div> 
+    <div class="btnBottom right"> 
+     <button type="button" class="btn btnSm btnInBlue" onclick="submitListSaveLumThdCmpPrc();return false;">저장</button> 
+     <button type="button" class="btn btnSm btnWhite clsBtn" onclick="SaveWindow.hideThdCmpNewSave();">닫기</button> 
+    </div> 
+   </div> 
+  </div> 
+  <!-- 3단비교 임시 저장 layer --> 
+  <div class="layerPop layerType" id="thdCmpTmpSaveLayer"> 
+   <div class="inner"> 
+    <div class="cont"> 
+     <form id="thdCmpTmpSaveForm" name="thdCmpTmpSaveForm" target="_self" action="#"> 
+      <fieldset> 
+       <legend>파일형식 선택</legend> 
+       <input type="image" title="전송" alt="전송" style="display:none;" /> 
+       <input type="hidden" name="save" value="save" /> 
+       <!-- id="save" --> 
+       <div class="typeBox"> 
+        <!-- checkboxWrap --> 
+        <div class="checkboxWrap caseCol"> 
+         <div class="checkbox"> 
+          <input type="radio" name="saveExt" id="saveThdCmpTmpSaveHTML" checked="" value="html" /> 
+          <label for="fileRadio01">HTML</label> 
+         </div> 
+         <div class="checkbox"> 
+          <input type="radio" name="saveExt" id="saveThdCmpTmpSaveXLSb" value="xls" /> 
+          <label for="fileRadio02">XLS</label> 
+         </div> 
+         <div class="checkbox"> 
+          <input type="radio" name="saveExt" id="saveThdCmpTmpSaveHWP" value="hwp" /> 
+          <label for="fileRadio03">HWP</label> 
+         </div> 
+        </div> 
+        <!-- // checkboxWrap --> 
+        <div class="buttons"> 
+         <button type="button" class="btn btnSm btnWhite clsBtn" onclick="fn_layer_close(this);">취소</button> 
+         <button type="button" class="btn btnSm btnInBlue" onclick="submitListSaveThdCmpTmpPrc();return false;">저장</button> 
+        </div> 
+       </div> 
+      </fieldset> 
+     </form> 
+    </div> 
+    <div class="btnBottom right"> 
+     <button type="button" class="btn btnSm btnInBlue" onclick="submitListSaveThdCmpTmpPrc();return false;">저장</button> 
+     <button type="button" class="btn btnSm btnWhite clsBtn" onclick="fn_layer_close(this)">닫기</button> 
+    </div> 
+   </div> 
+  </div> 
+  <!-- 행정규칙 신구조문 저장 layer --> 
+  <div class="layerPop layerType" id="admRulOANSaveLayer" style="display:none"> 
+   <div class="inner"> 
+    <div class="cont"> 
+     <form id="admRulOANSaveForm" name="admRulOANSaveForm" target="_self" action="#"> 
+      <input type="image" title="전송" alt="전송" style="display:none;" /> 
+      <input type="hidden" name="save" value="save" /> 
+      <div class="typeBox"> 
+       <!-- checkboxWrap --> 
+       <div class="checkboxWrap caseCol"> 
+        <div class="checkbox"> 
+         <input type="radio" name="admRulOANSaveExt" id="admRulOANSaveHTML" checked="" value="html" /> 
+         <label for="admRulOANSaveHTML">HTML</label> 
+        </div> 
+        <div class="checkbox"> 
+         <input type="radio" name="admRulOANSaveExt" id="admRulOANSaveHWP" value="hwp" /> 
+         <label for="admRulOANSaveHWP">HWP(한글)</label> 
+        </div> 
+        <div class="checkbox"> 
+         <input type="radio" name="admRulOANSaveExt" id="admRulOANSaveXLS" value="xls" /> 
+         <label for="admRulOANSaveXLS">XLS(엑셀)</label> 
+        </div> 
+       </div> 
+       <!-- // checkboxWrap --> 
+      </div> 
+     </form> 
+    </div> 
+    <div class="btnBottom right"> 
+     <button type="button" class="btn btnSm btnInBlue" onclick="submitAdmRulOAN();return false;">저장</button> 
+     <button type="button" class="btn btnSm btnWhite clsBtn" onclick="SaveWindow.hideAdmRulOANSave();">닫기</button> 
+    </div> 
+   </div> 
+  </div> 
+  <!-- 행정규칙 신구조문저장 layer //--> 
+  <!-- 학칙규정 신구조문 저장 layer --> 
+  <div class="layerPop layerType" id="schlPubRulOANSaveLayer"> 
+   <div class="inner"> 
+    <div class="cont"> 
+     <form id="schlPubRulOANSaveForm" name="schlPubRulOANSaveForm" target="_self" action="#"> 
+      <input type="image" title="전송" alt="전송" style="display:none;" /> 
+      <input type="hidden" name="save" value="save" /> 
+      <!-- checkboxWrap --> 
+      <div class="checkboxWrap caseCol"> 
+       <div class="checkbox"> 
+        <input type="radio" id="schlPubRulOANSaveHTML" name="schlPubRulOANSaveExt" value="html" checked="" /> 
+        <label for="schlPubRulOANSaveHTML">HTML</label> 
+       </div> 
+       <div class="checkbox"> 
+        <input type="radio" id="schlPubRulOANSaveHWP" name="schlPubRulOANSaveExt" value="hwp" /> 
+        <label for="schlPubRulOANSaveHWP">HWP(한글)</label> 
+       </div> 
+       <div class="checkbox"> 
+        <input type="radio" id="schlPubRulOANSaveXLS" name="schlPubRulOANSaveExt" value="xls" /> 
+        <label for="schlPubRulOANSaveXLS">XLS(엑셀)</label> 
+       </div> 
+      </div> 
+      <!-- // checkboxWrap --> 
+     </form> 
+    </div> 
+    <div class="btnBottom right"> 
+     <button type="button" class="btn btnSm btnInBlue" onclick="submitSchlPubRulOAN(); return false;">저장</button> 
+     <button type="button" class="btn btnSm btnWhite clsBtn" onclick="SaveWindow.hideSchlPubRulOANSave();">닫기</button> 
+    </div> 
+   </div> 
+  </div> 
+  <!-- 학칙규정 신구조문저장 layer //--> 
+  <!-- 일괄 저장 layer --> 
+  <div class="layerPop layerType" id="bulkSaveLayer"> 
+   <div class="inner"> 
+    <div class="cont"> 
+     <form id="bulkSaveForm" name="bulkSaveForm" target="_self" action="#"> 
+      <input type="image" title="전송" alt="전송" style="display:none;" /> 
+      <input type="hidden" name="save" value="save" /> 
+      <div class="typeBox"> 
+       <!-- checkboxWrap --> 
+       <div class="checkboxWrap caseCol"> 
+        <div class="checkbox"> 
+         <input type="radio" name="newBulkSaveExt" id="newBulkSaveHWP" checked="" value="hwp" /> 
+         <label for="newBulkSaveHWP">HWP</label> 
+        </div> 
+        <div class="checkbox"> 
+         <input type="radio" name="newBulkSaveExt" id="newBulkSaveHWPX" value="hwpx" /> 
+         <label for="newBulkSaveHWPX">HWPX</label> 
+        </div> 
+        <div class="checkbox"> 
+         <input type="radio" name="newBulkSaveExt" id="newBulkSavePDF" value="pdf" /> 
+         <label for="newBulkSavePDF">PDF</label> 
+        </div> 
+        <div class="checkbox"> 
+         <input type="radio" name="newBulkSaveExt" id="newBulkSaveDOC" value="doc" /> 
+         <label for="newBulkSaveDOC">DOC</label> 
+        </div> 
+       </div> 
+      </div> 
+     </form> 
+    </div> 
+    <!-- // checkboxWrap --> 
+    <div class="btnBottom right"> 
+     <button type="button" class="btn btnSm btnInBlue" onclick="submitBulkSave();">저장</button> 
+     <button type="button" class="btn btnSm btnWhite clsBtn" onclick="fn_layer_close(this);">닫기</button> 
+    </div> 
+   </div> 
+  </div> 
+  <!-- 삼단비교 저장 레이어 --> 
+  <div class="layerPop" id="lsPtnThdCmpSaveLayer"> 
+   <div class="inner" id="viewla"> 
+    <strong class="tit">저장</strong> 
+    <div class="cont"> 
+     <!-- viewerSave --> 
+     <form id="lsThdCmpOutPutFrm" name="lsThdCmpOutPutFrm" method="post" action="#" enctype="application/x-www-form-urlencoded"> 
+      <fieldset> 
+       <div class="viewerSave"> 
+        <!-- tabWrap --> 
+        <div class="tabWrap sub"> 
+         <!-- tabBtn --> 
+         <div class="tabBtn"> 
+          <div class="swiper-wrapper"> 
+           <a href="" class="swiper-slide curr">범위설정</a> 
+          </div> 
+         </div> 
+         <!--// tabBtn --> 
+         <!-- tabBox --> 
+         <div class="tabBox"> 
+          <!-- 범위설정 --> 
+          <div> 
+           <section> 
+            <strong class="title">저장방법</strong> 
+            <!-- radioFunc --> 
+            <div class="radioFunc caseTab"> 
+             <span class="checked case"> <input type="radio" name="saveKnd" id="lsPtnDocPcart" class="radio" onclick="lsThdOutputCustomMode(1);" value="customJoNo" checked="" /> <label for="lsPtnDocPcart">조문번호</label> </span> 
+             <span class="checked case"> <input type="radio" name="saveKnd" id="custom" class="radio" checked="checked" onclick="lsThdOutputCustomMode(2);" value="" /> <label for="custom">목록선택</label> </span> 
+             <input type="text" data-radio="customJoNo" id="outputLsPtnCustomJoNo" name="outputLsPtnCustomJoNo" aria-label="일부저장 입력" placeholder="예) 5-7,1,2,4,5," onkeydown="printCustomValueCheck(event, this);" onclick="lsThdTextRemove(this);" /> 
+            </div> 
+            <!-- // radioFunc --> 
+            <!-- tabWrap stab--> 
+            <div class="tabWrap stab"> 
+             <!-- tabBtn --> 
+             <div class="tabBtn"> 
+              <a href="javascript:;" id="lsPtnOutBdy" class="curr">법령본문</a> 
+             </div> 
+             <!--// tabBtn --> 
+             <!-- tabBox --> 
+             <div class="tabBox"> 
+              <!-- 법령본문 --> 
+              <div> 
+               <div class="inctn1" id="lsPtnOutBdyUl" style="height: 180px;"> 
+                <ul> 
+                 <li> <input type="checkbox" class="dep1" checked="checked" id="lsPtnJoCheckBox" onclick="checkTryCatch(this.checked,'joNo');" /> <label for="lsPtnJoCheckBox">본문</label> </li> 
+                 <li class="dem"><span id="outPutLsPtnJoListDiv"></span></li> 
+                </ul> 
+               </div> 
+              </div> 
+              <!-- // 법령본문 --> 
+             </div> 
+             <!-- // tabBox --> 
+            </div> 
+            <!-- // tabWrap stab --> 
+           </section> 
+          </div> 
+          <!-- // 범위설정 --> 
+         </div> 
+         <!-- // tabBox --> 
+        </div> 
+        <!-- // tabWrap --> 
+        <!-- 파일형식 (공통) --> 
+        <section> 
+         <strong class="title">파일형식</strong> 
+         <!-- radioFunc --> 
+         <input type="hidden" id="docClsSelectBox" value="hwp" /> 
+         <div class="radioFunc caseTab saveMode"> 
+          <span class="checked case"><input type="radio" value="hwp" name="fileSaveType" id="FileSaveHwp" onclick="hwpNoticeImgDp(this);" checked="" /><label for="FileSaveHwp">HWP파일</label></span> 
+          <span class="checked case"><input type="radio" value="xls" name="fileSaveType" id="FileSaveExcel" onclick="hwpNoticeImgDp(this);" /><label for="FileSaveExcel">EXCEL파일</label></span> 
+          <span class="checked case"><input type="radio" value="pdf" name="fileSaveType" id="FileSavePdf" onclick="hwpNoticeImgDp(this);" /><label for="FileSavePdf">PDF파일</label></span> 
+          <span class="checked case"><input type="radio" value="doc" name="fileSaveType" id="FileSaveDoc" onclick="hwpNoticeImgDp(this);" /> <label for="FileSaveDoc">DOC파일</label></span> 
+         </div> 
+         <div class="radioFunc caseTab printMode"> 
+          <span class="checked case"><input type="radio" value="html" name="filePrintType" checked="checked" id="PrintHtml" onclick="hwpNoticeImgDp(this);" /><label for="FileSaveHtml">HTML파일</label></span> 
+         </div> 
+         <!-- // radioFunc --> 
+         <script>
+								$(function () {
+									$('input[type="radio"][value^="fileType"]').on('change', function () {
+										const val = $(this).val();
+										$('[data-radio-disabled]').prop('disabled', false);
+										$('[data-radio-disabled~="' + val + '"]').prop('disabled', true);
+									});
+								});
+							</script> 
+        </section> 
+        <!-- // 파일형식 (공통) --> 
+       </div> 
+       <input type="hidden" name="joAllCheck" id="joAllCheck" value="Y" /> 
+       <input type="hidden" name="saveExt" id="saveExt" value="html" /> 
+       <input type="hidden" id="lsNmFont" value="" /> 
+       <input type="hidden" id="lsJoSize" value="" /> 
+       <input type="hidden" id="lsJoFont" value="" /> 
+       <input type="hidden" id="spaceCls1" value="" /> 
+       <input type="hidden" id="spaceCls2" value="" /> 
+       <input type="hidden" id="spaceCls3" value="" /> 
+       <!-- 3단비교 원문 추가로 --> 
+       <input type="hidden" name="chrClsCd" value="010202" /> 
+       <!-- 인쇄 layer //--> 
+      </fieldset> 
+     </form> 
+    </div> 
+    <!-- btnBottom --> 
+    <div class="btnBottom right saveMode"> 
+     <button class="btn btnWhite btnSm clsBtn" type="button" onclick="fn_layer_close(this)">취소</button> 
+     <button class="btn btnInBlue btnSm" id="aBtnOutPutSave" type="button" onclick="lsThdCmpSavePrint('0'); return false;">저장</button> 
+    </div> 
+    <div class="btnBottom right printMode"> 
+     <button class="btn btnWhite btnSm clsBtn" type="button" onclick="fn_layer_close(this)">취소</button> 
+     <button class="btn btnInBlue btnSm" id="aBtnOutPutPrint" type="button" onclick="lsThdCmpSavePrint('1'); return false;">저장</button> 
+    </div> 
+    <!--// btnBottom --> 
+    <a href="javascript:void(0)" onclick="fn_layer_close(this)">닫기</a> 
+   </div> 
+  </div> 
+  <!--  공통 DIV --> 
+  <div id="joHstDivWrite"> 
+   <div id="joHstLayer" style="display:none"></div> 
+  </div> 
+  <div id="unOrdinDivWrite"> 
+   <div id="unOrdinLayer" style="display:none"></div> 
+  </div> 
+  <div id="unOrdinBtnDivWrite" class="layerPop"> 
+   <div id="unOrdinLayerBtn" class="inner"></div> 
+  </div> 
+  <!-- 별표서식 레이어 --> 
+  <div id="lsBylDivWrite"> 
+   <div id="lsBylLayer" style="display:none; width: 240px; height: 250px;"></div> 
+  </div> 
+  <div id="lsLinkDivWrite" class="layerPop"> 
+   <div class="inner" id="lsLinkLayer"></div> 
+  </div> 
+  <!-- 임시 링크 --> 
+  <div id="tmpLsLinkDivWrite" class="layerPop"> 
+   <div class="inner" id="joTempDeleLayer"></div> 
+  </div> 
+  <!-- 임시 링크 //--> 
+  <div id="lsOutPutDivWrite" class="layerPop"> 
+   <div class="inner"> 
+    <strong class="tit">저장</strong> 
+    <div id="lsOutPutLayer" class="cont"></div> 
+    <div class="btnBottom right"> 
+     <button class="btn btnWhite btnSm" type="button" onclick="fn_layer_close(this)">취소</button> 
+     <button class="btn btnInBlue btnSm" type="button" id="aBtnOutPutSave" onclick="beforeSavePrint(); fn_layer_close(this); return false;">저장</button> 
+    </div> 
+    <a id="maClsBtn" href="javascript:void(0)" onclick="fn_layer_close(this)">닫기</a> 
+   </div> 
+  </div> 
+  <!-- 조문 연혁 비교 인쇄버튼 --> 
+  <div id="lsJoHstPrintDivWrite" class="layerPop"> 
+   <div id="lsJoHstPrintLayer" class="inner"></div> 
+  </div> 
+  <!-- 조문 연혁 비교 인쇄버튼 //--> 
+  <!-- 조문 연혁 비교 저장버튼 --> 
+  <div id="lsJoHstSaveDivWrite" class="layerPop"> 
+   <div id="lsJoHstSaveLayer" class="inner"></div> 
+  </div> 
+  <!-- 조문 연혁 비교 저장버튼 //--> 
+  <!-- 2015.09.25 [LSI2015] 법령본문 조문 옆 법령 아이콘 추가 start --> 
+  <div id="ctlInfDivWrite" class="layerPop"> 
+   <div id="ctlInfLayer" class="inner"></div> 
+  </div> 
+  <!-- 2015.09.25 [LSI2015] 법령본문 조문 옆 법령 아이콘 추가 end --> 
+  <!-- 생활법령 --> 
+  <div id="csmLnkDivWrite" class="layerPop"> 
+   <div id="csmLnkLayer" class="inner"></div> 
+  </div> 
+  <!-- 생활법령 //--> 
+  <!-- 생활법령(조문) --> 
+  <div id="joCsmLnkDivWrite" class="layerPop"> 
+   <div id="joCsmLnkLayer" class="inner"></div> 
+  </div> 
+  <!-- 생활법령 //--> 
+  <div id="lsTtsLayer" class="layerPop"> 
+   <div class="inner"> 
+    <strong class="tit">음성지원</strong> 
+    <div class="cont"> 
+     <div style="display: block; opacity: 1;" data-brl-use="PH" class="bodySideContent"> 
+     </div> 
+    </div> 
+    <a href="javascript:void(0)" class="btnView" onclick="window.open('')">새창열기</a> 
+    <a href="javascript:void(0)" onclick="LsPopLayer.closeLsTtsLayer(this)(this)">닫기</a> 
+   </div> 
+  </div> 
+  <!-- 한눈보기 --> 
+  <div id="oneViewLayer" class="layerPop"></div> 
+  <div id="lmppDivWrite" class="layerPop"> 
+   <div class="inner"> 
+    <strong class="tit">입법예고</strong> 
+    <div id="lmppLayer" class="cont"> 
+    </div> 
+    <a href="javascript:void(0)" onclick="fn_layer_close(this)">닫기</a> 
+   </div> 
+  </div> 
+  <!-- 신구법비교 안내 팝업 --> 
+  <div id="layer_compareNewOldNotice" class="layerPop"> 
+   <div class="inner"> 
+    <strong class="tit">신구법비교</strong> 
+    <!-- cont --> 
+    <div class="cont"> 
+     <p>국가법령정보센터에서 제공하는 신구법 비교는 시스템으로 자동 생성한 것으로 참고용으로만 이용하시기 바라며, 정확한 개정내용의 확인은 제·개정이유(제·개정문) 또는 관보를 확인해 주세요.</p> 
+    </div> 
+    <!-- // cont --> 
+    <a href="javascript:void(0)" onclick="fn_layer_close(this)">닫기</a> 
+   </div> 
+  </div> 
+  <!-- // 신구법비교 안내 팝업 --> 
+  <!--  공통 DIV //--> 
+  <div id="pttnLinkNePop" class="layerPop on" style="display:none; top: 159px; left: 104px; transform: none;"> 
+   <div class="inner" style="width: 450px;"> 
+    <strong class="tit">법령</strong> 
+    <!-- cont --> 
+    <div class="cont" tabindex="0" style="max-height: 296px;"> 
+     <!-- noResult --> 
+     <div class="noResult"> 
+      <p>조문에서 위임한 사항을 규정한 하위법령이 없습니다.</p> 
+      <span>자세한 사항은 소관부처에 문의하시기 바랍니다.</span> 
+     </div> 
+     <!-- // noResult --> 
+    </div> 
+    <!-- // cont --> 
+    <div class="btnBottom right"> 
+     <button class="btn btnInBlue btnSm" type="button" onclick="fn_layer_close(this)">닫기</button> 
+    </div> 
+    <a href="javascript:void(0)" onclick="fn_layer_close(this)">닫기</a> 
+   </div> 
+  </div> 
+  <!--안내 레이어--> 
+  <div id="layer_infoP" class="layerPop on" style="display: none;"> 
+   <div class="inner" style="width: 450px;"> 
+    <strong class="tit" id="infoP_tit"></strong> 
+    <!-- cont --> 
+    <div class="cont" tabindex="0" style="max-height: 100px;"> 
+     <!-- noResult --> 
+     <div class="noResult" style="max-height: 50px;"> 
+      <p id="infoP_msg"></p> 
+     </div> 
+     <!-- // noResult --> 
+    </div> 
+    <!-- // cont --> 
+    <div class="btnBottom right"> 
+     <button class="btn btnWhite btnSm" type="button" id="infoP_leftBtn"></button> 
+     <button class="btn btnInBlue btnSm" type="button" onclick="fn_layer_close(this)">닫기</button> 
+    </div> 
+    <a href="javascript:void(0)" onclick="fn_layer_close(this)">닫기</a> 
+   </div> 
+  </div> 
+  <script type="text/javascript">
+    function modal(id, msg, leftBtnType, leftBtnTitle, existLsIdCnt) {
+        fn_layer('layer_infoP',this,'450')
+        $("#infoP_msg").text(msg);
+        //현행법령이동
+        if( leftBtnType == "LsCurMove" ){
+            $('#infoP_leftBtn').html(leftBtnTitle);
+            document.querySelector('#infoP_leftBtn').addEventListener('click', function() {
+                // 해당 법령의 현행이 있다면
+                if (existLsIdCnt > 0){
+                    fLsCurMovePop(lsVO.lsValue.lsNm);
+                }else{
+                    alert("해당 법령은 현행인 법령이 존재하지 않습니다.");
+                }
+            });
+            //현행행정규칙이동
+        } else if( leftBtnType == "AmdRulCurMove" ){
+            $('#infoP_leftBtn').html(leftBtnTitle);
+            document.querySelector('#infoP_leftBtn').addEventListener('click', function() {
+                // 해당 법령의 현행이 있다면
+                if (existLsIdCnt > 0){
+                    lawInfPopById(param.admRulId,'0');
+                }else{
+                    alert("해당 행정규칙은 현행인 행정규칙이 존재하지 않습니다.");
+                }
+            });
+            //현행자치법규이동
+        }else if( leftBtnType == "OrdinCurMove" ){
+            $('#infoP_leftBtn').html(leftBtnTitle);
+            document.querySelector('#infoP_leftBtn').addEventListener('click', function() {
+                // 해당 법령의 현행이 있다면
+                if (existLsIdCnt > 0){
+                    fOrdinPopById(ordinVO.ordinValue.ordinId);
+                }else{
+                    alert("해당 자치법규는 현행인 자치법규가 존재하지 않습니다.");
+                }
+            });
+        }else{
+            $('#infoP_leftBtn').css("display", "none");
+        }
+    }
+
+</script> 
+  <script type="text/javascript">
+
+        
+
+        function setInfoR(lsiSeq,ancYd,ancNo,efYd,nwJoYnInfo,efGubun,chrClsCd,ancYnChk){
+
+
+            
+                
+                
+                    
+                    
+                    
+                    
+                     //본문 상단 제개정문, lsViewAll() 파라미터까지 세팅해야 한다.
+                        etcViewNw('lsRvsDocInfoR', '285779', '20260511', '', '0', '', 'Y');
+                        $("#viewerTitle").text("제정∙개정이유");
+                    
+                    
+                    
+                    
+                    
+                    
+                
+                
+                
+            
+        }
+
+
+
+
+
+    </script>   
+  <script type="text/javascript" src="/LSW/assets/js/common/hrefRemove.js"></script>  
+ </body>
+</html>

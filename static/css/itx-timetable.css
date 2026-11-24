@@ -1,0 +1,134 @@
+/* ITX controls and comparable planned times stay inside their own panel. */
+#itx-timetable {
+    width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+    margin-top: 18px;
+    color: var(--ink, #18352b);
+}
+
+#itx-timetable .itx-controls {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: end;
+    gap: 12px;
+    margin-bottom: 18px;
+}
+
+#itx-timetable .itx-controls label {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    gap: 7px;
+    font-size: 14px;
+    font-weight: 650;
+}
+
+#itx-timetable .itx-controls label:has(input[type="date"]),
+#itx-timetable #itx-load { grid-column: 1 / -1; }
+
+#itx-timetable .itx-controls :is(select, input[type="date"]) {
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+    min-height: 46px;
+    padding: 10px;
+    border: 1px solid #b9ccbe;
+    border-radius: 10px;
+    background: #fff;
+    color: var(--ink, #18352b);
+    font: inherit;
+    font-size: 16px;
+}
+
+#itx-timetable #itx-load {
+    min-height: 46px;
+    padding: 11px 16px;
+    border: 0;
+    border-radius: 10px;
+    background: var(--green-dark, #187526);
+    color: #fff;
+    font: inherit;
+    font-weight: 700;
+}
+
+#itx-timetable #itx-load:hover { background: var(--green-deep, #145520); }
+#itx-timetable :disabled { cursor: wait; opacity: .6; }
+#itx-timetable :is(select, input, button, [tabindex="-1"]):focus-visible {
+    outline: 3px solid var(--green-dark, #187526);
+    outline-offset: 3px;
+}
+
+#itx-timetable .itx-status {
+    margin: 8px 0 16px;
+    font-size: 14px;
+    line-height: 1.7;
+    overflow-wrap: anywhere;
+}
+#itx-timetable .itx-status[data-state="error"] { color: #973a24; }
+
+#itx-timetable .itx-results {
+    min-width: 0;
+    padding-top: 18px;
+    border-top: 1px solid var(--line, #e2eae4);
+}
+#itx-timetable #itx-results-heading {
+    margin: 0;
+    font-size: 19px;
+    font-weight: 750;
+    line-height: 1.45;
+    overflow-wrap: anywhere;
+    scroll-margin-block: 14px;
+}
+#itx-timetable .itx-result-meta {
+    margin: 7px 0 16px;
+    color: #53685a;
+    font-size: 14px;
+    line-height: 1.65;
+    overflow-wrap: anywhere;
+}
+#itx-timetable .itx-train-list { margin: 0; padding: 0; list-style: none; }
+#itx-timetable .itx-train {
+    min-width: 0;
+    padding: 18px 0;
+    border-top: 1px solid var(--line, #e2eae4);
+}
+#itx-timetable .itx-train-times {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px;
+}
+#itx-timetable .itx-time-group { min-width: 0; }
+#itx-timetable .itx-time-group:last-child { text-align: right; }
+#itx-timetable .itx-time-label { display: block; color: #53685a; font-size: 13px; }
+#itx-timetable .itx-time {
+    display: block;
+    margin-top: 3px;
+    font-size: clamp(1.5rem, 7vw, 1.875rem);
+    font-weight: 750;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -.02em;
+    line-height: 1.25;
+    overflow-wrap: anywhere;
+}
+#itx-timetable .itx-train-details {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    margin-top: 12px;
+    color: #53685a;
+    font-size: 14px;
+    line-height: 1.6;
+}
+#itx-timetable .itx-train-details span { min-width: 0; overflow-wrap: anywhere; }
+#itx-timetable .itx-train-details span:last-child { text-align: right; }
+#itx-timetable .itx-empty { padding: 12px 0; font-size: 14px; line-height: 1.7; }
+
+#itx-timetable .itx-warning,
+#itx-timetable .itx-note { margin-top: 14px; color: #53685a; font-size: 13px; line-height: 1.7; overflow-wrap: anywhere; }
+#itx-timetable .itx-warning { padding: 12px; border-radius: 10px; background: #fff7e6; color: #76570c; }
+
+@media (max-width: 640px) {
+    #transport-panel-subway { padding: 18px 14px; }
+    #itx-timetable .itx-controls { gap: 10px; }
+}

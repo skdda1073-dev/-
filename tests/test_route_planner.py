@@ -84,6 +84,26 @@ class RoutePlannerTests(unittest.TestCase):
         self.b["nodeord"] = self.a["nodeord"]
         self.assertEqual(self.plan({"R": route("10", [self.a, self.b, self.d])}), [])
 
+    def test_each_direction_can_start_its_own_stop_sequence(self):
+        inbound_a = stop("IN_A", 1, direction=1)
+        inbound_b = stop("IN_B", 2, direction=1, lon=127.74)
+        journeys = self.plan(
+            {"R": route("10", [self.a, self.b, inbound_a, inbound_b])},
+            origins=[inbound_a], destinations=[inbound_b],
+        )
+        self.assertEqual(len(journeys), 1)
+        self.assertEqual(journeys[0]["legs"][0]["next_stop"]["id"], "IN_B")
+        self.assertEqual(self.plan({"R": route("10", [self.a, self.b, inbound_a, inbound_b])},
+                                   origins=[self.a], destinations=[inbound_b]), [])
+
+    def test_conflicting_arrival_number_is_not_used_even_when_id_matches(self):
+        journey = self.plan({"R": compact_route("300", [self.a, self.d])}, arrivals={
+            "A": [{"routeid": "R", "routeno": "400", "arrtime": 300}],
+        })[0]
+        self.assertEqual(journey["legs"][0]["route_no"], "300")
+        self.assertIsNone(journey["legs"][0]["arrival_min"])
+        self.assertIsNone(journey["total_min"])
+
     def test_missing_order_is_rejected(self):
         del self.b["nodeord"]
         self.assertEqual(self.plan({"R": route("10", [self.a, self.b, self.d])}), [])

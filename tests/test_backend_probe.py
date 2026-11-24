@@ -93,6 +93,42 @@ class BackendProbeTests(unittest.TestCase):
         application.transit_client.arrivals.assert_not_called()
         self.assertIn("CSV 경로 후보는 조회할 수 있습니다", output)
 
+    def test_public_key_is_required_in_official_routing_mode(self):
+        application = self.application(public=False)
+        old_health = application.app.view_functions["health"]
+        def official_health():
+            response = old_health()
+            body = response.get_json()
+            body["routing_mode"] = "tago_route_candidates"
+            return jsonify(body)
+        application.app.view_functions["health"] = official_health
+        code, _ = self.check(application, live=True)
+        self.assertEqual(code, 2)
+        self.assertEqual(application.called, ["health"])
+
+    def test_dedicated_bus_key_satisfies_official_mode_without_shared_key(self):
+        application = self.application(public=False)
+        old_health = application.app.view_functions["health"]
+        def official_health():
+            body = old_health().get_json()
+            body["routing_mode"] = "tago_route_candidates"
+            body["configured"]["tago_api_key"] = True
+            return jsonify(body)
+        application.app.view_functions["health"] = official_health
+        code, output = self.check(application, live=True)
+        self.assertEqual(code, 0)
+        application.transit_client.arrivals.assert_called_once()
+        self.assertNotIn("TAGO 버스 없음", output)
+
+    def test_shuttle_success_does_not_hide_failed_city_routing(self):
+        application = self.application(route_body={
+            "journeys": [{"transport_type": "shuttle", "legs": []}],
+            "providers": {"city_bus": {"status": "error", "code": "ROUTE_PERMISSION"}},
+        })
+        code, output = self.check(application, live=True)
+        self.assertEqual(code, 3)
+        self.assertIn("ROUTE_PERMISSION", output)
+
     def test_empty_search_is_not_success(self):
         application = self.application(places=[])
         code, output = self.check(application, live=True)

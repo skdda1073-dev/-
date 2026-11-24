@@ -1,0 +1,5 @@
+service_line_id,schedule_station_name,reference_line_id,reference_station_id,reference_station_source_row,evidence
+I41K2,청량리,I4102,1014,781,코레일 경춘선 운행표 정차역과 KRIC 역자료의 경춘선 연계 코드 일치
+I41K2,회기,I4102,1015,783,코레일 경춘선 운행표 정차역과 KRIC 역자료의 경춘선 연계 코드 일치
+I41K2,중랑,I4108,1201,804,코레일 경춘선 운행표 정차역과 KRIC 역자료의 경춘선 연계 코드 일치
+I41K2,상봉,I4108,1202,806,코레일 경춘선 운행표 정차역과 KRIC 역자료의 경춘선 연계 코드 일치

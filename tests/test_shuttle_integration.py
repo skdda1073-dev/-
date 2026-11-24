@@ -15,7 +15,7 @@ from services.transit_service import TransitService
 from services.walking_service import WalkingService
 
 
-DATA_PATH = Path(__file__).resolve().parents[1] / "한림대_셔틀버스.csv"
+DATA_PATH = Path(__file__).resolve().parents[1] / "data" / "raw" / "campus" / "한림대_셔틀버스.csv"
 NOW = datetime.fromisoformat("2026-10-19T07:50:00+09:00")
 ORIGIN = {"name": "출발", "lat": 37.88, "lon": 127.73}
 DESTINATION = {"name": "도착", "lat": 37.89, "lon": 127.74}

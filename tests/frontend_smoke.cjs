@@ -173,14 +173,91 @@ const MAP_SDK = String.raw`(() => {
         } } };
 })();`;
 
+// Test-only room activation. The ordinary page already loads its taxi estimate.
+async function activateRealMobility(page) {
+    const sources = await page.evaluate(() => {
+        const template = document.getElementById('real-mobility-template');
+        const demo = document.getElementById('transport-demo');
+        const taxi = document.getElementById('taxi-section');
+        // Preserve the existing estimate and listeners before hiding the tabbed demo.
+        if (taxi && demo.contains(taxi)) template.before(taxi);
+        demo.hidden = true;
+        const actions = document.getElementById('taxi-room-actions');
+        if (actions) actions.hidden = false;
+        if (!document.getElementById('ride-room-section')) template.before(template.content.cloneNode(true));
+        return [template.dataset.roomSrc].filter(src => src && !Array.from(document.scripts).some(script =>
+            script.src === new URL(src, document.baseURI).href));
+    });
+    for (const src of sources) await page.addScriptTag({ url: src });
+}
+
+// Synthetic contract fixture, not an alternate production timetable or calendar.
+function shuttleFixture(params = new URLSearchParams()) {
+    const at = params.get('at') || '2026-10-19T07:50:00+09:00';
+    const day = at.slice(0, 10), weekday = new Date(day + 'T12:00:00+09:00').getUTCDay();
+    const verified = day >= '2026-01-01' && day <= '2026-12-31';
+    const closed = weekday === 0 || weekday === 6 || day === '2026-10-09' || day === '2026-07-01';
+    const event = (stop_id, name, time, departure = false) => ({ stop_id, name, time,
+        time_role: departure ? 'departure' : time === null ? 'arrival_unknown' : undefined });
+    const trip = (id, route_name, direction, events, departure = false) => ({ id, route_id: route_name + direction,
+        route_name, direction, routing_usable: true, sequence_basis: departure ? 'official_route_endpoints' : 'csv_row_order',
+        operation_status_at_query_date: closed || (id === 't1' && weekday === 5) ? 'not_operating' : verified ? 'verified' : 'unknown', events });
+    let trips = [
+        trip('t1', '제1노선', '등교', [event('r1-a', '춘천역', '09:15', true), event('r1-b', '대학교', null)], true),
+        trip('t1-later', '제1노선', '등교', [event('r1-a', '춘천역', '09:20', true), event('r1-b', '대학교', null)], true),
+        trip('t1-return', '제1노선', '하교', [event('r1-c', '대학교', '17:30', true), event('r1-d', '춘천역', null)], true),
+        trip('t2-a', '제2노선', '순환', [event('r2-a', '대학교', '08:00'), event('r2-b', '동명 정류장', '08:10')]),
+        trip('t2-b', '제2노선', '순환', [event('r2-c', '동명 정류장', '09:00'), event('r2-d', '종점', '09:10')]),
+    ].filter(item => (!params.has('route') || item.route_name === params.get('route'))
+        && (!params.has('direction') || item.direction === params.get('direction')));
+    const routes = [...new Map(trips.map(item => [item.route_id, { route_name: item.route_name, direction: item.direction,
+        trip_count: trips.filter(other => other.route_id === item.route_id).length }])).values()];
+    const stops = [...new Map(trips.flatMap(item => item.events.map(row => [row.stop_id, { id: row.stop_id, name: row.name }]))).values()];
+    const result = { mode: 'shuttle_timetable', status: verified ? 'ok' : 'unknown_calendar', query_at: at,
+        timezone: 'Asia/Seoul', calendar_status: verified ? 'verified' : 'unknown', time_basis: 'schedule', realtime: false,
+        warnings: [], source: { filename: 'synthetic-shuttle.csv', official_profile: { checked_on: '2026-10-18' } },
+        conditions: { calendar_coverage: { start: '2026-01-01', end: '2026-12-31' }, eligibility: null, fare: null },
+        routes, stops, trips, timetable_candidates: [] };
+    if (!params.has('board') || !params.has('alight')) {
+        if (trips.length && trips.every(item => item.operation_status_at_query_date === 'not_operating')) result.status = 'not_operating';
+        return result;
+    }
+    let connected = false, operating = false;
+    for (const item of trips) {
+        const start = item.events.findIndex(row => row.stop_id === params.get('board'));
+        const end = item.events.findIndex(row => row.stop_id === params.get('alight'));
+        if (start < 0 || end <= start) continue;
+        connected = true;
+        if (item.operation_status_at_query_date === 'not_operating') continue;
+        operating = true;
+        const first = item.events[start], last = item.events[end];
+        const scheduled = day + 'T' + first.time + ':00+09:00';
+        if (new Date(scheduled) < new Date(at)) continue;
+        result.timetable_candidates.push({ trip_id: item.id, route_name: item.route_name, direction: item.direction,
+            board: { id: first.stop_id, name: first.name }, alight: { id: last.stop_id, name: last.name },
+            scheduled_stop_at: scheduled, scheduled_departure_at: first.time_role === 'departure' ? scheduled : null,
+            scheduled_alight_stop_at: last.time === null ? null : day + 'T' + last.time + ':00+09:00',
+            scheduled_arrival_at: null, ride_min: null, total_min: null, service_date_confirmed: verified });
+    }
+    if (!result.timetable_candidates.length) result.status = !connected ? 'no_connection' : !operating ? 'not_operating' : 'no_departures_remaining';
+    return result;
+}
+
 async function openApp(browser, options = {}) {
     const previewFontCSS = await loadPreviewFontCSS();
     const context = await browser.newContext({
         viewport: options.viewport || { width: 390, height: 844 },
         deviceScaleFactor: 1, reducedMotion: 'reduce', locale: 'ko-KR', timezoneId: options.timezoneId || 'Asia/Seoul',
     });
-    const requests = [], searches = [], taxiRequests = [], roomRequests = [], errors = [], blocked = [];
-    await context.addInitScript(({ denyGPS }) => {
+    const requests = [], searches = [], taxiRequests = [], roomRequests = [], itxRequests = [], shuttleRequests = [], intercityRequests = [], adviceRequests = [], errors = [], blocked = [];
+    await context.addInitScript(({ denyGPS, fixedNow }) => {
+        if (fixedNow) {
+            const NativeDate = Date;
+            window.Date = class extends NativeDate {
+                constructor(...args) { super(...(args.length ? args : [fixedNow])); }
+                static now() { return new NativeDate(fixedNow).getTime(); }
+            };
+        }
         window.__testGPSCalls = [];
         window.__injected = false;
         const locate = (success, error, type) => {
@@ -194,7 +271,7 @@ async function openApp(browser, options = {}) {
             watchPosition(success, error) { locate(success, error, 'watchPosition'); return 1; },
             clearWatch() {},
         } });
-    }, { denyGPS: !!options.denyGPS });
+    }, { denyGPS: !!options.denyGPS, fixedNow: options.fixedNow });
     await context.route('**/*', async route => {
         const request = route.request();
         const url = new URL(request.url());
@@ -209,6 +286,30 @@ async function openApp(browser, options = {}) {
         if (url.origin !== BASE_ORIGIN) {
             blocked.push(url.origin);
             return route.abort('blockedbyclient');
+        }
+        if (url.pathname === '/api/commute-advice') {
+            adviceRequests.push(Object.fromEntries(url.searchParams));
+            if (options.adviceHandler) return options.adviceHandler(route, url, adviceRequests.length);
+            return route.fulfill({ json: adviceFixture(url.searchParams.get('campus')) });
+        }
+        if (url.pathname === '/shuttle_timetable') {
+            shuttleRequests.push(Object.fromEntries(url.searchParams));
+            if (options.shuttleHandler) return options.shuttleHandler(route, url, shuttleRequests.length);
+            return route.fulfill({ json: shuttleFixture(url.searchParams) });
+        }
+        if (url.pathname.startsWith('/api/intercity/')) {
+            intercityRequests.push({ pathname: url.pathname, query: url.search });
+            if (options.intercityHandler) return options.intercityHandler(route, url, intercityRequests.length);
+            return route.fulfill({ json: intercityFixture(url.pathname, url.searchParams) });
+        }
+        if (url.pathname === '/api/itx/stations') {
+            itxRequests.push({ pathname: url.pathname, query: url.search });
+            return route.fulfill({ json: { stations: ['춘천', '마석', '용산'].map(name => ({ name })), date: '2030-10-21' } });
+        }
+        if (url.pathname === '/api/itx/route') {
+            itxRequests.push({ pathname: url.pathname, query: url.search });
+            return route.fulfill({ json: { trains: [{ train_no: '1001', origin: url.searchParams.get('origin'),
+                destination: url.searchParams.get('destination'), departure_time: '18:00', arrival_time: '19:00', fare: 6000 }] } });
         }
         if (url.pathname === '/search_poi') {
             const query = url.searchParams.get('q') || '';
@@ -239,27 +340,71 @@ async function openApp(browser, options = {}) {
     const page = await context.newPage();
     page.setDefaultTimeout(6500);
     page.on('pageerror', error => errors.push(error.message));
-    page.on('dialog', dialog => { errors.push(`Unexpected blocking dialog: ${dialog.message()}`); dialog.dismiss().catch(() => {}); });
+    let expectedDialog = null;
+    page.on('dialog', dialog => {
+        if (expectedDialog && dialog.type() === expectedDialog.type) {
+            expectedDialog.handled = true;
+            (expectedDialog.accept ? dialog.accept() : dialog.dismiss()).catch(error => errors.push(error.message));
+        } else { errors.push(`Unexpected blocking dialog: ${dialog.message()}`); dialog.dismiss().catch(() => {}); }
+    });
     try {
         await page.goto(BASE_URL, { waitUntil: options.mapSDKGate ? 'domcontentloaded' : 'networkidle' });
         await page.locator('#route-submit').waitFor({ state: 'visible' });
+        await page.locator('#app-intro').waitFor({ state: 'hidden' });
+        if (!options.keepCommuteAdviceOpen && await page.locator('#commute-advice-panel').count()) {
+            if (await page.locator('#commute-advice-panel').isVisible()) await page.locator('#commute-advice-close').click();
+        }
+        if (options.realMobility) {
+            // Room regression coverage opts into inert markup; the taxi script stays loaded once.
+            await activateRealMobility(page);
+        }
+
         assert.deepEqual(await page.evaluate(() => window.__testGPSCalls), [], 'Loading the app must not request GPS permission');
         assert.deepEqual(errors, [], 'App startup has no unhandled JavaScript errors');
     } catch (error) {
         await context.close();
         throw error;
     }
-    return { page, context, requests, searches, taxiRequests, roomRequests, errors, blocked, async close() {
+    return { page, context, requests, searches, taxiRequests, roomRequests, itxRequests, shuttleRequests, intercityRequests, adviceRequests, errors, blocked,
+        async expectDialog(type, accept, action) {
+            assert.equal(expectedDialog, null);
+            expectedDialog = { type, accept, handled: false };
+            try { await action(); assert.equal(expectedDialog.handled, true, 'Expected data-loss confirmation was shown'); }
+            finally { expectedDialog = null; }
+        }, async close() {
         const captured = [...errors];
         await context.close();
         assert.deepEqual(captured, [], 'No unhandled JavaScript errors or blocking dialogs');
     } };
 }
 
+// Synthetic test data only. No production timetable or terminal-code fallback.
+function intercityFixture(pathname, params = new URLSearchParams()) {
+    const today = '2030-10-21';
+    const terminals = [{ id: 'TEST_CTN', name: '춘천', city: '춘천시' },
+        { id: 'TEST_DSE', name: '동서울', city: '서울시' },
+        { id: 'TEST_OTHER', name: '테스트 터미널', city: '테스트시' }];
+    if (pathname.endsWith('/config')) return { today, date_policy: 'today_only', configured: true };
+    if (pathname.endsWith('/terminals')) return { status: 'ok', today, terminals,
+        fetched_at: today + 'T08:00:00+09:00', from_cache: false };
+    if (pathname.endsWith('/destinations')) return { status: 'ok', today,
+        departure: terminals.find(item => item.id === params.get('departure_id')) || { id: params.get('departure_id'), name: '테스트 출발', city: '테스트시' },
+        destinations: terminals.filter(item => item.id !== params.get('departure_id')),
+        additional_stops: [],
+        fetched_at: today + 'T08:00:00+09:00', from_cache: false,
+        source: { name: '합성 등록 노선', url: 'https://example.invalid/registered-routes' }, warnings: [] };
+    return { status: 'ok', date: params.get('date') || today,
+        departure: { id: params.get('departure_id'), name: '테스트 출발' },
+        arrival: { id: params.get('arrival_id'), name: '테스트 도착' },
+        fetched_at: today + 'T08:00:00+09:00', from_cache: false, warnings: [],
+        trips: [{ departure_at: today + 'T10:00:00+09:00', arrival_at: today + 'T11:30:00+09:00', arrival_estimated: true, duration_minutes: 90, grade: '테스트 우등', fare_krw: 12300, route_id: 'TEST_ROUTE' },
+            { departure_at: today + 'T09:00:00+09:00', arrival_at: null, duration_minutes: null, grade: '테스트 일반', fare_krw: null, route_id: 'TEST_ROUTE_2' }] };
+}
+
 async function noOverflow(page) {
     const result = await page.evaluate(() => {
         const width = document.documentElement.clientWidth;
-        const outside = [...document.querySelectorAll('#planner-panel input, #planner-panel textarea, #planner-panel select, #planner-panel button, #result-container button, #result-container summary')]
+        const outside = [...document.querySelectorAll('#planner-panel input, #planner-panel textarea, #planner-panel select, #planner-panel button, #results-section button, #results-section summary')]
             .filter(el => el.getClientRects().length && (el.getBoundingClientRect().left < -1 || el.getBoundingClientRect().right > width + 1))
             .map(el => el.id || el.textContent.trim().slice(0, 80));
         return { scrollWidth: document.documentElement.scrollWidth, viewport: window.innerWidth, outside };
@@ -268,7 +413,14 @@ async function noOverflow(page) {
     assert.deepEqual(result.outside, [], 'Interactive controls remain inside the viewport');
 }
 
+async function selectTool(page, name) {
+    const tab = page.locator('#transport-tab-' + name);
+    if (!await tab.isVisible()) await page.locator('#sidebar-toggle').click();
+    await tab.click();
+}
+
 async function chooseBuilding(page, campus = 'hallym') {
+    await selectTool(page, 'journey');
     await page.locator(`#tab-${campus}`).click();
     await page.locator('#origin-building').click();
     const building = await page.locator('#building-select option').evaluateAll(options => options.find(option => option.value)?.value);
@@ -278,6 +430,7 @@ async function chooseBuilding(page, campus = 'hallym') {
 }
 
 async function selectDestination(page, query = '남춘천', expectedName = DESTINATION.name) {
+    await selectTool(page, 'journey');
     const input = page.locator('#dest-input');
     await input.fill(query);
     await page.locator('#autocomplete-list [role="option"]').first().waitFor({ state: 'visible' });
@@ -290,6 +443,7 @@ async function selectDestination(page, query = '남춘천', expectedName = DESTI
 }
 
 async function clearDestination(page) {
+    await selectTool(page, 'journey');
     await page.locator('#dest-selected-tag button').click();
     await page.locator('#dest-input').waitFor({ state: 'visible' });
     await page.locator('#dest-selected-tag').waitFor({ state: 'hidden' });
@@ -316,9 +470,12 @@ test('390px initial layout, campus data, keyboard destination selection and clea
         const { page } = app;
         await page.locator('#map-status').waitFor({ state: 'hidden' });
         await noOverflow(page);
+        assert.ok((await page.locator('#dest-input').boundingBox()).height >= 44, 'Destination entry remains usable by touch');
         await screenshot(page, 'mobile-initial-preview.png');
         const hallym = await chooseBuilding(page);
         await selectDestination(page);
+        const changeDestination = page.getByRole('button', { name: '목적지 다시 선택', exact: true });
+        assert.ok((await changeDestination.boundingBox()).height >= 44, 'Changing destination remains usable by touch');
         const knu = await chooseBuilding(page, 'knu');
         assert.notEqual(knu, hallym, 'Campus switch replaces building options');
         assert.ok((await page.locator('#dest-selected-text').textContent()).includes(DESTINATION.name), 'Campus change preserves selected destination');
@@ -351,6 +508,86 @@ test('building journey request preserves campus and destination; known total ren
         assert.doesNotMatch(text, /총 소요 미확인/);
         await noOverflow(page);
         await screenshot(page, 'mobile-journey-preview.png');
+    } finally { await app.close(); }
+});
+
+test('nationwide search shows campus walk, overnight arrival and the official booking link', async browser => {
+    const busan = { name: '부산역', sub: '부산광역시 동구', lat: 35.115, lon: 129.041 };
+    const app = await openApp(browser, { timezoneId: 'America/New_York',
+        searchHandler: (route, query, url) => {
+            assert.equal(url.searchParams.get('scope'), 'national');
+            return route.fulfill({ json: [busan] });
+        } });
+    const page = app.page;
+    let payload;
+    try {
+        await page.route('**/api/journeys', route => {
+            payload = route.request().postDataJSON();
+            const origin = { name: payload.origin.name, lat: 37.88695, lon: 127.73585 };
+            const station = { name: '춘천역', lat: 37.8844, lon: 127.7166 };
+            const depart = '2030-10-21T20:00:00+09:00', arrive = '2030-10-22T01:42:00+09:00';
+            return route.fulfill({ json: { mode: 'national_journeys', status: 'ok', origin, destination: busan,
+                journeys: [{ departure_at: depart, arrival_at: arrive, total_min: 342, fare_won: null, transfer_count: 0,
+                    segments: [
+                        { mode: 'walk', from_place: origin, to_place: station, duration_min: 25,
+                            departure_at: depart, arrival_at: '2030-10-21T20:25:00+09:00' },
+                        { mode: 'train', service_name: 'KTX', route_name: '경부선', from_place: station, to_place: busan, duration_min: 317,
+                            departure_at: '2030-10-21T20:25:00+09:00', arrival_at: arrive,
+                            booking: { name: '코레일', url: 'https://www.korail.com/ticket' } }
+                    ] }] } });
+        });
+        const building = await chooseBuilding(page);
+        await selectDestination(page, '부산역', '부산역');
+        await page.locator('#route-submit').click();
+        const itinerary = page.locator('#result-container .national-itinerary');
+        await itinerary.waitFor({ state: 'visible' });
+        assert.deepEqual(payload, { origin: { name: building, campus: 'hallym', building },
+            destination: { name: busan.name, lat: busan.lat, lon: busan.lon } });
+        assert.equal(app.requests.length, 0);
+        assert.match(await itinerary.innerText(), /5시간 42분[\s\S]*다음 날 오전 1:42 도착/);
+        const firstStep = itinerary.locator('.national-segment').first();
+        assert.match(await firstStep.innerText(), /출발 도보[\s\S]*춘천역[\s\S]*25분/);
+        assert.ok((await firstStep.innerText()).includes(building));
+        assert.match(await itinerary.innerText(), /KTX 경부선/);
+        assert.equal(await itinerary.getByRole('link', { name: /코레일 예매/ }).getAttribute('href'),
+            'https://www.korail.com/ticket');
+        await itinerary.getByRole('link', { name: /코레일 예매/ }).evaluate(link => {
+            link.addEventListener('click', event => event.preventDefault(), { once: true });
+            link.click();
+        });
+        assert.equal(await page.locator('#route-detail').isVisible(), false, 'The booking link does not open route details');
+        await screenshot(page, 'national-journey-preview.png');
+        await itinerary.getByRole('button', { name: '경로 자세히 보기' }).click();
+        await page.locator('#route-detail').waitFor({ state: 'visible' });
+        assert.match(await page.locator('#route-detail-content').innerText(), /KTX 경부선[\s\S]*부산역/);
+    } finally { await app.close(); }
+});
+
+test('school-bound nationwide search sends the selected campus destination and Korean departure date', async browser => {
+    const seoul = { name: '서울역', sub: '서울특별시 용산구', lat: 37.555, lon: 126.97 };
+    const app = await openApp(browser, { viewport: { width: 1440, height: 1000 },
+        searchHandler: route => route.fulfill({ json: [seoul] }) });
+    const page = app.page;
+    let payload;
+    try {
+        await page.route('**/api/journeys', route => {
+            payload = route.request().postDataJSON();
+            return route.fulfill({ json: { mode: 'national_journeys', status: 'partial', journeys: [],
+                warnings: ['해당 날짜의 운행 정보를 확인하지 못했어요.'] } });
+        });
+        await page.locator('#journey-scope-national').click();
+        await page.locator('#national-to-campus').click();
+        await page.locator('#tab-knu').click();
+        const building = await page.locator('#building-select option').nth(1).getAttribute('value');
+        await page.locator('#building-select').selectOption(building);
+        await selectDestination(page, '서울역', '서울역');
+        assert.equal(await page.locator('#journey-place-label').innerText(), '출발할 장소');
+        await page.locator('#national-departure').fill('2030-10-22T06:30');
+        await page.locator('#route-submit').click();
+        await page.getByText('확인할 수 있는 통학 경로가 부족해요').waitFor({ state: 'visible' });
+        assert.deepEqual(payload, { origin: { name: seoul.name, lat: seoul.lat, lon: seoul.lon },
+            destination: { name: building, campus: 'knu', building }, departure_at: '2030-10-22T06:30+09:00' });
+        assert.equal(app.requests.length, 0);
     } finally { await app.close(); }
 });
 
@@ -421,11 +658,13 @@ test('null, HTTP error and empty journey results do not break another search', a
         await chooseBuilding(page);
         await page.locator('#route-submit').click();
         await resultContains(page, /정류장을 찾지 못했어요|조회 결과|응답/);
+        await page.locator('#results-edit').click();
         await page.locator('#route-submit').click();
         await resultContains(page, '연결을 확인하고 다시 검색해 주세요.');
         await selectDestination(page);
         await page.locator('#route-submit').click();
         await resultContains(page, '검색 범위 안에서 경로를 찾지 못했어요');
+        await page.locator('#results-edit').click();
         await page.locator('#route-submit').click();
         await resultContains(page, '총 소요 추정');
         await noOverflow(page);
@@ -499,6 +738,8 @@ test('GPS denial offers building fallback that remains usable', async browser =>
         const { page } = app;
         await page.locator('#origin-gps').click();
         await page.locator('#route-submit').click();
+        await resultContains(page, /현재 위치를 확인하지 못했어요/);
+        await page.locator('#results-edit').click();
         await page.locator('#origin-status').filter({ hasText: /위치 권한.*교내 건물/ }).waitFor({ state: 'visible' });
         assert.equal(app.requests.length, 0, 'Denied GPS is not sent as a transit request');
         assert.ok((await page.evaluate(() => window.__testGPSCalls)).length > 0);
@@ -546,6 +787,70 @@ test('an older autocomplete response cannot replace the newest search', async br
     } finally { releaseOld(); await app.close(); }
 });
 
+for (const width of [360, 390, 1024, 1440]) test(`${width}px independent results, selected detail and original response index`, async browser => {
+    const app = await openApp(browser, { viewport: { width, height: 900 }, routeHandler: (route, payload) => {
+        const data = journeyFixture(payload);
+        const first = clone(data.journeys[0]), second = clone(first);
+        first.legs[0].board.name = '첫째 경로 승차';
+        second.legs[0].board.name = '둘째 경로 승차';
+        data.journeys = [{ legs: [] }, first, second];
+        return route.fulfill({ json: data });
+    } });
+    try {
+        const { page } = app;
+        assert.equal(await page.locator('#results-section').isVisible(), false);
+        await chooseBuilding(page); await selectDestination(page);
+        await page.locator('#route-submit').click();
+        await resultContains(page, '총 소요 추정');
+        assert.equal(await page.locator('#result-count').innerText(), '2개');
+        assert.equal(await page.locator('#results-section').count(), 1);
+        assert.equal(await page.locator('.route-card.is-selected').getAttribute('data-journey-index'), '1');
+        assert.equal(await page.locator('#route-detail').isVisible(), false, 'Automatic selection never opens details');
+        assert.equal(await page.locator('#result-container .journey-timeline').count(), 0);
+        await page.locator('.route-select[data-journey-index="2"]').focus();
+        await page.keyboard.press('Enter');
+        assert.equal(await page.locator('.route-card.is-selected').getAttribute('data-journey-index'), '2');
+        assert.equal(await page.locator('#route-detail').isVisible(), true);
+        assert.match(await page.locator('#route-detail-content').innerText(), /둘째 경로 승차/);
+        assert.equal(await page.locator('#route-detail-heading').innerText(), '선택한 경로 상세 · 경로 02');
+        assert.equal(await page.locator('.journey-timeline').count(), 1);
+        assert.equal(await page.locator('#route-detail').count(), 1);
+        const geometry = await page.evaluate(() => {
+            const map = document.getElementById('map-stage').getBoundingClientRect();
+            const detail = document.getElementById('route-detail'), rect = detail.getBoundingClientRect();
+            const list = document.getElementById('results-section').getBoundingClientRect();
+            return { docked: document.getElementById('app-shell').classList.contains('detail-docked'),
+                parent: detail.parentElement.id, insideMap: rect.left >= map.left && rect.right <= map.right && rect.top >= map.top && rect.bottom <= map.bottom,
+                beforeList: rect.right <= list.left, adequate: innerWidth >= 1280 && map.width >= 640 && map.height >= 480 };
+        });
+        assert.equal(geometry.docked, geometry.adequate);
+        assert.equal(geometry.parent, geometry.docked ? 'route-detail-map' : 'route-detail-inline');
+        if (geometry.docked) {
+            assert.equal(geometry.insideMap, true); assert.equal(geometry.beforeList, true);
+            assert.equal(await page.locator('#result-container').isVisible(), true);
+        }
+        await page.locator('.station-marker[title*="둘째 경로 승차"]').waitFor({ state: 'attached' });
+        await noOverflow(page);
+        await page.locator('#route-detail-close').click();
+        assert.equal(await page.locator('#route-detail').isVisible(), false);
+        assert.equal(await page.locator('#result-container').isVisible(), true);
+        assert.equal(await page.evaluate(() => document.activeElement.getAttribute('data-journey-index')), '2');
+        await page.locator('.route-select[data-journey-index="2"]').click();
+        assert.equal(await page.locator('#route-detail').isVisible(), true);
+        await page.locator('#results-edit').click();
+        assert.equal(await page.locator('#route-submit').isVisible(), true);
+        assert.equal(await page.locator('#results-section').isVisible(), false);
+        await page.locator('#results-show').click();
+        assert.equal(await page.locator('.route-card.is-selected').getAttribute('data-journey-index'), '2');
+        assert.equal(await page.locator('#route-detail').isVisible(), false, 'Reopening results does not reopen the detail');
+        await page.locator('#results-close').click();
+        assert.equal(await page.locator('#results-section').isVisible(), false);
+        await page.locator('#results-show').click();
+        assert.equal(await page.locator('#results-section').isVisible(), true);
+        assert.equal(app.requests.length, 1, 'Editing/closing/reopening never requeries');
+    } finally { await app.close(); }
+});
+
 async function run() {
     const browser = await chromium.launch({ headless: true,
         ...(process.env.CAPSTONE_BROWSER_EXECUTABLE ? { executablePath: process.env.CAPSTONE_BROWSER_EXECUTABLE } : {}),
@@ -567,6 +872,20 @@ async function run() {
     if (failures.length) process.exitCode = 1;
 }
 
-module.exports = { openApp, chooseBuilding, selectDestination, clearDestination, noOverflow, resultContains,
-    taxiFixture, journeyFixture, nearbyFixture, DESTINATION, INJECTION, BASE_URL };
+// Synthetic data for browser tests only; production always calls its Flask advice endpoint.
+function adviceFixture(campus, overrides = {}) {
+    const selected = campus === 'knu' ? 'knu' : 'hallym';
+    const weather = { status: 'ok', code: null, source: '기상청', issued_at: '2030-10-21T08:00:00+09:00',
+        fetched_at: '2030-10-21T08:30:00+09:00', forecast_at: '2030-10-21T09:00:00+09:00',
+        temperature_c: 16, wind_speed_ms: 1.5, rain_probability: 10, message: '다음 예보 시각의 날씨예요.' };
+    const air = { status: 'ok', code: null, source: '에어코리아', station_name: '중앙로',
+        observed_at: '2030-10-21T08:00:00+09:00', fetched_at: '2030-10-21T08:30:00+09:00',
+        pm10: { value: 24, grade: '좋음' }, pm25: { value: 12, grade: '좋음' }, message: '주변 측정소의 참고값이에요.' };
+    return { status: 'ok', campus: { id: selected, name: selected === 'knu' ? '강원대학교' : '한림대학교' },
+        generated_at: '2030-10-21T08:30:00+09:00', period: { start: '2030-10-21T09:00:00+09:00', end: '2030-10-21T15:00:00+09:00', label: '앞으로 6시간' },
+        alerts: [], summary: '확인된 예보와 대기질에서 추가 준비 안내는 없어요.', ...overrides,
+        weather: { ...weather, ...(overrides.weather || {}) }, air: { ...air, ...(overrides.air || {}) } };
+}
+module.exports = { openApp, selectTool, activateRealMobility, chooseBuilding, selectDestination, clearDestination, noOverflow, resultContains,
+    taxiFixture, journeyFixture, nearbyFixture, shuttleFixture, intercityFixture, adviceFixture, DESTINATION, INJECTION, BASE_URL };
 if (require.main === module) run().catch(error => { console.error(error.stack || error); process.exitCode = 1; });

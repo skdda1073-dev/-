@@ -1,0 +1,156 @@
+import csv
+from datetime import datetime
+from pathlib import Path
+from tempfile import TemporaryDirectory
+import unittest
+
+from services.national_transit_repository import NationalTransitRepository
+
+
+class NationalTransitRepositoryTests(unittest.TestCase):
+    def setUp(self):
+        directory = TemporaryDirectory()
+        self.addCleanup(directory.cleanup)
+        self.data = Path(directory.name)
+        self.rail = self.data / "normalized" / "rail"
+        self.rail.mkdir(parents=True)
+        self.write_csv(
+            "rail_station_locations.csv",
+            ("source_record", "station_name", "address", "latitude", "longitude"),
+            [
+                ("1", "출발역", "강원도 시험로 1", 37.89, 127.72),
+                ("2", "도착역", "부산 시험로 2", 35.11, 129.04),
+            ],
+        )
+        self.campus_a = {"name": "첫 건물", "lat": 37.882, "lon": 127.725}
+        self.campus_b = {"name": "둘째 건물", "lat": 37.886, "lon": 127.728}
+        self.station_b = {"name": "도착역", "lat": 35.11, "lon": 129.04}
+
+    def write_csv(self, filename, headers, rows):
+        with (self.rail / filename).open("w", encoding="utf-8", newline="") as source:
+            writer = csv.writer(source)
+            writer.writerow(headers)
+            writer.writerows(rows)
+
+    def trains(self, source_runs):
+        rows = []
+        for number, direction, start, end, depart, arrive, days in source_runs:
+            # Coordinates in the source worksheet differ by stop for the
+            # vertical timetable, but the trip belongs to a single table.
+            rows.extend([
+                ("시험선", 9, 1, 38, 2, direction, number, "무궁화", 1, start,
+                 depart, "ordered", days, "2026-11-24"),
+                ("시험선", 9, 1, 39, 2, direction, number, "무궁화", 2, end,
+                 arrive, "ordered", days, "2026-11-24"),
+            ])
+        self.write_csv(
+            "korail_passenger_stop_times_20261101.csv",
+            ("source_sheet", "source_table_row", "source_table_column", "source_row", "source_column", "direction",
+             "train_number", "train_type", "stop_order", "station_name", "scheduled_time", "time_order_status",
+             "schedule_note", "runs_from_date"),
+            rows,
+        )
+        return NationalTransitRepository(self.data)
+
+    def test_building_walk_controls_which_departure_can_be_boarded(self):
+        repository = self.trains([
+            ("101", "하행", "출발", "도착", "08:12", "11:15", "화"),
+            ("103", "하행", "출발", "도착", "08:30", "11:41", "화"),
+        ])
+
+        def walk(_lat1, _lon1, start_name, _lat2, _lon2, _end_name):
+            return (6, 400) if start_name == "첫 건물" else (12, 850)
+
+        requested = "2026-11-24T08:00:00+09:00"
+        first, = repository.plan(self.campus_a, self.station_b, requested, walk)
+        second, = repository.plan(self.campus_b, self.station_b, requested, walk)
+        self.assertEqual(first["segments"][0]["from_place"], self.campus_a)
+        self.assertEqual(second["segments"][0]["from_place"], self.campus_b)
+        self.assertEqual(first["segments"][0]["duration_min"], 6)
+        self.assertEqual(second["segments"][0]["duration_min"], 12)
+        self.assertEqual(first["segments"][1]["service_name"], "무궁화 101")
+        self.assertEqual(second["segments"][1]["service_name"], "무궁화 103")
+        self.assertEqual(first["segments"][1]["booking_provider"], "korail")
+        self.assertIsNone(first["segments"][1]["fare_won"])
+        self.assertEqual(first["arrival_at"], "2026-11-24T11:15:00+09:00")
+
+    def test_after_midnight_departure_uses_previous_service_date_and_reverse_order(self):
+        repository = self.trains([
+            ("202", "상행", "도착", "출발", "24:15", "27:10", "화"),
+        ])
+        requested = "2026-11-25T00:02:00+09:00"
+        result, = repository.plan(self.station_b, self.campus_a, requested, lambda *_: (6, 400))
+        ride, walk = result["segments"]
+        self.assertEqual(ride["departure_at"], "2026-11-25T00:15:00+09:00")
+        self.assertEqual(ride["arrival_at"], "2026-11-25T03:10:00+09:00")
+        self.assertEqual(result["arrival_at"], "2026-11-25T03:16:00+09:00")
+        self.assertEqual(walk["to_place"], self.campus_a)
+        self.assertFalse(repository.plan(self.campus_a, self.station_b, requested, lambda *_: (6, 400)))
+
+    def test_unverified_access_walk_is_not_replaced_with_a_zero_duration(self):
+        repository = self.trains([
+            ("101", "하행", "출발", "도착", "08:12", "11:15", "화"),
+        ])
+        self.assertFalse(repository.plan(self.campus_a, self.station_b, "2026-11-24T08:00:00+09:00",
+                                         lambda *_: (-1, -1)))
+
+
+class NationalLine8IntegrationTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.repository = NationalTransitRepository(Path(__file__).resolve().parents[1] / "data")
+        cls.chuncheon = next(place for place in cls.repository.chuncheon_gateways() if place["name"] == "춘천역")
+        cls.dasan = cls.repository._timetable().stations["metro:S4108:805"].place()
+
+    @staticmethod
+    def rides(journey):
+        return [(leg["route_name"], leg["from_place"]["name"], leg["to_place"]["name"])
+                for leg in journey["segments"] if leg["mode"] in {"subway", "train"}]
+
+    def test_chuncheon_to_dasan_uses_the_byeollae_interchange(self):
+        def walking(_lat1, _lon1, start, _lat2, _lon2, end):
+            return (47, 3600) if start == "동구릉" and end == "다산역" else (-1, -1)
+
+        journeys = self.repository.plan(self.chuncheon, self.dasan, "2026-11-24T09:32:00+09:00", walking)
+        self.assertTrue(journeys)
+        best = journeys[0]
+        self.assertEqual(self.rides(best), [("경춘선", "춘천역", "별내역"), ("8호선", "별내역", "다산역")])
+        self.assertEqual(best["arrival_at"], "2026-11-24T11:05:10+09:00")
+        self.assertFalse(any(self.rides(journey)[-1] == ("8호선", "별내역", "동구릉") for journey in journeys))
+
+    def test_dasan_to_chuncheon_uses_the_same_interchange(self):
+        journeys = self.repository.plan(self.dasan, self.chuncheon, "2026-11-24T09:32:00+09:00", lambda *_: (-1, -1))
+        self.assertTrue(journeys)
+        self.assertEqual(self.rides(journeys[0]), [("8호선", "다산역", "별내역"), ("경춘선", "별내역", "춘천역")])
+
+    def test_station_bus_access_can_catch_a_train_the_walk_misses(self):
+        origin = {"name": "학교 건물", "lat": 37.89, "lon": 127.737}
+        at = datetime.fromisoformat("2026-11-24T09:30:00+09:00")
+        arrived_by_bus = datetime.fromisoformat("2026-11-24T09:40:00+09:00")
+        bus = {"mode": "bus", "route_name": "300", "from_place": origin, "to_place": self.chuncheon,
+               "departure_at": at, "arrival_at": arrived_by_bus, "duration_min": 10, "estimated": True}
+        access = {"gateway": self.chuncheon, "segments": [bus], "arrival_at": arrived_by_bus,
+                  "warnings": ["실시간 버스로 계산한 역 도착 예상"]}
+
+        def walking(_lat1, _lon1, start, _lat2, _lon2, end):
+            return (20, 1600) if (start, end) == (origin["name"], "춘천역") else (-1, -1)
+
+        walking_only = self.repository.plan(origin, self.dasan, at, walking)[0]
+        by_bus = self.repository.plan(origin, self.dasan, at, walking, access_routes=[access])[0]
+        self.assertLess(by_bus["arrival_at"], walking_only["arrival_at"])
+        self.assertEqual(by_bus["segments"][0], bus)
+        self.assertTrue(by_bus["estimated"])
+        self.assertEqual(by_bus["warnings"], access["warnings"])
+        self.assertEqual(by_bus["arrival_at"], "2026-11-24T11:05:10+09:00")
+
+        def walk_to_the_same_train(_lat1, _lon1, start, _lat2, _lon2, end):
+            return (11, 900) if (start, end) == (origin["name"], "춘천역") else (-1, -1)
+
+        fewer_transfers = self.repository.plan(origin, self.dasan, at, walk_to_the_same_train,
+                                               access_routes=[access])[0]
+        self.assertEqual(fewer_transfers["arrival_at"], by_bus["arrival_at"])
+        self.assertEqual(fewer_transfers["segments"][0]["mode"], "walk")
+
+
+if __name__ == "__main__":
+    unittest.main()

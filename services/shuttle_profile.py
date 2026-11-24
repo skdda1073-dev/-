@@ -278,7 +278,7 @@ class ShuttleProfile:
                         if trip["route_name"] != "제1노선":
                             mapping["evidence"] += " 사용자 승인 교내 계산 기준점이며, 제1노선과 동일 승강장이라는 확인이 아니다."
                     else:
-                        mapping["evidence"] += f" data/chuncheon_bus_routes_20260326.csv 원본 {representative['source_line']}행, {representative['source_stop_id']}."
+                        mapping["evidence"] += f" data/raw/bus/chuncheon_bus_routes_20260326.csv 원본 {representative['source_line']}행, {representative['source_stop_id']}."
                     mappings[event["stop_id"]] = mapping
             self._mappings = mappings
             return deepcopy(mappings)

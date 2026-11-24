@@ -1,4 +1,4 @@
-"""춘천 목적지 검색: 교내 CSV와 TMAP POI를 안전한 동일 형식으로 반환한다."""
+"""교내 CSV와 TMAP POI를 같은 결과 형식으로 제공한다."""
 
 from math import isfinite
 import re
@@ -102,7 +102,7 @@ class PlaceSearchService:
         return None, None
 
     @classmethod
-    def _address(cls, poi):
+    def _address(cls, poi, national=False):
         address_parts = [cls._text(poi.get(field)) for field in (
             "upperAddrName", "middleAddrName", "lowerAddrName", "detailAddrName",
         )]
@@ -114,20 +114,26 @@ class PlaceSearchService:
                      if isinstance(row, dict) and cls._text(row.get("fullAddressRoad"))), "") if isinstance(rows, list) else ""
         old_address = " ".join(part for part in address_parts if part)
         chuncheon = re.compile(r"(?:^|\s)춘천(?:시)?(?:\s|$)")
-        if not chuncheon.search(old_address) and not chuncheon.search(road):
+        if not national and not chuncheon.search(old_address) and not chuncheon.search(road):
             return None
-        return road or old_address
+        return road or old_address or None
 
-    def _remote_matches(self, query):
+    def _remote_matches(self, query, national=False, center=None):
         if not self.app_key:
             raise PlaceSearchError("TMAP_KEY_MISSING", "TMAP_APP_KEY를 설정한 뒤 서버를 다시 시작해 주세요.", 503)
-        keyword = query if "춘천" in query else f"춘천 {query}"
+        keyword = query if national or "춘천" in query else f"춘천 {query}"
+        params = {"version": "1", "searchKeyword": keyword, "searchType": "all",
+                  "searchtypCd": "A", "page": 1, "count": 20,
+                  "reqCoordType": "WGS84GEO", "resCoordType": "WGS84GEO"}
+        if national:
+            params["radius"] = 0
+        if center is not None:
+            lat, lon = center
+            params.update(searchtypCd="R", centerLat=lat, centerLon=lon, radius=18)
         try:
             response = self.requester(
                 self.URL,
-                params={"version": "1", "searchKeyword": keyword, "searchType": "all",
-                        "searchtypCd": "A", "page": 1, "count": 20,
-                        "reqCoordType": "WGS84GEO", "resCoordType": "WGS84GEO"},
+                params=params,
                 headers={"Accept": "application/json", "appKey": self.app_key},
                 timeout=(3, 6), allow_redirects=False,
             )
@@ -171,7 +177,7 @@ class PlaceSearchService:
                 invalid_rows += 1
                 continue
             name = self._text(poi.get("name"))
-            address = self._address(poi)
+            address = self._address(poi, national)
             coords, coordinate_source = self._poi_coordinates(poi)
             if not name or coords is None:
                 invalid_rows += 1
@@ -193,7 +199,14 @@ class PlaceSearchService:
             raise PlaceSearchError("TMAP_RESPONSE", "검색 결과에 유효한 장소 좌표가 없습니다.")
         return matches
 
-    def search(self, query, campus=None):
+    def nearby_terminals(self, lat, lon):
+        """장거리 터미널 식별 대조에 쓰는 전국 POI 후보를 제공한다."""
+        center = self._coordinates(lat, lon)
+        if center is None:
+            raise PlaceSearchError("INVALID_COORDINATES", "터미널 검색 좌표를 확인해 주세요.", 400)
+        return self._remote_matches("버스터미널", national=True, center=center)
+
+    def search(self, query, campus=None, scope="local"):
         """배열 계약 유지. 외부 장애 시 교내 결과에는 search_warning을 표시한다."""
         if not isinstance(query, str):
             raise PlaceSearchError("INVALID_QUERY", "검색어는 문자열이어야 합니다.", 400)
@@ -202,11 +215,13 @@ class PlaceSearchService:
             raise PlaceSearchError("INVALID_QUERY", "검색어는 100자 이내의 일반 문자로 입력해 주세요.", 400)
         if campus is not None and (not isinstance(campus, str) or campus not in self.campus_buildings):
             raise PlaceSearchError("INVALID_CAMPUS", "캠퍼스를 확인해 주세요.", 400)
+        if scope not in ("local", "national"):
+            raise PlaceSearchError("INVALID_SCOPE", "검색 범위를 확인해 주세요.", 400)
         if not query:
             return []
         local = self._campus_matches(query, campus)
         try:
-            remote = self._remote_matches(query)
+            remote = self._remote_matches(query, national=scope == "national")
         except PlaceSearchError as error:
             if not local:
                 raise

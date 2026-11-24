@@ -15,10 +15,10 @@ from services.shuttle_repository import ShuttleDataError, ShuttleRepository
 
 
 ROOT = Path(__file__).resolve().parents[1]
-RAW_PATH = ROOT / "한림대_셔틀버스.csv"
+RAW_PATH = ROOT / "data" / "raw" / "campus" / "한림대_셔틀버스.csv"
 PROFILE_PATH = ROOT / "data" / "hallym_shuttle_profile.json"
-CAMPUS_PATH = ROOT / "한림대학교 건물별 좌표.csv"
-CITY_PATH = ROOT / "data" / "chuncheon_bus_routes_20260326.csv"
+CAMPUS_PATH = ROOT / "data" / "raw" / "campus" / "한림대학교 건물별 좌표.csv"
+CITY_PATH = ROOT / "data" / "raw" / "bus" / "chuncheon_bus_routes_20260326.csv"
 RAW_SHA = "7755f5982aa671785e59ea5b528b12048bcb9210b715ba3e4dc13d0f18d9f03d"
 
 

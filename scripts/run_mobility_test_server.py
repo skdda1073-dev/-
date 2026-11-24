@@ -18,7 +18,7 @@ def main(argv=None):
         parser.error("포트는 1024~65535 범위여야 합니다.")
     with tempfile.TemporaryDirectory(prefix="capstone-browser-") as temporary:
         os.environ.update({
-            "TMAP_APP_KEY": "fake-verification-key", "PUBLIC_DATA_KEY": "", "NAVER_MAP_CLIENT_ID": "fake-map-id",
+            "TMAP_APP_KEY": "fake-verification-key", "PUBLIC_DATA_KEY": "", "TAGO_API_KEY": "", "TRAIN_API_KEY": "", "NAVER_MAP_CLIENT_ID": "fake-map-id",
             "FLASK_SECRET_KEY": "fixed-non-secret-verification-key-0123456789-abcdef",
             "SESSION_COOKIE_SECURE": "false", "APP_DEBUG": "false", "PORT": str(args.port),
             "RIDE_ROOM_DB_PATH": str(Path(temporary) / "rooms.sqlite3"),

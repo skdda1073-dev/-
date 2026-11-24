@@ -2,6 +2,7 @@
 (function() {
     let locationVersion = 0;
     let pendingResolve = null;
+    let pendingLookup = null;
 
     function setLocationStatus(message, failed) {
         const status = document.getElementById('origin-status');
@@ -17,6 +18,7 @@
         locationVersion += 1;
         if (pendingResolve) pendingResolve(null);
         pendingResolve = null;
+        pendingLookup = null;
     }
 
     function locate(force) {
@@ -31,7 +33,7 @@
             return Promise.resolve(null);
         }
 
-        return new Promise(function(resolve) {
+        const lookup = new Promise(function(resolve) {
             pendingResolve = resolve;
             function finish(position) {
                 if (version !== locationVersion) return;
@@ -63,33 +65,47 @@
                 onError(error);
             }
         });
+        pendingLookup = lookup;
+        const clearLookup = function() { if (pendingLookup === lookup) pendingLookup = null; };
+        lookup.then(clearLookup, clearLookup);
+        return lookup;
     }
 
-    function beginLocation() {
+    function getPosition(force) {
+        // A taxi click can share an explicit bus/location lookup without cancelling its loading state.
+        if (!force && pendingLookup) return pendingLookup;
+        return locate(Boolean(force));
+    }
+
+    function beginLocation(forRoute) {
         if (window.selectOriginMode) window.selectOriginMode('gps', { focus: false });
         window.AppModules.api.cancelPendingRequests();
+        const token = forRoute ? window.AppModules.api.beginRouteResults?.({ location: '현재 위치', campus: selectedCampus, dest_name: window.AppState.getDestination().name }) : null;
         setLocationStatus('현재 위치를 확인하고 있어요…', false);
         window.AppModules.api.setRouteLoading(true, '현재 위치를 확인하고 있어요…');
+        return token;
     }
 
     async function findRoutesByGPS() {
-        beginLocation();
+        const token = beginLocation(true);
+        const selection = JSON.stringify([selectedCampus, window.AppState.getOriginMode(), window.AppState.getDestination()]);
         const lookup = locate(false);
         const version = locationVersion;
         const position = await lookup;
-        if (version !== locationVersion) return;
+        if (version !== locationVersion || selection !== JSON.stringify([selectedCampus, window.AppState.getOriginMode(), window.AppState.getDestination()])) return;
         if (!position) {
             window.AppModules.api.setRouteLoading(false);
             const initial = document.getElementById('initial-state');
             if (initial) initial.hidden = false;
+            window.AppModules.api.drawRouteResult({ notice: '현재 위치를 확인하지 못했어요. 위치 권한을 확인하거나 교내 건물을 선택해 주세요.' }, token);
             return;
         }
-        if (window.AppModules.map) window.AppModules.map.recenterPosition(position.lat, position.lon);
-        return window.requestBusByCoords(position.lat, position.lon);
+        return window.requestBusByCoords(position.lat, position.lon, token);
     }
 
     async function findMyLocation() {
-        beginLocation();
+        beginLocation(false);
+        const navigation = window.AppModules.shell?.getNavigation();
         const lookup = locate(true);
         const version = locationVersion;
         const position = await lookup;
@@ -98,10 +114,10 @@
         const initial = document.getElementById('initial-state');
         if (initial) initial.hidden = false;
         if (!position) return;
-        if (window.AppModules.map) window.AppModules.map.recenterPosition(position.lat, position.lon, true);
+        if (window.AppModules.map && (!window.AppModules.shell || navigation === window.AppModules.shell.getNavigation())) window.AppModules.map.recenterPosition(position.lat, position.lon, true);
     }
 
-    window.AppModules.gps = { findMyLocation, findRoutesByGPS, cancelPendingLocation };
+    window.AppModules.gps = { getPosition, findMyLocation, findRoutesByGPS, cancelPendingLocation };
     window.findMyLocation = findMyLocation;
     window.findRoutesByGPS = findRoutesByGPS;
 })();

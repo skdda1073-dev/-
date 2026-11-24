@@ -25,6 +25,33 @@ class Response:
 
 
 class TransitClientTests(unittest.TestCase):
+    def test_missing_topology_key_does_not_send_an_empty_request(self):
+        client = PublicTransitClient("", "32010", lambda *args, **kwargs: self.fail("must not request"))
+        with self.assertRaises(PublicDataError) as error:
+            client.nearby_stops(37.88, 127.73)
+        self.assertEqual(error.exception.code, "PUBLIC_DATA_KEY_MISSING")
+
+    def test_route_identity_uses_single_official_detail_without_pagination(self):
+        calls = []
+        def requester(url, params, **kwargs):
+            calls.append((url, params))
+            return Response({"routeid": "CCB42", "routeno": "300"})
+        client = PublicTransitClient("test-key", "32010", requester)
+        self.assertEqual(client.route_info("CCB42")["routeno"], "300")
+        self.assertTrue(calls[0][0].endswith("/getRouteInfoIem"))
+        self.assertEqual(calls[0][1]["routeId"], "CCB42")
+        self.assertNotIn("pageNo", calls[0][1])
+        self.assertNotIn("numOfRows", calls[0][1])
+        client.route_info("CCB42")
+        self.assertEqual(len(calls), 1)
+
+    def test_other_route_details_or_sequences_are_not_accepted(self):
+        client = PublicTransitClient("test-key", "32010", lambda *args, **kwargs: Response({"routeid": "OTHER", "routeno": "300"}))
+        for method in (client.route_info, client.route_stops):
+            with self.subTest(method=method.__name__), self.assertRaises(PublicDataError) as error:
+                method("CCB42")
+            self.assertEqual(error.exception.code, "ROUTE_DATA")
+
     def test_missing_arrival_key_does_not_make_empty_key_request(self):
         client = PublicTransitClient("", "32010", lambda *args, **kwargs: self.fail("must not request"))
         with self.assertRaises(PublicDataError) as error:
@@ -71,6 +98,61 @@ class TransitClientTests(unittest.TestCase):
         with self.assertRaises(PublicDataError) as error:
             client.route_stops("r")
         self.assertTrue(error.exception.authorization_failed)
+
+    def test_json_gateway_keeps_registration_and_expiry_codes_on_http_403(self):
+        for code in ("30", "31"):
+            for wrapped in (False, True):
+                gateway = {"cmmMsgHeader": {"returnReasonCode": code,
+                                           "returnAuthMsg": "fake-private-provider-body"}}
+                payload = {"OpenAPI_ServiceResponse": gateway} if wrapped else gateway
+                response = Response(status=403, payload=payload)
+                client = PublicTransitClient("fake-private-key", "32010", lambda *args, **kwargs: response)
+                with self.subTest(code=code, wrapped=wrapped), self.assertRaises(PublicDataError) as error:
+                    client.route_stops("r")
+                self.assertEqual(error.exception.code, code)
+                self.assertTrue(error.exception.authorization_failed)
+                self.assertNotIn("fake-private", str(error.exception))
+
+    def test_xml_keeps_registration_and_expiry_codes_at_both_http_statuses(self):
+        for code in ("30", "31"):
+            xml = ("<OpenAPI_ServiceResponse xmlns='urn:tago:test'><cmmMsgHeader>"
+                   f"<returnReasonCode>{code}</returnReasonCode>"
+                   "<errMsg>fake-private-provider-body</errMsg>"
+                   "</cmmMsgHeader></OpenAPI_ServiceResponse>")
+            for status in (200, 403):
+                response = Response(status=status, text=xml)
+                client = PublicTransitClient("fake-private-key", "32010", lambda *args, **kwargs: response)
+                with self.subTest(code=code, status=status), self.assertRaises(PublicDataError) as error:
+                    client.route_stops("r")
+                self.assertEqual(error.exception.code, code)
+                self.assertTrue(error.exception.authorization_failed)
+                self.assertNotIn("fake-private", str(error.exception))
+
+    def test_standard_json_error_code_is_preserved_on_http_403(self):
+        client = PublicTransitClient("test-key", "32010", lambda *args, **kwargs: Response(status=403, code="31"))
+        with self.assertRaises(PublicDataError) as error:
+            client.route_stops("r")
+        self.assertEqual(error.exception.code, "31")
+
+    def test_untrusted_or_success_provider_codes_do_not_replace_http_errors(self):
+        for code in ("fake-private-key", "1234567890", "٣٠", "00"):
+            responses = [
+                Response(status=403, payload={"cmmMsgHeader": {"returnReasonCode": code}}),
+                Response(status=403, text=f"<response><returnReasonCode>{code}</returnReasonCode></response>"),
+            ]
+            for response in responses:
+                client = PublicTransitClient("fake-private-key", "32010", lambda *args, **kwargs: response)
+                with self.subTest(code=code, text=bool(response.text)), self.assertRaises(PublicDataError) as error:
+                    client.route_stops("r")
+                self.assertEqual(error.exception.code, "403")
+                self.assertNotIn("fake-private", str(error.exception))
+
+    def test_malformed_non_json_response_on_http_200_is_sanitized(self):
+        client = PublicTransitClient("test-key", "32010", lambda *args, **kwargs: Response(text="fake-private-invalid-body"))
+        with self.assertRaises(PublicDataError) as error:
+            client.route_stops("r")
+        self.assertEqual(error.exception.code, "INVALID_RESPONSE")
+        self.assertNotIn("fake-private", str(error.exception))
 
     def test_network_exception_does_not_expose_key(self):
         def requester(*args, **kwargs):

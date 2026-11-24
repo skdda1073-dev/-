@@ -13,7 +13,7 @@ from services.transit_service import TransitService
 from services.walking_service import WalkingService
 
 
-DATA_PATH = Path(__file__).resolve().parents[1] / "data" / "chuncheon_bus_routes_20260326.csv"
+DATA_PATH = Path(__file__).resolve().parents[1] / "data" / "raw" / "bus" / "chuncheon_bus_routes_20260326.csv"
 
 
 def position(stop, name=None):
@@ -248,6 +248,9 @@ class CsvServiceIntegrationTests(unittest.TestCase):
         import app as application
         self.assertIsInstance(application.transit_repository, CsvTransitRepository)
         self.assertEqual(application.transit_repository.path.resolve(), DATA_PATH.resolve())
+        # CSV는 셔틀 참조에 보존하며 운영 시내버스의 기준은 공식 API로 전환한다.
+        self.assertIs(application.transit_service.topology, application.transit_client)
+        self.assertFalse(application.transit_service.csv_mode)
 
 
 if __name__ == "__main__":

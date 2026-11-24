@@ -1,0 +1,3 @@
+facility_name,tago_train_station_id,tago_city_code,kric_metro_station_id,kric_metro_line_id,operator,coordinate_granularity,coordinate_source,coordinate_source_record,coordinate_reference_date,address,latitude,longitude,coordinate_status
+춘천역,NAT140873,32,1329,I41K2,한국철도공사,station,data/normalized/subway/kric_stations_20260630.csv,876,2025-04-08,강원도 춘천시 평화로 1(근화동 190),37.884391,127.716603,in_expected_range
+남춘천역,NAT140840,32,1328,I41K2,한국철도공사,station,data/normalized/subway/kric_stations_20260630.csv,875,2025-04-08,강원도 춘천시 영서로 2260(퇴계동 633-2),37.864071,127.723761,in_expected_range

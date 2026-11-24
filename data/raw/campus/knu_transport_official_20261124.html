@@ -1,0 +1,930 @@
+
+
+<!DOCTYPE html>
+<html>
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <meta charset="UTF-8">
+    <meta name="viewport" content="user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, width=device-width">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <meta name="format-detection" content="telephone=no">
+    <meta name="author" content="kangwon">
+    <meta name="description" content="강원대학교 산학협력단">
+    <meta name="keywords" content="강원대학교 산학협력단, 강원대학교, 산학협력단">
+    <meta http-equiv="Strict-Transport-Security" content="max-age=31536000; includeSubDomains">
+    <title>강원대학교 산학협력단</title>
+    
+    <!-- basic style setting -->
+    <link rel="stylesheet" href="/Content/font-awesome.css">
+    <link rel="stylesheet" href="/Content/reset.css" />
+    <link rel="stylesheet" href="/Content/layout.css?ver=1.02" />
+    <link rel="stylesheet" href="/Content/layout_responsive.css?ver=1.02" />
+    <link rel="stylesheet" href="/Content/main.css?ver=1.04" />
+    <link rel="stylesheet" href="/Content/main_responsive.css?ver1.04" />
+    <link rel="stylesheet" href="/Content/content.css?ver=1.02" />
+    <link rel="stylesheet" href="/Content/content_responsive.css?ver=1.02" />
+    <!-- animate -->
+    <link rel="stylesheet" href="/Content/animate.css" />
+    <!-- plugin css -->
+    <link rel="stylesheet" href="/Content/swiper-bundle.min.css" />
+    <link rel="stylesheet" href="/Content/slick.css" />
+    <link rel="stylesheet" href="/Content/jquery.mCustomScrollbar.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/fonts-archive/NanumURiDdarSonGeurSsi/NanumURiDdarSonGeurSsi.css" type="text/css"/>
+
+    
+
+
+    <link rel="shortcut icon" href="/images/icon/favicon.ico" />
+    <link rel="apple-touch-icon-precomposed" href="/images/icon/favicon-152.png" />
+    <link rel="icon" href="/images/icon/favicon-16.png" sizes="16x16" />
+    <link rel="icon" href="/images/icon/favicon-32.png" sizes="32x32" />
+    <link rel="icon" href="/images/icon/favicon-48.png" sizes="48x48" />
+    <link rel="icon" href="/images/icon/favicon-64.png" sizes="64x64" />
+    <link rel="icon" href="/images/icon/favicon-128.png" sizes="128x128" />
+
+
+    <script src="/Scripts/jquery-3.6.0.min.js"></script>
+    <script src="/Scripts/jquery-ui-1.12.1.js"></script>
+<script src="/Scripts/modernizr-2.8.3.js"></script>
+<script src="/Scripts/modernizr-custom.js"></script>
+<script src="/Scripts/jquery.serializejson.js"></script>
+<script src="/Scripts/jquery.chained.js"></script>
+<script src="/Scripts/ie-checker.js"></script>
+<script src="/Scripts/slick.min.js"></script>
+<script src="/Scripts/slick-setting.js"></script>
+<script src="/Scripts/dropzone.js"></script>
+<script src="/Scripts/dropzone-setting.js"></script>
+
+</head>
+<body>
+    <div class="cm-accessibility">
+        <a href="#mainVisual">본문바로가기</a>
+    </div>
+
+    <div id="wrap">
+        <!-- topBanner -->
+
+        
+
+
+
+
+
+
+        <!-- //topBanner -->
+
+        
+
+        <!-- header -->
+        <header id="header" class="top-fixed-object ">
+            <!-- .top-fixed가 붙는 object에 top-fixed-object 클래스 추가  -->
+            <div class="gnb-overlay-bg"></div>
+            <div id="headerInnerWrap">
+                <!-- ****************** 헤더상단 ********************** -->
+                <div id="headerInner" class="clearfix">
+                    <h1 class="logo">
+                        <a href="/">
+                            <em class="blind">메인으로</em>
+                            <img src="/images/LOGO_W.png" alt="강원대학교산학협력단" class="default" />
+                            <img src="/images/LOGO.png" alt="강원대학교산학협력단" class="color" />
+                            <img src="/images/LOGO_MOBLIE.png" alt="강원대학교산학협력단" class="m_default" />
+                            <img src="/images/LOGO_MOBLIE_W.png" alt="강원대학교산학협력단" class="m_color" />
+                        </a>
+                    </h1>
+                    <div class="header-util-box">
+                        <!-- 사이트맵 style 02 (toggle기능 사용안하면 date-event 삭제) -->
+                        <button class="btn sitemap-line-btn sitemap-open-btn" title="사이트맵 열기" data-event="toggle">
+                            <img src="/images/svg/IC_ALLMENU_W.svg" alt="사이트맵 열기 아이콘" class="white" />
+                            <img src="/images/svg/IC_ALLMENU.svg" alt="사이트맵 열기 아이콘" class="black" />
+                        </button>
+                        <!-- =============== fullSearchContent // 전체검색 ===============  -->
+                        <section id="fullSearchContent">
+                            <article id="fullSearchInnerCon">
+                                <div class="fullSearch-wrapper">
+                                    <div class="fullSearch-wrapper-inner area-box">
+                                        <div class="fullSearchWrap">
+                                            <div class="inner_left">
+                                                <h3>Quick Search</h3>
+                                                <form id="main_search_form" name="main_search_form" method="get" action="/Search">
+                                                    <div class="form-wrap">
+                                                        <i></i>
+                                                        <input type="text" id="sMainWhere" name="sWhere" placeholder="과제, 규정집, 공고 등 궁금하신 내용을 검색하실 수 있습니다." />
+                                                        <button class="btn btn_fullSearch_confirm" id="btn_main_search">검색하기</button>
+
+                                                    </div>
+                                                </form>
+                                            </div>
+                                            <div class="inner_right">
+                                                <div class="search_quick">
+                                                    <ul>
+                                                        <li>
+                                                            <a href="">
+                                                                <i>
+                                                                    <img src="/images/svg/IC_SET_REG.svg" alt="" />
+                                                                </i>
+                                                                <span>규정집</span>
+                                                            </a>
+                                                        </li>
+                                                        <li>
+                                                            <a href="">
+                                                                <i>
+                                                                    <img src="/images/svg/IC_REFERUCE.svg" alt="" />
+                                                                </i>
+                                                                <span>서식 자료실</span>
+                                                            </a>
+                                                        </li>
+                                                        <li>
+                                                            <a href="">
+                                                                <i>
+                                                                    <img src="/images/svg/IC_MINISTRY.svg" alt="" />
+                                                                </i>
+                                                                <span>부처별 규정</span>
+                                                            </a>
+                                                        </li>
+                                                        <li>
+                                                            <a href="">
+                                                                <i>
+                                                                    <img src="/images/svg/IC_SETTLEMENT.svg" alt="" />
+                                                                </i>
+                                                                <span>예산 및<br />결산공고</span>
+                                                            </a>
+                                                        </li>
+                                                    </ul>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="fullSearchTab" data-scroll="fade-right">
+                                            <div class="tab_wrap2">
+                                                <div class="tab_header">
+                                                    <ul class="tabs2">
+                                                        <li class="tab_header2" data-position="teacher"><a href="#search_tab1">교원</a></li>
+                                                        <li class="tab_header2" data-position="student"><a href="#search_tab2">학생</a></li>
+                                                        <li class="tab_header2" data-position="company"><a href="#search_tab3">기업</a></li>
+                                                    </ul>
+                                                </div>
+                                                <div class="tab_container2">
+                                                    <div id="search_tab1" class="tab_content2" data-position="teacher">
+                                                        <div class="fullSearchMenu">
+                                                            <ul>
+                                                                <li><a href="/Info/Depart">조직도 및 업무분장</a></li>
+                                                                <li><a href="/Assignment/List">과제공고(일반)</a></li>
+                                                                <li><a href="/Assignment/RSS">과제공고(NTIS)</a></li>
+                                                                <li><a href="/Support/WorkSchedule">교수산학연구지원사업 일정표</a></li>
+                                                                <li><a href="/Management/ResearchExpenses">연구수행지원</a></li>
+                                                                <li><a href="/Patent/LabConsulting">랩컨설팅</a></li>
+                                                                <li><a href="/FormatFile/List">자료실</a></li>
+                                                            </ul>
+                                                        </div>
+                                                    </div>
+                                                    <div id="search_tab2" class="tab_content2" data-position="student">
+                                                        <div class="fullSearchMenu">
+                                                            <ul>
+                                                                <li><a href="/Info/Depart">조직도 및 업무분장</a></li>
+                                                                <li><a href="Management/ResearchExpenses">연구비 관리체계 및 연구비</a></li>
+                                                                <li><a href="/Management/StudentCost">학생인건비</a></li>
+                                                                <li><a href="/IncorrectReport">연구비부당집행신고센터</a></li>
+                                                                <li><a href="/StuduntReport/Regist">학생연구자 고충상담 창구</a></li>
+                                                                <li><a href="/HoneyNews/List">시스템꿀뉴스</a></li>
+                                                                <li><a href="/RuleBook/List">산학협력단 규정집</a></li>
+                                                                <li><a href="/FormatFile/List">자료실</a></li>
+                                                            </ul>
+                                                        </div>
+                                                    </div>
+                                                    <div id="search_tab3" class="tab_content2" data-position="company">
+                                                        <div class="fullSearchMenu">
+                                                            <ul>
+                                                                <li><a href="/Info/Depart">조직도 및 업무분장</a></li>
+                                                                <li><a href="/Technology">기술이전</a></li>
+                                                                <li><a href="/FlowChart/University">KNU 스타트업 사업화 자금 연계 지원사업</a></li>
+                                                                <li><a href="/HoldingCompany/Kangwon">기술지주회사</a></li>
+                                                                
+                                                                <li><a href="/Campus/Campus">캠퍼스 혁신파크</a></li>
+                                                                <li><a href="/Campus/Startup">스타트업 큐브</a></li>
+                                                                <li><a href="/News/List">산학뉴스</a></li>
+                                                                <li><a href="/FormatFile/List">자료실</a></li>
+                                                            </ul>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <section class="mainFullsearch_moblie">
+                                            <div class="quick_link">
+                                                <ul>
+                                                    <li>
+                                                        <a href="#">
+                                                            <i>
+                                                                <img src="/images/IC_QUICK02.png" alt="" />
+                                                            </i>
+                                                            <span>
+                                                                연구<br />
+                                                                학생전용
+                                                            </span>
+                                                        </a>
+                                                    </li>
+                                                    <li>
+                                                        <a href="#">
+                                                            <i>
+                                                                <img src="/images/IC_QUICK03.png" alt="" />
+                                                            </i>
+                                                            <span>
+                                                                통합정보<br />
+                                                                시스템
+                                                            </span>
+                                                        </a>
+                                                    </li>
+                                                </ul>
+                                            </div>
+                                            <div class="search_wrap">
+                                                <div class="form-wrap">
+                                                    <i></i>
+                                                    <input type="text" id="input-fullSearch" placeholder="검색하실 수 있습니다." />
+                                                </div>
+                                                <button class="btn btn_fullSearch_confirm">검색하기</button>
+                                            </div>
+                                        </section>
+                                    </div>
+                                </div>
+                            </article>
+                            <div class="fullSearch-top-box">
+                                <div class="area-box">
+                                    <div class="inner">
+                                        <div class="fullSearch-top-unit">
+                                            <button class="fullSearch-close-btn btn" title="닫기"><img src="/images/svg/IC_CLOSE_BIG.svg" alt="사이트맵 닫기" /></button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </section>
+                        <!-- =============== sitemapContent // 사이트맵 ===============  -->
+                        <section id="sitemapContent">
+                            <article id="sitemapInnerCon">
+                                <div class="sitemap-wrapper">
+                                    <div class="sitemap-wrapper-inner">
+                                        <article class="sitemap-box">
+                                            <div class="etc-box">
+                                                <ul class="poricy_list">
+                                                    <li>
+                                                        <a href="/Term/Private" onfocus="this.blur()">개인정보처리방침</a>
+                                                    </li>
+                                                    <li>
+                                                        <a href="/Term/Email" onfocus="this.blur()"> 이메일무단수집거부</a>
+                                                    </li>
+                                                </ul>
+                                                <!-- <ul class="clearfix sns-list">
+                                                    <li class="cur">
+                                                        <a href="#" onfocus="this.blur()"><i class="xi-instagram"></i></a>
+                                                    </li>
+                                                    <li>
+                                                        <a href="#" onfocus="this.blur()"><i class="xi-facebook"></i></a>
+                                                    </li>
+                                                    <li>
+                                                        <a href="#" onfocus="this.blur()"><i class="xi-youtube-play"></i></a>
+                                                    </li>
+                                                </ul> -->
+                                            </div>
+                                        </article>
+                                    </div>
+                                </div>
+                            </article>
+                            <div class="sitemap-top-box">
+                                <div class="area-box">
+                                    <div class="inner">
+                                        <h1 class="sitemap-logo">
+                                            <em class="blind">메인으로</em><a href="/"><img src="/images/LOGO_W.png" alt="강원대학교 산학협력단" /></a>
+                                        </h1>
+                                        <div class="sitemap-top-unit">
+                                            <button class="sitemap-close-btn btn" title="닫기"><img src="/images/svg/IC_CLOSE_BIG.svg" alt="사이트맵 닫기" /></button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </section>
+                    </div>
+                </div>
+                <!-- ****************** GNB ********************** -->
+                <!-- GNB PC  -->
+                <nav id="gnb" class="each-menu">
+                    <h2 class="blind">주메뉴</h2>
+                    <!--
+                        - 전체메뉴 : class="total-menu"
+                        - 각각메뉴 : class="each-menu" + <div id="gnbBg"></div> 삭제
+                    -->
+                    <div id="gnbBg"></div>
+                    <ul class="clearfix area">
+                        <div class="campus_link">
+                            <ul>
+                                <li>
+                                    <a >춘천캠퍼스</a>
+                                </li>
+                                <li>
+                                    <a href="https://iacg.kangwon.ac.kr/" target="_blank">강릉캠퍼스</a>
+                                </li>
+                                <li>
+                                    <a href="https://sanhak.kangwon.ac.kr/" target="_blank">삼척캠퍼스</a>
+                                </li>
+                            </ul>                            
+                        </div>
+                        <li class="gnb1">
+                            <a href="/Assignment/List">과제공고</a>
+                            <div class="gnb-2dep">
+                                <ul>
+                                    <li>
+                                        <a href="/Assignment/List">
+                                            <span>과제공고(일반)</span>
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <a href="/Assignment/RSS">
+                                            <span>과제공고(NTIS)</span>
+                                        </a>
+                                    </li>
+                                    
+
+                                </ul>
+                            </div>
+                        </li>
+                        <li class="gnb2">
+                            <a href="/Management/ResearchExpenses">연구수행지원</a>
+                            <div class="gnb-2dep">
+                                <ul>
+                                    <li>
+                                        <a href="/Management/ResearchExpenses"><span>연구과제</span></a>
+                                    </li>
+                                    <li>
+                                        <a href="/Management/StudentCost"><span>학생인건비</span></a>
+                                        <div class="gnb-3dep">
+                                            <ul>
+                                                <li>
+                                                    <a href="/Management/StudentCost"><span>학생인건비 통합관리 </span></a>
+                                                </li>
+                                                <li>
+                                                    <a href="/Management/StudentIntegratedAmount"><span>이공계 연구생활장려금 사업 현황</span></a>
+                                                </li>
+                                            </ul>
+                                        </div>
+                                    </li>
+                                    <li>
+                                        <a href="/Management/Purchase"><span>중앙구매</span></a>
+                                    </li>
+                                </ul>
+                            </div>
+                        </li>
+                        <li class="gnb3">
+                            <a href="/Support/WorkSchedule">교수산학연구지원</a>
+                            <div class="gnb-2dep">
+                                <ul>
+
+                                    
+                                    <li>
+                                        <a href="/Support/WorkSchedule"><span>교수산학연구지원사업 일정표</span></a>
+                                    </li>
+
+                                    <li>
+                                        <a href="/Support/ReFund"><span>신임교원 정착 지원</span></a>
+                                        <div class="gnb-3dep">
+                                            <ul>
+                                                <li>
+                                                    <a href="/ReFund"><span>신임교원 정착 지원 현황</span></a>
+                                                </li>
+                                                
+                                                <li>
+                                                    <a href="/Support/ReFund"><span>신임교원 정착연구비</span></a>
+                                                </li>
+                                                <li>
+                                                    <a href="/Support/SecoundReFund"><span>신임교원 연구정착지원</span></a>
+                                                </li>
+                                                <li>
+                                                    <a href="/Support/NewResearch"><span>신임교원 연구행정환경 조성</span></a>
+                                                </li>
+                                            </ul>
+                                        </div>
+                                    </li>
+                                    <li>
+                                        <a href="/Support/Projects"><span>연구활동지원</span></a>
+                                        <div class="gnb-3dep">
+                                            <ul>
+                                                <li>
+                                                    <a href="/Support/Projects"><span>공모과제 신청</span></a>
+                                                </li>
+
+                                                <li>
+                                                    <a href="/Support/ProjectsDesignConsulting"><span>공모과제 디자인 및 컨설팅</span></a>
+                                                </li>
+                                                <li>
+                                                    <a href="/Support/Postdoctoral"><span>박사후연구원 활용</span></a>
+                                                </li>
+                                                <li>
+                                                    <a href="/Support/International"><span>국제학술회의 참가경비</span></a>
+                                                </li>
+                                                <li>
+                                                    <a href="/Support/Publication"><span>논문 게재료 및 교정료</span></a>
+                                                </li>
+
+                                                <li>
+                                                    <a href="/Support/BestReport"><span>우수논문 지원</span></a>
+                                                </li>
+                                            </ul>
+                                        </div>
+                                    </li>
+                                    <li>
+                                        <a href="/Support/BelongSupportCost"><span>연구성과지원</span></a>
+                                        <div class="gnb-3dep">
+                                            <ul>
+                                                <li>
+                                                    <a href="/Support/BelongSupportCost"><span>연구소/학과 귀속지원금</span></a>
+                                                </li>
+
+                                                <li>
+                                                    <a href="/Support/ResearchSupportCost"><span>과학기술분야 학과 연구지원금</span></a>
+                                                </li>
+                                                <li>
+                                                    <a href="/Support/PerformanceAllowance"><span>연구개발능률성과급</span></a>
+                                                </li>
+                                            </ul>
+                                        </div>
+                                    </li>
+                                    <li>
+                                        <a href="/Honor/Honor"><span>연구자예우</span></a>
+                                        <div class="gnb-3dep">
+                                            <ul>
+                                                <li>
+                                                    <a href="/Honor/Honor"><span>명예의 전당</span></a>
+                                                </li>
+                                                <li>
+                                                    <a href="/Honor/HonorMonth"><span>이달의 우수 연구자</span></a>
+                                                </li>
+                                                <li>
+                                                    <a href="/Support/Health"><span>우수연구자 건강검진</span></a>
+                                                </li>
+                                                <li>
+                                                    <a href="/Support/ResponseTime"><span>연구책임자 책임시간 감면</span></a>
+                                                </li>
+
+                                                
+                                            </ul>
+                                        </div>
+                                    </li>
+
+                                </ul>
+                            </div>
+                        </li>
+                        <!--<li class="gnb5">
+                        <a href="/Center/Search">연구/사업현황</a>
+                        <div class="gnb-2dep">
+                            <ul>
+                                <li>
+                                    <a href="/Center/Search"><span>센터/사업단</span></a>
+                                </li>
+                                <li>
+                                    <a href="/Honor/Honor"><span>명예의 전당</span></a>
+                                </li>
+                                <li>
+                                    <a href="/Honor/HonorMonth"><span>이달의 우수 연구자</span></a>
+                                </li>-->
+                        
+                        <!--</ul>
+                            </div>
+                        </li>-->
+                        <li class="gnb4">
+                            <a href="/Patent/Patent">기술사업화지원</a>
+                            <div class="gnb-2dep">
+                                <ul>
+                                    <li>
+                                        <a href="/Patent/Patent"><span>특허 출원/등록 지원</span></a>
+                                    </li>
+                                    <li>
+                                        <a href="/Patent/LabConsulting"><span>랩컨설팅</span></a>
+                                    </li>
+                                    <li>
+                                        <a href="/Patent/InventionInterview"><span>발명인터뷰</span></a>
+                                    </li>
+                                    <li>
+                                        <a href="/Patent/InventionEvaluation"><span>발명평가</span></a>
+                                    </li>
+                                    <li>
+                                        <a href="/Technology"><span>기술이전</span></a>
+                                    </li>
+
+
+                                    
+
+                                    
+
+                                    
+
+                                    <li>
+                                        <a href="/Patent/Tmc"><span>TMC(TLO혁신형)</span></a>
+                                    </li>
+                                    <li>
+                                        <a href="/Patent/PublicIP"><span>공공 IP 사업화 자립 지원 사업</span></a>
+                                    </li>
+                                </ul>
+                            </div>
+                        </li>
+                        <li class="gnb5">
+                            <a href="/FlowChart/BusinessGuide">창업/기업지원</a>
+                            <div class="gnb-2dep">
+                                <ul>
+                                    <li>
+                                        <a href="/FlowChart/CollaboPlatform"><span>Collabo Platform</span></a>
+                                    </li>
+                                    <li>
+                                        <a href="/FlowChart/BusinessGuide"><span>교원창업</span></a>
+                                    </li>
+                                    
+                                    <li>
+                                        <a href="/FlowChart/University"><span>KNU 스타트업 사업화 자금 연계 지원사업</span></a>
+                                    </li>
+                                    
+                                    
+                                    <li>
+                                        <a href="/FlowChart/Preliminary"><span>실험실 특화형창업선도대학사업</span></a>
+                                    </li>
+                                    
+                                    <li>
+                                        <a href="/FlowChart/InsideStartup"><span>창업 보육공간 입주</span></a>
+                                    </li>
+                                    <li>
+                                        <a href="/HoldingCompany/Kangwon"><span>기술지주회사</span></a>
+                                    </li>
+                                    
+
+                                </ul>
+                            </div>
+                        </li>
+                        <li class="gnb6">
+                            <a href="/Campus/Campus">캠퍼스 산학단지</a>
+                            <div class="gnb-2dep">
+                                <ul>
+                                    <li><a href="/Campus/Campus"><span>캠퍼스 혁신파크</span></a></li>
+                                    <li><a href="/Campus/UnivercityCompany"><span>대학 산학연협력단지</span></a></li>
+                                    <li><a href="/Campus/Startup"><span>스타트업 큐브</span></a></li>
+                                </ul>
+                            </div>
+                        </li>
+                        <li class="gnb7">
+                            <a href="/Education/KHightech">산학교육 사업</a>
+                            <div class="gnb-2dep">
+                                <ul>
+                                    <li><a href="/Education/KHightech"><span>K-하이테크 플랫폼 사업</span></a></li>
+                                    
+                                    <li><a href="/Education/TommorrowWork"><span>미래내일 일경험 사업</span></a></li>
+                                    
+                                </ul>
+                            </div>
+                        </li>
+                        <li class="gnb8">
+                            <a href="/Info/Greeting">소개</a>
+                            <div class="gnb-2dep">
+                                <ul>
+                                    <li><a href="/Info/Greeting"><span>인사말</span></a></li>
+                                    <li><a href="/Info/Vision"><span>비전 및 목표</span></a></li>
+                                    <li><a href="/Info/CILogo"><span>산학협력단 CI</span></a></li>
+                                    <li><a href="/Info/History"><span>주요연혁</span></a></li>
+                                    <li><a href="/Mou"><span>MOU 현황</span></a></li>
+                                    <li><a href="/Info/Depart"><span>조직도 및 업무분장</span></a></li>
+                                    <li><a href="/Info/Boss"><span>역대단장 소개</span></a></li>
+                                    <li><a href="/Center/Search"><span>센터/사업단</span></a></li>
+                                    <li><a href="/Info/ContactUs"><span>찾아오시는 길</span></a></li>
+                                </ul>
+                            </div>
+                        </li>
+                        <li class="gnb9">
+                            <a href="/Notice/List">소식</a>
+                            <div class="gnb-2dep">
+                                <ul>
+                                    <li>
+                                        <a href="/Notice/List"><span>공지사항</span></a>
+                                    </li>
+                                    <li>
+                                        <a href="/UicfNews/List"><span>산학뉴스</span></a>
+                                    </li>
+                                    <li>
+                                        <a href="/News/List"><span>연구행정뉴스</span></a>
+                                    </li>
+                                    <li>
+                                        <a href="/HoneyNews/List"><span>시스템꿀뉴스</span></a>
+                                    </li>
+                                    <li>
+                                        <a href="/RuleBook/List"><span>산학협력단 규정집</span></a>
+                                    </li>
+                                    <li>
+                                        <a href="/RuleBookDepart/List"><span>부처별 규정 및 지침</span></a>
+                                    </li>
+                                    <li>
+                                        <a href="/RuleBookBudget/List"><span>예산 및 결산공고</span></a>
+                                    </li>
+                                    <li>
+                                        <a href="/FormatFile/List"><span>자료실</span></a>
+                                    </li>
+                                    <li>
+                                        <a href="/IncorrectReport"><span>연구비부당집행 신고센터</span></a>
+                                    </li>
+                                    <li>
+                                        <a href="/StuduntReport"><span>학생연구자 고충상담 창구</span></a>
+                                    </li>
+                                    <li>
+                                        <a href="/Company/List"><span>관계기관</span></a>
+                                    </li>
+                                </ul>
+                            </div>
+                        </li>
+                    </ul>
+                </nav>
+            </div>
+            <!-- GNB Mobile -->
+            <div class="campus_link_m">
+                <ul>
+                    <li>
+                        <a >춘천캠퍼스</a>
+                    </li>
+                    <li>
+                        <a href="https://iacg.kangwon.ac.kr/" target="_blank">강릉캠퍼스</a>
+                    </li>
+                    <li>
+                        <a href="https://sanhak.kangwon.ac.kr/" target="_blank">삼척캠퍼스</a>
+                    </li>
+                </ul>                            
+            </div>
+            <button class="nav-open-btn open-btn" title="네비게이션 열기">
+                <span class="inner">
+                    <img src="/images/svg/IC_ALLMENU_W.svg" alt="사이트맵 열기 아이콘" class="white" />
+                    <img src="/images/svg/IC_ALLMENU.svg" alt="사이트맵 열기 아이콘" class="black" />
+                </span>
+            </button>
+            <button class="nav-open-btn close-btn" title="네비게이션 열기">
+                <span class="line"></span>
+                <span class="line"></span>
+            </button>
+            <div class="gnb-overlay-bg-m"></div>
+            <nav id="gnbM" class="gnb-style-full">
+                <!--
+                    기본스타일 : .gnb-style-basic
+                    Full 스타일 : .gnb-style-full
+                -->
+                <h2 class="blind">주메뉴</h2>
+                <div class="gnb-navigation-wrapper">
+                    <div class="gnb-navigation-inner">
+                        <ul id="navigation" data-menu-clone="true"></ul>
+                        <!-- PC메뉴 같을때 true / 같지않으면 false 후 메뉴삽입 -->
+                    </div>
+                </div>
+            </nav>
+        </header>
+        <!-- //header -->
+
+        
+
+
+
+
+<div id="container">
+    <!-- middleArea -->
+    <div id="middleArea" class="middle-area-company">
+
+        <aside id="contentInfoCon">
+            <div class="inner area">
+                <div class="txt_area">
+                    <h3 class="content-tit">찾아오시는길</h3>
+                    <div class="location">
+                        <ul>
+                            <li>
+                                <a href="/" title="HOME">HOME</a>
+                            </li>
+                            <li>소개</li>
+                            <li>찾아오시는길</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+            <div class="bg_subKeyvisual">
+                <div class="overlay"></div>
+                <img src="/images/IMG_SUB_KEYVISUAL01.png" alt="" />
+            </div>
+        </aside>
+
+        
+
+<section id="page_root">
+    <div class="container">
+        <a href="/" class="btn_home"><i></i></a>
+        <ul>
+            <li class="depth_one">
+                <a href="/Info/Greeting">소개</a>
+                <ul class="open_menu">
+                    <li><a href="/Assignment/List">과제공고</a></li>
+                    <li><a href="/Management/ResearchExpenses">연구수행지원</a></li>
+                    <li><a href="/Support/WorkSchedule">교수산학연구지원</a></li>
+                    <li><a href="/Patent/Patent">기술사업화지원</a></li>
+                    <li><a href="/FlowChart/BusinessGuide">창업/기업지원</a></li>
+                    <li><a href="/Campus/Campus">캠퍼스 혁신파크</a></li>
+                    <li><a href="/Education/KHightech">산학교육 사업</a></li>
+                    <li class="on"><a href="/Info/Greeting">소개</a></li>
+                    <li><a href="/Notice/List">소식</a></li>
+                </ul>
+            </li>
+            <li class="depth_two">
+                <a href="#">찾아오시는길</a>
+                <ul class="open_menu">
+                    <li ><a href="/Info/Greeting">인사말</a></li>
+                    <li ><a href="/Info/Vision">비전 및 목표 </a></li>
+                    <li ><a href="/Info/CILogo">산학협력단 CI </a></li>                    
+                    <li ><a href="/Info/History">주요연혁</a></li>
+                    <li ><a href="/Mou">MOU 현황</a></li>
+                    <li ><a href="/Info/Depart">조직도 및 업무분장</a></li>
+                    <li ><a href="/Info/Boss">역대단장 소개</a></li>
+                    <li ><a href="/Center/Search">센터/사업단</a></li>
+                    <li class='on'><a href="/Info/ContactUs">찾아오시는길</a></li>
+                </ul>
+            </li>
+            <!-- <li class="depth_three">
+                <a href="#">3번째메뉴</a>
+                <ul class="open_menu">
+                    <li><a href="#">인사말</a></li>
+                    <li><a href="#">주요연혁</a></li>
+                    <li><a href="#">조직도 및 업무분장</a></li>
+                    <li><a href="#">역대단장 소개</a></li>
+                    <li><a href="#">찾아오시는 길</a></li>
+                </ul>
+            </li> -->
+        </ul>
+    </div>
+</section>
+<!-- // -->
+<!-- 모바일 서브메뉴 2 -->
+<aside id="topMenuM02" class="cm-top-menu clearfix">
+    <div class="side-menu-inner clearfix">
+        <!-- 2차메뉴 -->
+        <div class="menu-location location2 cm-drop-menu-box-JS" data-drop-event="click">
+            <button class="cur-location cm-drop-open-btn-JS">
+                <span>찾아오시는길</span>
+                <i class="xi-angle-down-min arrow"></i>
+            </button>
+            <ul class="location-menu-con cm-drop-list-JS">
+                <li ><a href="/Info/Greeting"><span>인사말</span></a></li>
+                <li ><a href="/Info/Vision"><span>비전 및 목표</span></a></li>
+                <li ><a href="/Info/CILogo">산학협력단 CI </a></li>
+                <li ><a href="/Info/History"><span>주요연혁</span></a></li>
+                <li ><a href="/Mou">MOU 현황</a></li>
+                <li ><a href="/Info/Depart"><span>조직도 및 업무분장</span></a></li>
+                <li ><a href="/Info/Boss"><span>역대단장 소개</span></a></li>
+                <li ><a href="/Center/Search"><span>센터/사업단</span></a></li>
+                <li class='on'><a href="/Info/ContactUs"><span>찾아오시는길</span></a></li>
+            </ul>
+        </div>
+    </div>
+</aside>
+<!-- // -->
+
+
+        <section id="content" class="area">
+            <div class="map_api">
+                <div class="cal_add">
+                    강원대학교 산학협력단 | 주소 -  (24341) 강원특별자치도 춘천시 강원대학길1 산학연혁신허브 [산학협력단]
+                </div>
+                <div id="map"></div>
+            </div>
+            <div class="container sub01_05">
+                <dl class="map_contents map_ic01">
+                    <h3>고속도로 이용</h3>
+                    <ul>
+                        <li>
+                            서울-춘천고속도로 → 강일 IC → 미사 IC → 덕소 IC → 춘천 JC → 춘천 IC → 고속도로 출구에서 우회전(태백교 방향) → 석사사거리 → 강대삼거리
+                            에서 우회전 → 강원대학교 정문
+                        </li>
+                        <li>경기북부·남부 : 서울외곽순환고속도로(강일방면)→ 강일 IC → (서울-춘천고속도로와 동일경로 이용)</li>
+                    </ul>
+                </dl>
+                <dl class="map_contents map_ic02">
+                    <h3>시외버스 이용</h3>
+                    <ul>
+                        <li>강변역(지하철2호선) → 동서울 터미널 → 춘천시외버스터미널 : 50분</li>
+                        <li>춘천시외버스터미널 → 강원대학교 : 택시 약10분, 버스 약20분</li>
+                        <li>버스정류장[2056] : 하차하여 육교 건너서 위치. 7번 버스 ‘과학관입구’에서 하차</li>
+                    </ul>
+                </dl>
+                <dl class="map_contents map_ic03">
+                    <h3>경춘선 전철/ITX 이용</h3>
+                    <ul>
+                        <li>전철 상봉역(경춘선) → 남춘천역(강원대) : 1시간 16분</li>
+                        <li>ITX 용산역(지하철1호선) → 남춘천역(강원대) : 1시간 13분</li>
+                        <li>ITX 청량리역(지하철1호선) → 남춘천역(강원대) : 57분</li>
+                        <li>남춘천역 → 강원대학교 : 택시 약10분, 버스 약20분</li>
+                        <li>버스정류장[2310] ‘남춘천역종점’</li>
+                        <li>300번 버스 ‘강원대백록관’ 하차</li>
+                        <li>300번 버스 ‘강원대도서관’하차</li>
+                    </ul>
+                </dl>
+                <dl class="map_contents map_ic02">
+                    <h3>청춘노선 (교내 통과노선)</h3>
+                    <ul>
+                        <li>교내 정류소 : 중앙도서관 앞, 백록관 앞</li>
+                        <li>운행시간 : （춘천역 기준） 첫차 06:00, 막차 21:55</li>
+                        <li>주요노선 : 춘천역-한림대-팔호광장-강원대-법원-남춘천역-시외버스터미널-남춘천역환승센터</li>
+                        <li>이용요금 : 현금 1,400원, 교통카드 1,250원</li>
+                        <li>첨부파일 : 버스 정류소 및 버스 세부노선 </li>
+                    </ul>
+                </dl>
+                <dl class="map_contents map_ic04">
+                    <h3>주차요금 안내</h3>
+                    <ul>
+                        <li>최초 30분 500원</li>
+                        <li>문의처 : 사무국 총무과 033-250-7034</li>
+                        <li>
+                            이후 매 10분당 200원<br>
+                            ※ 경차 50% 감면
+                        </li>
+                    </ul>
+                </dl>
+                <div class="map_contests2">
+                    <h3>전국에서 오시는 방향 안내</h3>
+                    <ul>
+                        <li>서울 → 서울춘천고속도로 → 춘천IC → 춘천</li>
+                        <li>대구 → 중앙고속도로 → 춘천IC → 춘천</li>
+                        <li>부산 → 경부고속도로 → 대구IC → 중앙고속도로 → 춘천</li>
+                        <li>목포 → 호남고속도로 → 중부고속도로 → 호법JC → 영동고속도로 → 만종JC → 중앙고속도로 → 춘천</li>
+                        <li>인천 → 영동고속도로 → 호법JC → 중앙고속도로 → 춘천</li>
+                    </ul>
+                    <div class="map_img">
+                        <img src="/img/sub01_05_map.png" alt="지도">
+                    </div>
+                </div>
+            </div>
+        </section>
+    </div>
+</div>
+
+        <!-- //container -->
+        <aside id="scrollDown" class="" style="bottom: 841.5px">
+            <span class="scroll-down"></span>
+        </aside>
+        <!-- footer -->
+        <!-- //header -->
+        
+
+
+
+<footer id="footer">
+    <button class="to-top-btn"><em class="blind">TOP</em><i class="xi-arrow-up"></i></button>
+    <!-- 푸터 상단 -->
+    <article id="footerTop">
+        <div class="area clearfix">
+            <!-- 푸터상단 왼쪽 -->
+            <div class="footer-left-con">
+                <div class="footer-logo">
+                    <img src="/images/LOGO_COPY.png" alt="" />
+                </div>
+            </div>
+            <!-- 푸터상단 오른쪽 -->
+            <div class="footer-right-con">
+                <div class="foot-menu">
+                    <a href="/Term/Private" class="cm-modal-open-btn"><span>개인정보취급방침</span></a>
+                    <a href="/Term/Email" class="cm-modal-open-btn"><span>이메일무단수집거부</span></a>
+                </div>
+                <div class="footer-address">
+                    <div class="footer-address-txt">
+                        
+                                <p>(24341) 강원특별자치도 춘천시 강원대학길1 산학연혁신허브 [산학협력단]</p>
+                    </div>
+                </div>
+                <div class="footer-copyright">Copyright © Kangwon University-Industry Cooperation Foundation. All rights Reserved.</div>
+            </div>
+        </div>
+    </article>
+</footer>
+
+        <!-- //footer -->
+    </div>
+
+    <script src="/Scripts/jquery.easing.1.3.js"></script>
+    <script src="/Scripts/layout.js?ver=0.4"></script>
+    <script src="/Scripts/jquery.lazy.min.js"></script>
+
+
+    <script src="/Scripts/fileupload/jquery.fileupload.js"></script>
+
+    <script src="/Scripts/common.js?ver=0.4"></script>
+    <script src="/Scripts/functions.js"></script>
+    <script src="/Scripts/nav.js?ver=0.3"></script>
+    <script src="/Scripts/TweenMax.min.js"></script>
+    <script src="/Scripts/splitting.min.js"></script>
+
+
+    <!-- waypoints js -->
+    <script src="/Scripts/jquery.mCustomScrollbar.concat.min.js"></script>
+
+    <!-- swiper js -->
+    <script src="/Scripts/swiper-bundle.min.js"></script>
+    <script src="/Scripts/slick.js"></script>
+
+
+    
+
+    <script type="text/javascript" nonce="HlwFoZBA8kGE2VtqSBkCMw==" src="https://dapi.kakao.com/v2/maps/sdk.js?appkey=59d33fbcddcf5fc91db9611038702e46"></script>
+
+    <script type="text/javascript"  src="/Scripts/info/contactus.js?ver=0.1"></script>
+
+    <script src="/Scripts/main.js"></script>
+</body>
+</html>

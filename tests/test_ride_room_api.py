@@ -438,7 +438,7 @@ class RideRoomApiTests(unittest.TestCase):
             return original_values(path, *args, **kwargs)
 
         fake_environment = {
-            "TMAP_APP_KEY": "fake-tmap", "PUBLIC_DATA_KEY": "", "NAVER_MAP_CLIENT_ID": "",
+            "TMAP_APP_KEY": "fake-tmap", "PUBLIC_DATA_KEY": "", "TAGO_API_KEY": "", "TRAIN_API_KEY": "", "NAVER_MAP_CLIENT_ID": "",
             "FLASK_SECRET_KEY": "", "APP_DEBUG": "false", "PORT": "5000",
             "SESSION_COOKIE_SECURE": "false", "RIDE_ROOM_DB_PATH": str(self.db_path),
             "TAXI_CACHE_TTL_SECONDS": "60", "TAXI_CACHE_MAX_ENTRIES": "512",
@@ -451,7 +451,7 @@ class RideRoomApiTests(unittest.TestCase):
             # app may already have been imported by other unittest modules. Override
             # its captured dependencies as well as the environment, without reload.
             with (patch.dict(application.app.config, {"SECRET_KEY": None}),
-                  patch.object(application, "settings", Settings(tmap_app_key="fake-tmap")),
+                  patch.object(application, "settings", Settings(tmap_app_key="fake-tmap", public_data_key="fake-public")),
                   patch.object(application.transit_service, "nearby", return_value=[{"station_name": "검증 정류장"}]),
                   patch.object(application.taxi_service, "estimate", return_value={"status": "partial", "fare": {"amount_krw": None}})):
                 client = application.app.test_client()

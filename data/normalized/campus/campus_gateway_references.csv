@@ -1,0 +1,6 @@
+campus_id,gateway_type,gateway_name,direction,mode,route_name,campus_stop,evidence_status,source_url
+hallym,rail_station,춘천역,both,school_shuttle,제1노선,대학교 CLC(희망터),official_shuttle_timetable,https://www.hallym.ac.kr/hallym/442/subview.do
+hallym,rail_station,춘천역,from_campus,school_shuttle,제4노선,대학교,only_published_runs,https://www.hallym.ac.kr/hallym/442/subview.do
+knu_chuncheon,rail_station,남춘천역,to_campus,city_bus,300,강원대백록관;강원대도서관,school_reference_verify_current_service,https://uicf.kangwon.ac.kr/Info/ContactUs
+knu_chuncheon,intercity_terminal,춘천시외버스터미널,to_campus,city_bus,7,과학관입구,school_reference_verify_current_service,https://uicf.kangwon.ac.kr/Info/ContactUs
+knu_chuncheon,rail_station,춘천역,reference,city_bus,,중앙도서관 앞;백록관 앞,school_reference_verify_current_service,https://uicf.kangwon.ac.kr/Info/ContactUs
