@@ -16,6 +16,22 @@ py scripts/setup_dev.py
 
 초기 설정은 `.venv`에 `requirements.txt`의 패키지를 설치한다. `.env`가 없을 때는 예제에서 초기 설정을 만들고 이 환경의 택시 채팅 세션용 비밀값을 생성한다. 기존 `.env`는 그대로 사용한다. 팀 환경에서 쓸 수 있도록 승인된 API 키를 별도 전달 경로로 받아 `.env`에 입력한다. 동승방 데이터베이스는 개인 실행 환경마다 따로 생성된다.
 
+## 전국 길찾기용 MOTIS 실행
+
+Apple Silicon macOS와 Linux x64·ARM64에서 아래 명령을 실행한다. 최초 실행은 [MOTIS v2.11.4](https://github.com/motis-project/motis/releases/tag/v2.11.4)와 [Geofabrik 대한민국 지도](https://download.geofabrik.de/asia/south-korea.html)를 내려받아 `.motis/`에 보행 및 대중교통 색인을 만든다. 다운로드와 색인 생성에는 인터넷과 여유 디스크 공간이 필요하다.
+
+```sh
+mkdir -p .motis
+.venv/bin/python scripts/export_motis_gtfs.py --output .motis/metro.zip --days 14 --without-intercity-rail
+.venv/bin/python scripts/setup_motis.py --gtfs .motis/metro.zip --korail --serve
+```
+
+다른 터미널에서 `.env`의 `MOTIS_BASE_URL=http://127.0.0.1:8889`를 설정하고 Flask를 다시 실행한다. Flask는 MOTIS와 기존 교통 데이터의 경로를 함께 조회해 확인 가능한 후보를 도착 시각으로 정렬한다. MOTIS가 중단되면 다른 공급자의 경로를 표시한다. 지도와 색인은 로컬에서 실행하며 루프백 설정에서는 앱의 길찾기 좌표를 MOTIS 외부 서비스에 전송하지 않는다.
+
+`metro.zip`은 저장소의 공개 전철 운행표를 GTFS로 변환한 결과다. 지도는 Geofabrik이 배포한 대한민국 OpenStreetMap 데이터다. 코레일 운행정보가 반영된 구간만 실시간으로 표시한다. 전철은 시간표 기준이고, 버스·셔틀은 기존 앱 공급자의 조회 범위에 따른다. 전철 ZIP의 조회 기간을 연장하려면 공개 원본 시간표의 기준일을 확인한 뒤 ZIP 생성 명령을 다시 실행하고 MOTIS를 재시작한다.
+
+`--korail`을 사용하면 Mikołaj Kuranowski가 배포하는 코레일 GTFS와 GTFS-RT를 함께 불러온다. 코레일 피드는 CC BY 4.0으로 배포되며, 지도 데이터는 OpenStreetMap 기여자가 제공한다. [코레일 피드](https://mkuran.pl/gtfs/) · [OpenStreetMap 저작권](https://www.openstreetmap.org/copyright)
+
 ## 1. 키 입력
 
 프로젝트 루트의 `.env`를 VS Code에서 열고 작은따옴표 안에 값을 넣는다.

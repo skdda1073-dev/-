@@ -214,18 +214,18 @@ class TransitService:
             })
         return sorted(result, key=lambda stop: stop["walk_min"])
 
-    def plan(self, origin, destination):
+    def plan(self, origin, destination, *, max_transfers=1, include_direct_walk=True):
         """두 공급자를 독립 조회한다. 셔틀 미주입 호출의 기존 계약은 유지한다."""
-        direct_walk = self._direct_walk(origin, destination)
+        direct_walk = self._direct_walk(origin, destination) if include_direct_walk else None
         if self.shuttle_service is None:
-            response = self._plan_city(origin, destination)
+            response = self._plan_city(origin, destination, max_transfers=max_transfers)
             response["direct_walk"] = direct_walk
             response["recommendation"] = build_recommendation(origin, destination, direct_walk, response.get("journeys", []))
             return response
 
         city_status = {"status": "ok", "code": None}
         try:
-            response = self._plan_city(origin, destination, journey_limit=None)
+            response = self._plan_city(origin, destination, journey_limit=None, max_transfers=max_transfers)
         except Exception as error:
             safe_codes = {"CSV_DATA", "WALK_UNAVAILABLE", "ROUTE_PERMISSION", "ROUTE_DATA", "PUBLIC_DATA_KEY_MISSING", "NETWORK", "INCOMPLETE"}
             code = getattr(error, "code", None)
@@ -300,15 +300,16 @@ class TransitService:
         selected.sort(key=lambda pair: pair[0])
         return [journey for _, journey in selected[:limit]]
 
-    def _plan_city(self, origin, destination, journey_limit=3):
+    def _plan_city(self, origin, destination, journey_limit=3, *, max_transfers=1):
+        search_scope = "동일 정류장 내 1회 환승까지" if max_transfers else "직통 버스만"
         warnings = [
-            "출발·목적지 반경 500m 정류장 기준, 동일 정류장 내 1회 환승까지 검색합니다.",
+            f"출발·목적지 반경 500m 정류장 기준, {search_scope} 검색합니다.",
             "버스 이동시간은 경유 정류장 좌표와 평균속도로 추정하며 실시간 교통·시간표를 반영하지 못합니다.",
         ]
         response = {
             "mode": "journeys", "origin": origin, "destination": destination,
             "journeys": [], "warnings": warnings,
-            "search": {"max_transfers": 1, "nearby_radius_m": 500, "max_stops_per_endpoint": self.MAX_STOPS, "max_routes": self.MAX_ROUTES, "max_refined_candidates": 80},
+            "search": {"max_transfers": max_transfers, "nearby_radius_m": 500, "max_stops_per_endpoint": self.MAX_STOPS, "max_routes": self.MAX_ROUTES, "max_refined_candidates": 80},
         }
         if self.csv_mode:
             source = self.topology.metadata()
@@ -350,7 +351,8 @@ class TransitService:
                         "route_number_verified": route.get("route_number_verified", True),
                     }
         # 직통 후보를 먼저 조회한다. 제한된 범위라는 사실을 UI에도 반환한다.
-        ids = sorted(start_ids | end_ids, key=lambda route_id: (route_id not in common_ids, route_id))
+        candidate_ids = (start_ids | end_ids) if max_transfers else common_ids
+        ids = sorted(candidate_ids, key=lambda route_id: (route_id not in common_ids, route_id))
         if not self.csv_mode and len(ids) > self.MAX_ROUTES:
             warnings.append(f"호출량을 제한하기 위해 {self.MAX_ROUTES}개 노선까지만 확인했습니다. 전체 최단 경로를 보장하지 않습니다.")
             ids = ids[:self.MAX_ROUTES]
@@ -394,6 +396,13 @@ class TransitService:
             return response
         if not self.csv_mode and any(any(stop.get("updowncd") not in (0, 1, "0", "1") for stop in route["stops"]) for route in routes.values()):
             warnings.append("상·하행 미제공 구간은 공식 경유 순서와 다음 정류장으로 안내하며, 회차·대기·총 소요 시간은 확정하지 않습니다.")
+
+        if not max_transfers:
+            served = {str(stop["nodeid"]) for route in routes.values() for stop in route["stops"] if stop.get("nodeid")}
+            origin_stops = [stop for stop in origin_stops if str(stop["nodeid"]) in served]
+            destination_stops = [stop for stop in destination_stops if str(stop["nodeid"]) in served]
+            if not origin_stops or not destination_stops:
+                return response
 
         # 접근/마지막 도보를 한 번씩만 조회하고, 배차 정보는 보행 조회 후 새로 받는다.
         walk_jobs = {}
@@ -460,7 +469,7 @@ class TransitService:
         # 2번째 승차 대기는 미확인으로 두며 총 ETA도 확정하지 않는다.
         response["journeys"] = plan_journeys(
             origin, destination, valid_origins, valid_destinations,
-            routes, arrivals, walking_time, max_transfers=1, use_transfer_arrivals=False,
+            routes, arrivals, walking_time, max_transfers=max_transfers, use_transfer_arrivals=False,
             limit=journey_limit,
         )
         warnings.append("후보 경로는 도보·버스 이동구간 추정으로 80개까지 비교합니다. CSV 후보의 배차·전체 도착시간은 확정하지 않습니다." if self.csv_mode

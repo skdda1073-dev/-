@@ -24,6 +24,16 @@ class SettingsTests(unittest.TestCase):
             ["tmap_app_key", "public_data_key", "tago_api_key", "naver_map_client_id"], False))
         self.assertFalse(settings.debug)
         self.assertEqual(settings.port, 5000)
+        self.assertEqual(settings.motis_base_url, "")
+
+    def test_motis_requires_a_loopback_http_or_https_origin(self):
+        for value in ("http://127.0.0.1:8889/", "http://[::1]:8889", "https://transit.example"):
+            with self.subTest(value=value):
+                self.assertEqual(load_settings(self.root, environ={"MOTIS_BASE_URL": value}).motis_base_url,
+                                 value.rstrip("/"))
+        for value in ("http://transit.example", "http://localhost:0", "https://id@example.com", "https://example.com?key=example", "https://example.com/path"):
+            with self.subTest(value=value), self.assertRaisesRegex(ConfigurationError, "MOTIS_BASE_URL"):
+                load_settings(self.root, environ={"MOTIS_BASE_URL": value})
 
     def test_project_dotenv_loaded_with_literal_secret_characters(self):
         self.write_env("TMAP_APP_KEY='fake-${NOT_EXPANDED}-$x-%%-==#literal'\nPUBLIC_DATA_KEY='fake-percent%2Bkey='\nNAVER_MAP_CLIENT_ID='fake-map'\n")

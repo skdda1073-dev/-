@@ -115,23 +115,15 @@
         <main id="planner-panel" class="planner-panel">
             <button id="panel-toggle" class="panel-handle" type="button" onclick="togglePlanner()" aria-expanded="true" aria-controls="planner-body" aria-label="도구 닫고 지도 보기"><span>도구 닫기</span><svg class="icon" aria-hidden="true"><use href="#icon-close"></use></svg></button>
             <div class="panel-heading">
-                <div><p class="eyebrow">나의 캠퍼스, 나의 길</p><h1 id="tool-heading" tabindex="-1">어디로 갈까요?</h1></div>
+                <div><h1 id="tool-heading" tabindex="-1">어디로 갈까요?</h1></div>
                 <span class="heading-icon"><svg class="icon" aria-hidden="true"><use href="#icon-arrow-up-right"></use></svg></span>
             </div>
             <div id="planner-body" class="planner-body">
                 <section id="transport-panel-journey" class="transport-panel journey-panel" role="tabpanel" aria-labelledby="transport-tab-journey" tabindex="0">
                 <section class="journey-form" aria-label="통학 경로 검색">
-                    <div class="journey-scope" role="group" aria-label="길찾기 방식">
-                        <button id="journey-scope-local" type="button" aria-pressed="true">일반 길찾기</button>
-                        <button id="journey-scope-national" type="button" aria-pressed="false">학교 기준 전국 통학</button>
-                    </div>
-                    <div id="national-direction" class="journey-direction-switch" role="group" aria-label="전국 통학 방향" hidden>
-                        <button id="national-from-campus" type="button" aria-pressed="true">학교에서 출발</button>
-                        <button id="national-to-campus" type="button" aria-pressed="false">학교로 가기</button>
-                    </div>
                     <div id="journey-campus-section" class="origin-section">
-                        <div class="section-label"><span id="journey-campus-label" class="journey-field-title">출발 캠퍼스</span><span class="label-hint">학교를 선택하세요</span></div>
-                        <div class="campus-tabs" role="group" aria-labelledby="journey-campus-label">
+                        <p id="journey-campus-label" class="section-label journey-field-title">출발지</p>
+                        <div class="campus-tabs" role="group" aria-label="캠퍼스 선택">
                             <button id="tab-hallym" class="campus-tab active is-active" type="button" onclick="switchCampus('hallym')" aria-pressed="true"><svg class="icon" aria-hidden="true"><use href="#icon-school"></use></svg>한림대학교</button>
                             <button id="tab-knu" class="campus-tab" type="button" onclick="switchCampus('knu')" aria-pressed="false"><svg class="icon" aria-hidden="true"><use href="#icon-school"></use></svg>강원대학교</button>
                         </div>
@@ -144,33 +136,55 @@
                             <select id="building-select"><option value="">출발 건물을 선택하세요</option></select>
                             <svg class="icon select-chevron" aria-hidden="true"><use href="#icon-chevron-down"></use></svg>
                         </div>
-                        <p id="origin-status" class="origin-status" role="status">조회할 때 현재 위치를 확인합니다.</p>
+                        <p id="origin-status" class="origin-status" role="status"></p>
                     </div>
-                    <div id="journey-place-section" class="journey-place-section">
-                    <div class="destination-field">
-                        <span class="field-icon"><svg class="icon" aria-hidden="true"><use href="#icon-search"></use></svg></span>
+                    <div id="journey-place-section" class="journey-place-section destination-field">
+                        <label id="journey-place-label" class="journey-field-title section-label" for="dest-input">목적지</label>
                         <div class="destination-control autocomplete-wrapper">
-                            <label id="journey-place-label" class="journey-field-title" for="dest-input">도착할 장소</label>
-                            <input type="text" id="dest-input" class="dest-input" placeholder="전국 주소, 역, 장소를 검색하세요" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="autocomplete-list" aria-describedby="search-status" oninput="onSearchDestination(this.value)">
+                            <input type="text" id="dest-input" class="dest-input" placeholder="주소, 역, 장소 검색" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="autocomplete-list" aria-describedby="search-status" oninput="onSearchDestination(this.value)">
+                            <div id="dest-selected-tag" class="dest-selected-tag" hidden>
+                                <span id="dest-selected-text"></span>
+                                <button id="journey-clear-place" type="button" class="clear-destination" onclick="clearDestination()" aria-label="목적지 다시 선택"><svg class="icon" aria-hidden="true"><use href="#icon-close"></use></svg></button>
+                            </div>
                             <div id="autocomplete-list" class="autocomplete-list" role="listbox" aria-label="목적지 검색 결과" hidden></div>
                         </div>
                     </div>
-                    <div id="dest-selected-tag" class="dest-selected-tag" hidden>
-                        <svg class="icon" aria-hidden="true"><use href="#icon-pin"></use></svg><span id="dest-selected-text"></span>
-                        <button id="journey-clear-place" type="button" class="clear-destination" onclick="clearDestination()" aria-label="목적지 다시 선택"><svg class="icon" aria-hidden="true"><use href="#icon-search"></use></svg><span>목적지 다시 선택</span></button>
+                    <div class="journey-departure" role="group" aria-labelledby="journey-departure-label">
+                        <div class="journey-departure-heading">
+                            <span id="journey-departure-label" class="journey-field-title">출발 시각</span>
+                            <span id="national-departure-help" class="label-hint">한국 시간</span>
+                        </div>
+                        <div class="journey-departure-modes">
+                            <button id="journey-depart-now" type="button" aria-pressed="true">지금 출발</button>
+                            <button id="journey-depart-later" type="button" aria-pressed="false" aria-controls="national-departure-field">날짜·시간 선택</button>
+                        </div>
+                        <div id="national-departure-field" class="journey-departure-field" hidden>
+                            <label class="sr-only" for="national-departure">출발 날짜와 시간</label>
+                            <input id="national-departure" type="datetime-local" step="60" aria-describedby="national-departure-help search-status" required disabled>
+                        </div>
                     </div>
-                    <div id="national-place-tools" class="journey-place-tools" hidden>
-                        <button id="national-current-place" type="button"><svg class="icon" aria-hidden="true"><use href="#icon-location"></use></svg>현재 위치 사용</button>
-                        <button id="national-map-place" type="button"><svg class="icon" aria-hidden="true"><use href="#icon-pin"></use></svg>지도에서 선택</button>
-                    </div>
-                    </div>
-                    <div id="national-departure-field" class="journey-departure-field" hidden>
-                        <label class="journey-field-title" for="national-departure">출발 날짜와 시간</label>
-                        <input id="national-departure" type="datetime-local" step="60" aria-describedby="national-departure-help">
-                        <p id="national-departure-help" class="label-hint">한국 시간 기준 · 비워 두면 지금 출발</p>
-                    </div>
-                    <p id="search-status" class="search-status" role="status" aria-live="polite">목적지 없이 가까운 정류장만 찾아도 좋아요.</p>
+                    <p id="search-status" class="search-status" role="status" aria-live="polite"></p>
                     <button id="route-submit" class="btn-route" type="button" onclick="searchJourney()"><svg class="icon" aria-hidden="true"><use href="#icon-route"></use></svg><span id="route-submit-label">가까운 정류장 찾기</span><svg class="icon arrow" aria-hidden="true"><use href="#icon-arrow-right"></use></svg></button>
+                    <details id="journey-options" class="journey-options">
+                        <summary><span id="journey-options-label">검색 옵션</span><svg class="icon" aria-hidden="true"><use href="#icon-chevron-down"></use></svg></summary>
+                        <div class="journey-option-fields">
+                            <div class="journey-scope" role="group" aria-label="길찾기 방식">
+                                <button id="journey-scope-local" type="button" aria-pressed="true">일반 길찾기</button>
+                                <button id="journey-scope-national" type="button" aria-pressed="false">학교 기준 통학</button>
+                            </div>
+                            <div id="national-direction" class="journey-direction-switch" role="group" aria-label="통학 방향" hidden>
+                                <button id="national-from-campus" type="button" aria-pressed="true">학교에서 출발</button>
+                                <button id="national-to-campus" type="button" aria-pressed="false">학교로 가기</button>
+                            </div>
+                            <div id="local-map-tools" class="journey-place-tools">
+                                <button id="journey-start-map" type="button"><svg class="icon" aria-hidden="true"><use href="#icon-pin"></use></svg>지도에서 출발·도착 선택</button>
+                            </div>
+                            <div id="national-place-tools" class="journey-place-tools" hidden>
+                                <button id="national-current-place" type="button"><svg class="icon" aria-hidden="true"><use href="#icon-location"></use></svg>현재 위치 사용</button>
+                                <button id="national-map-place" type="button"><svg class="icon" aria-hidden="true"><use href="#icon-pin"></use></svg>지도에서 선택</button>
+                            </div>
+                        </div>
+                    </details>
                     <button id="results-show" class="results-action" type="button" aria-controls="results-section" hidden>결과 보기</button>
                 </section>
 

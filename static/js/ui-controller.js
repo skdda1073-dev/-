@@ -4,9 +4,12 @@
     let localOriginMode = 'gps';
     let positionIntent = null;
     const byId = id => document.getElementById(id);
+    const minuteMs = 60 * 1000;
+    const koreaOffsetMs = 9 * 60 * minuteMs;
 
     function schoolJourney() { return window.AppState.getJourneyScope() === 'national'; }
     function towardCampus() { return schoolJourney() && window.AppState.getJourneyDirection() === 'to_campus'; }
+    function scheduledDeparture() { return byId('national-departure')?.disabled === false; }
 
     function updateJourneyForm() {
         const schoolMode = schoolJourney();
@@ -20,16 +23,18 @@
         byId('journey-scope-national').setAttribute('aria-pressed', String(schoolMode));
         byId('national-from-campus').setAttribute('aria-pressed', String(!toCampus));
         byId('national-to-campus').setAttribute('aria-pressed', String(toCampus));
-        for (const id of ['national-direction', 'national-place-tools', 'national-departure-field']) byId(id).hidden = !schoolMode;
+        for (const id of ['national-direction', 'national-place-tools']) byId(id).hidden = !schoolMode;
+        const localMapTools = byId('local-map-tools');
+        if (localMapTools) localMapTools.hidden = schoolMode;
         byId('journey-origin-options').hidden = schoolMode;
-        byId('journey-campus-label').textContent = toCampus ? '도착 캠퍼스' : '출발 캠퍼스';
+        byId('journey-campus-label').textContent = toCampus ? '목적지' : '출발지';
         byId('journey-building-label').textContent = toCampus ? '도착 건물' : '출발 건물';
-        byId('journey-place-label').textContent = toCampus ? '출발할 장소' : '도착할 장소';
+        byId('journey-place-label').textContent = toCampus ? '출발지' : '목적지';
         byId('autocomplete-list').setAttribute('aria-label', toCampus ? '출발지 검색 결과' : '목적지 검색 결과');
-        const clearText = toCampus ? '출발지 다시 선택' : '목적지 다시 선택';
-        const clearButton = byId('journey-clear-place');
-        clearButton.setAttribute('aria-label', clearText);
-        clearButton.querySelector('span').textContent = clearText;
+        byId('journey-clear-place').setAttribute('aria-label', toCampus ? '출발지 다시 선택' : '목적지 다시 선택');
+        const optionsLabel = byId('journey-options-label');
+        if (optionsLabel) optionsLabel.textContent = schoolMode
+            ? (toCampus ? '검색 옵션 · 학교로 가기' : '검색 옵션 · 학교에서 출발') : '검색 옵션';
     }
 
     function sync() {
@@ -38,14 +43,52 @@
         const label = document.getElementById('route-submit-label');
         const input = document.getElementById('dest-input');
         if (!label || (button && button.disabled)) return;
-        label.textContent = schoolJourney() ? '통학 경로 찾기'
-            : destName || (input && input.value.trim()) ? '경로 찾기' : '가까운 정류장 찾기';
+        label.textContent = schoolJourney() || scheduledDeparture() || destName || (input && input.value.trim())
+            ? '경로 찾기' : '가까운 정류장 찾기';
     }
 
-    function resetJourneyInputs() {
+    function resetJourneyInputs(options) {
         positionIntent = null;
         window.AppModules.search.cancelSearch();
-        window.AppModules.api.cancelPendingRequests();
+        window.AppModules.api.cancelPendingRequests(options);
+    }
+
+    function koreaMinute(minutesAhead) {
+        return new Date(Date.now() + koreaOffsetMs + minutesAhead * minuteMs).toISOString().slice(0, 16);
+    }
+
+    function updateDeparture() {
+        const input = byId('national-departure');
+        input.removeAttribute('aria-invalid');
+        resetJourneyInputs({ keepMapJourney: true });
+        window.AppModules.search.setSearchStatus('');
+        sync();
+    }
+
+    function setDepartureMode(scheduled) {
+        const input = byId('national-departure');
+        if (input.disabled === !scheduled) return;
+        input.disabled = !scheduled;
+        byId('national-departure-field').hidden = !scheduled;
+        byId('journey-depart-now').setAttribute('aria-pressed', String(!scheduled));
+        byId('journey-depart-later').setAttribute('aria-pressed', String(scheduled));
+        if (scheduled) {
+            input.min = koreaMinute(1);
+            if (!input.value || input.validity.rangeUnderflow) input.value = koreaMinute(15);
+        }
+        updateDeparture();
+    }
+
+    function validateDeparture({ reveal = false } = {}) {
+        if (!scheduledDeparture()) return true;
+        const input = byId('national-departure');
+        input.min = koreaMinute(1);
+        if (input.validity.valid) return true;
+        if (reveal) window.AppModules.shell?.openJourney();
+        input.setAttribute('aria-invalid', 'true');
+        window.AppModules.search.setSearchStatus('현재 이후의 출발 날짜와 시간을 한국 시간으로 선택해 주세요.', true);
+        input.focus();
+        return false;
     }
 
     function setJourneyScope(value) {
@@ -56,7 +99,7 @@
         resetJourneyInputs();
         updateJourneyForm();
         window.AppModules.search.selectOriginMode(schoolJourney() ? 'building' : localOriginMode, { reset: false, focus: false });
-        window.AppModules.search.setSearchStatus(schoolJourney() ? '' : '목적지 없이 가까운 정류장만 찾아도 좋아요.');
+        window.AppModules.search.setSearchStatus('');
     }
 
     function setJourneyDirection(value) {
@@ -95,6 +138,17 @@
         })) search.setSearchStatus('지도를 연결하지 못했어요. 주소나 장소를 검색해 주세요.', true);
     }
 
+    function chooseMapRoute() {
+        if (!validateDeparture()) return;
+        resetJourneyInputs();
+        const { mapJourney, search } = window.AppModules;
+        if (mapJourney?.armSelection('origin')) {
+            byId('map-pick-origin')?.focus({ preventScroll: true });
+            return;
+        }
+        search.setSearchStatus('지도를 연결하지 못했어요. 주소나 장소를 검색해 주세요.', true);
+    }
+
     function searchSchoolJourney() {
         const building = byId('building-select'), input = byId('dest-input');
         const { search, api } = window.AppModules;
@@ -113,9 +167,8 @@
         building.removeAttribute('aria-invalid');
         const school = { name: building.value, campus: window.AppState.getSelectedCampus(), building: building.value };
         const [origin, destination] = towardCampus() ? [place, school] : [school, place];
-        const departure = byId('national-departure').value;
         window.AppState.setLastSearchMode('national');
-        return api.requestNationalRoute(origin, destination, { departure });
+        return api.requestNationalRoute(origin, destination);
     }
 
     function setPlannerExpanded(expanded) {
@@ -181,13 +234,16 @@
         if (button && button.disabled) return Promise.resolve();
         if (window.AppModules.shell) window.AppModules.shell.select('journey');
         else setPlannerExpanded(true);
+        if (!validateDeparture()) return Promise.resolve();
         if (schoolJourney()) {
             window.AppModules.search.cancelSearch();
             return searchSchoolJourney();
         }
         const input = document.getElementById('dest-input');
-        if (!destName && input && input.value.trim()) {
-            window.AppModules.search.setSearchStatus('검색 결과에서 목적지를 선택해 주세요.', true);
+        const requiresDestination = scheduledDeparture();
+        if (!destName && input && (requiresDestination || input.value.trim())) {
+            window.AppModules.search.setSearchStatus(requiresDestination && !input.value.trim()
+                ? '출발 시각을 지정하려면 목적지를 선택해 주세요.' : '검색 결과에서 목적지를 선택해 주세요.', true);
             input.focus();
             return Promise.resolve();
         }
@@ -204,9 +260,12 @@
         byId('journey-scope-national')?.addEventListener('click', () => setJourneyScope('national'));
         byId('national-from-campus')?.addEventListener('click', () => setJourneyDirection('from_campus'));
         byId('national-to-campus')?.addEventListener('click', () => setJourneyDirection('to_campus'));
+        byId('journey-start-map')?.addEventListener('click', chooseMapRoute);
         byId('national-current-place')?.addEventListener('click', choosePosition);
         byId('national-map-place')?.addEventListener('click', chooseMapLocation);
-        byId('national-departure')?.addEventListener('input', resetJourneyInputs);
+        byId('journey-depart-now')?.addEventListener('click', () => setDepartureMode(false));
+        byId('journey-depart-later')?.addEventListener('click', () => setDepartureMode(true));
+        byId('national-departure')?.addEventListener('input', updateDeparture);
         const submit = document.getElementById('route-submit');
         if (submit && !submit.hasAttribute('onclick')) submit.addEventListener('click', searchJourney);
         const form = submit && submit.closest('form');
@@ -214,7 +273,7 @@
     }
 
     window.AppModules.ui = { init, sync, setPlannerExpanded, togglePlanner,
-        focusDestination, focusBuildings, focusMap, searchJourney };
+        focusDestination, focusBuildings, focusMap, searchJourney, validateDeparture };
     window.selectOriginMode = window.AppModules.search.selectOriginMode;
     window.searchJourney = searchJourney;
     window.focusDestination = focusDestination;

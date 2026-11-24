@@ -5,6 +5,7 @@ import unittest
 from unittest.mock import Mock, patch
 
 from app import CAMPUS_BUILDINGS, app
+from services.motis_journey_provider import MotisProviderError
 from services.national_journey_service import IntercityJourneyProvider, KST, NationalJourneyService
 
 
@@ -57,6 +58,47 @@ class NationalEndpointTests(unittest.TestCase):
 
 
 class NationalTimelineTests(unittest.TestCase):
+    def test_motis_and_existing_candidates_are_sorted_by_arrival_not_provider_order(self):
+        early = AT + timedelta(minutes=70)
+        later = AT + timedelta(minutes=90)
+        motis = Mock()
+        motis.plan.return_value = [
+            {"source": "MOTIS", "segments": [segment("train", ORIGIN, DESTINATION, AT, later)]},
+            {"source": "MOTIS", "segments": [segment("train", ORIGIN, DESTINATION, AT, early, realtime=True)]},
+        ]
+        repository = Mock()
+        repository.plan.return_value = [{"segments": [segment("train", ORIGIN, DESTINATION, AT, early + timedelta(minutes=5))]}]
+        result = NationalJourneyService(repository, Mock(), motis=motis).plan(ORIGIN, DESTINATION, AT)
+        self.assertEqual([journey["total_min"] for journey in result["journeys"]], [70, 75, 90])
+        self.assertEqual(result["journeys"][0]["source"], "MOTIS")
+        self.assertTrue(result["journeys"][0]["segments"][0]["realtime"])
+        motis.plan.assert_called_once_with(ORIGIN, DESTINATION, AT)
+
+    def test_motis_outage_preserves_an_available_route(self):
+        repository = Mock()
+        repository.plan.return_value = [{"segments": [segment("train", ORIGIN, DESTINATION, AT, AT + timedelta(minutes=100))]}]
+        motis = Mock()
+        motis.plan.side_effect = MotisProviderError("provider unavailable")
+        result = NationalJourneyService(repository, Mock(), motis=motis).plan(ORIGIN, DESTINATION, AT)
+        self.assertEqual(result["status"], "ok")
+        self.assertEqual(result["journeys"][0]["total_min"], 100)
+        self.assertTrue(any("MOTIS" in warning for warning in result["warnings"]))
+
+    def test_delayed_train_supersedes_only_its_matching_original_schedule(self):
+        station = {**ORIGIN, "name": "동대구역"}
+        arrival = AT + timedelta(minutes=60)
+        scheduled = segment("train", station, DESTINATION, AT + timedelta(seconds=30), arrival,
+                            service_name="KTX 033", booking_provider="korail")
+        updated = segment("train", {**station, "name": "동대구"}, {**DESTINATION, "name": "서울"},
+                          AT + timedelta(minutes=4), arrival + timedelta(minutes=4), service_name="KTX 33",
+                          booking_provider="korail", source="MOTIS", realtime=True,
+                          scheduled_departure_at=AT.isoformat(), scheduled_arrival_at=arrival.isoformat())
+        repository = Mock(**{"plan.return_value": [{"segments": [scheduled]},
+                          {"segments": [{**scheduled, "service_name": "KTX 034"}]}]})
+        motis = Mock(**{"plan.return_value": [{"source": "MOTIS", "segments": [updated]}]})
+        result = NationalJourneyService(repository, Mock(), motis=motis).plan(station, DESTINATION, AT)
+        self.assertEqual([journey["segments"][-1]["service_name"] for journey in result["journeys"]], ["KTX 034", "KTX 33"])
+
     def test_timeline_ranks_next_day_with_walk_wait_and_booking_link(self):
         station = {"name": "춘천역", "lat": 37.884, "lon": 127.716}
         stop = AT + timedelta(minutes=27)
@@ -122,10 +164,30 @@ class ChuncheonRailAccessTests(unittest.TestCase):
 
         self.repository.plan.side_effect = rail_plan
         result = self.service.plan(ORIGIN, DESTINATION, AT)
-        self.local.plan.assert_called_once_with(ORIGIN, self.gateway)
+        self.local.plan.assert_called_once_with(ORIGIN, self.gateway, max_transfers=0, include_direct_walk=False)
         self.assertEqual(result["status"], "ok")
         self.assertEqual([part["mode"] for part in result["journeys"][0]["segments"]],
                          ["walk", "wait", "bus", "walk", "wait", "subway"])
+
+    def test_verified_bus_is_joined_to_motis_after_the_station_walk(self):
+        self.local.plan.return_value = self.local_result()
+        self.repository.plan.return_value = []
+        motis = Mock()
+        self.service.motis = motis
+
+        def provider(origin, destination, departure):
+            if origin == ORIGIN:
+                return []
+            self.assertEqual((origin, destination), (self.gateway, DESTINATION))
+            self.assertGreater(departure, AT + timedelta(minutes=21))
+            return [{"source": "MOTIS", "segments": [segment("train", origin, destination, departure,
+                        AT + timedelta(minutes=80), realtime=True)]}]
+
+        motis.plan.side_effect = provider
+        best, = self.service.plan(ORIGIN, DESTINATION, AT)["journeys"]
+        self.assertEqual(best["source"], "MOTIS")
+        self.assertEqual([part["mode"] for part in best["segments"]], ["walk", "wait", "bus", "walk", "wait", "train"])
+        self.assertTrue(best["segments"][-1]["realtime"])
 
     def test_missed_or_unconfirmed_bus_falls_back_to_existing_rail_search(self):
         for eta, verified in ((6, True), (9, False), (None, True)):

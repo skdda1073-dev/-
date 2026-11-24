@@ -10,6 +10,7 @@ from zoneinfo import ZoneInfo
 
 from services.intercity_client import IntercityError
 from services.mobility_validation import MobilityInputError, clean_text, coordinate
+from services.motis_journey_provider import MotisProviderError
 from services.place_search_service import PlaceSearchError
 from services.public_transit_client import PublicDataError
 from services.route_planner import BOARDING_MARGIN_MIN
@@ -142,6 +143,23 @@ def _segment(mode, route, start, end, departure, arrival, duration, fare=None, *
             "fare_won": fare, **extra}
 
 
+def _scheduled_train_key(leg, *, original=False):
+    if leg["mode"] != "train" or leg.get("booking_provider") not in {"korail", "srt"}:
+        return None
+    service = (leg.get("service_name") or "").upper().rsplit(maxsplit=1)
+    if len(service) != 2 or not re.fullmatch(r"[A-Z]?[0-9]+", service[1]):
+        return None
+    prefix = "scheduled_" if original else ""
+    start, end = (_time(leg.get(prefix + field)) for field in ("departure_at", "arrival_at"))
+    if start is None or end is None:
+        return None
+    stations = tuple(re.sub(r"\s+", "", leg[field]["name"]).removesuffix("역")
+                     for field in ("from_place", "to_place"))
+    # MOTIS exposes minute-level rail times; the published timetable can contain seconds.
+    times = tuple(value.replace(second=0, microsecond=0) for value in (start, end))
+    return (leg["booking_provider"], service[0], service[1].lstrip("0"), stations, times)
+
+
 def _finalize(journey, query_at):
     current = query_at
     complete = True
@@ -153,7 +171,7 @@ def _finalize(journey, query_at):
             return None
         if complete and start is not None and start > current:
             stop = segment["from_place"]
-            segments.append(_segment("wait", "승차 대기", stop, stop, current.isoformat(),
+            segments.append(_segment("wait", "승차 대기" if segments else "출발까지 대기", stop, stop, current.isoformat(),
                                      start.isoformat(), round((start - current).total_seconds() / 60, 2), 0))
         if start is None or end is None:
             complete = False
@@ -264,15 +282,19 @@ class IntercityJourneyProvider:
         return direct
 
     def _route(self, origin, destination, start, end, query_at):
+        options = self.service.timetable(start["provider_id"], end["provider_id"], query_at.date().isoformat())
+        upcoming = [(departure, ride) for ride in options["trips"]
+                    if (departure := _time(ride.get("departure_at"))) is not None and departure >= query_at]
+        if not upcoming:
+            return []
         access = self._ground(origin, start, query_at, "승차 터미널까지", start["provider_id"] != "BUSTAGO_2037")
         access_end = _time(access[-1]["arrival_at"]) if access else None
         ready = access_end + timedelta(minutes=5) if access_end else query_at
         approach = access or [_segment("connection", "터미널 연결편 확인 필요", origin, start, None, None, None)]
-        options = self.service.timetable(start["provider_id"], end["provider_id"], query_at.date().isoformat())
         boardable = []
-        for ride in options["trips"]:
-            departure, arrival = _time(ride.get("departure_at")), _time(ride.get("arrival_at"))
-            if departure is None or departure < ready or (arrival is not None and departure > arrival):
+        for departure, ride in upcoming:
+            arrival = _time(ride.get("arrival_at"))
+            if departure < ready or (arrival is not None and departure > arrival):
                 continue
             boardable.append((departure, arrival, ride))
         boardable.sort(key=lambda trip: (trip[1] is None, trip[1] or trip[0], trip[0]))
@@ -329,13 +351,14 @@ class IntercityJourneyProvider:
 
 
 class NationalJourneyService:
-    def __init__(self, repository, walking_time, local_transit=None, intercity=None, bus_repository=None, now=None):
+    def __init__(self, repository, walking_time, local_transit=None, intercity=None, bus_repository=None, now=None, *, motis=None):
         self.repository = repository
         self.walking_time = walking_time
         self.local_transit = local_transit
         self.intercity = intercity
         self.bus_repository = bus_repository
         self.now = now or (lambda: datetime.now(KST))
+        self.motis = motis
 
     def _walk(self, origin, destination, query_at):
         measured = _measured_walk(self.walking_time, origin, destination)
@@ -346,7 +369,7 @@ class NationalJourneyService:
         return [{"segments": [_segment("walk", "목적지까지 도보", origin, destination, query_at, final, minutes,
                                       distance_m=meters, source="TMAP 보행")]}]
 
-    def _live_local(self, origin, destination, query_at):
+    def _live_local(self, origin, destination, query_at, *, station_access=False):
         if self.local_transit is None or not (
             _distance_km(origin, CHUNCHEON_CENTER) < CHUNCHEON_LOCAL_RADIUS_KM
             and _distance_km(destination, CHUNCHEON_CENTER) < CHUNCHEON_LOCAL_RADIUS_KM
@@ -355,7 +378,10 @@ class NationalJourneyService:
             return []
         journeys = []
         try:
-            local = self.local_transit.plan(origin, destination)
+            if station_access:
+                local = self.local_transit.plan(origin, destination, max_transfers=0, include_direct_walk=False)
+            else:
+                local = self.local_transit.plan(origin, destination)
         except PublicDataError:
             return journeys
         snapshot_at = self.now()
@@ -390,7 +416,8 @@ class NationalJourneyService:
                                              (start - current).total_seconds() / 60))
                 segments.append(_segment("shuttle" if is_shuttle else "bus", leg.get("route_no") or "버스",
                                          leg["board"], leg["alight"], start, end, ride if start else None,
-                                         path=leg.get("path", []), estimated=True, source="학교 셔틀" if is_shuttle else "TAGO"))
+                                         path=leg.get("path", []), estimated=True, source="학교 셔틀" if is_shuttle else "TAGO",
+                                         realtime=not is_shuttle and start is not None and end is not None))
                 current = end
             total_at = current + timedelta(minutes=egress) if current else None
             segments.append(_segment("walk", "하차 지점에서 목적지까지", legs[-1]["alight"], destination,
@@ -408,25 +435,41 @@ class NationalJourneyService:
 
         def station_access(gateway):
             try:
-                options = self._live_local(origin, gateway, query_at)
+                # Scheduled connections need a known departure for each feeder leg.
+                # TAGO only verifies the first bus in each candidate.
+                options = self._live_local(origin, gateway, query_at, station_access=True)
             except (OSError, ValueError):
-                return []
+                return [], []
             routes = []
             for option in options:
                 timeline = _finalize(option, query_at)
                 if timeline is not None and timeline["complete"]:
                     routes.append({**option, "gateway": gateway, "arrival_at": _time(timeline["arrival_at"])})
-            return routes
+            if not routes or self.motis is None:
+                return routes, []
+            fastest = min(routes, key=lambda route: route["arrival_at"])
+            ready = fastest["arrival_at"] + timedelta(minutes=BOARDING_MARGIN_MIN)
+            try:
+                onward = self.motis.plan(gateway, destination, ready)
+            except MotisProviderError:
+                return routes, []
+            combined = [{**ride, "segments": fastest["segments"] + ride["segments"], "estimated": True,
+                         "warnings": fastest["warnings"] + ride.get("warnings", [])} for ride in onward]
+            return routes, combined
 
         with ThreadPoolExecutor(max_workers=2) as executor:
-            access_routes = [route for routes in executor.map(station_access, self.repository.chuncheon_gateways())
-                             for route in routes]
+            results = list(executor.map(station_access, self.repository.chuncheon_gateways()))
+        access_routes = [route for routes, _ in results for route in routes]
         if access_routes:
-            return self.repository.plan(*arguments, access_routes=access_routes)
+            combined = [route for _, routes in results for route in routes]
+            return combined + self.repository.plan(*arguments, access_routes=access_routes)
         return self.repository.plan(*arguments)
 
     def plan(self, origin, destination, query_at):
-        jobs = [(self._rail_with_access, (origin, destination, query_at))]
+        jobs = []
+        if self.motis is not None:
+            jobs.append((self.motis.plan, (origin, destination, query_at)))
+        jobs.append((self._rail_with_access, (origin, destination, query_at)))
         if self.bus_repository is not None:
             jobs.append((self.bus_repository.plan, (origin, destination, query_at, self.walking_time)))
         if self.intercity is not None:
@@ -444,6 +487,9 @@ class NationalJourneyService:
                         if missing:
                             warnings.append("이 날짜와 구간에서 연결되는 시외버스 시간표나 승차 위치를 일부 확인하지 못했습니다.")
                     raw.extend(result)
+                except MotisProviderError:
+                    source_unavailable = True
+                    warnings.append("MOTIS 경로를 확인하지 못했습니다. 다른 운행 자료로 확인한 후보를 표시합니다.")
                 except (OSError, ValueError, PublicDataError):
                     source_unavailable = True
         options = []
@@ -452,13 +498,25 @@ class NationalJourneyService:
             journey = _finalize(option, query_at)
             if journey is None:
                 continue
-            signature = tuple((leg["mode"], leg.get("route_name"), leg["from_place"].get("name"), leg["to_place"].get("name"),
+            signature = tuple((leg["mode"], leg.get("route_name"), leg.get("service_name"),
+                               leg["from_place"].get("name"), leg["to_place"].get("name"),
                                leg["departure_at"], leg["arrival_at"]) for leg in journey["segments"])
             if signature not in seen:
                 seen.add(signature)
                 options.append(journey)
+        adjusted_trains = set()
+        for journey in options:
+            for leg in journey["segments"]:
+                if leg.get("source") == "MOTIS" and leg.get("realtime") is True:
+                    scheduled = _scheduled_train_key(leg, original=True)
+                    if scheduled is not None and scheduled != _scheduled_train_key(leg):
+                        adjusted_trains.add(scheduled)
+        if adjusted_trains:
+            options = [journey for journey in options if not any(
+                leg.get("realtime") is not True and _scheduled_train_key(leg) in adjusted_trains
+                for leg in journey["segments"])]
         options.sort(key=lambda value: (not value["complete"], _time(value["arrival_at"]) or datetime.max.replace(tzinfo=KST),
-                                        value["transfer_count"]))
+                                        value["transfer_count"], -sum(leg.get("realtime") is True for leg in value["segments"])))
         if source_unavailable:
             warnings.append("연결된 교통 데이터 일부를 불러오지 못했습니다.")
         if not options or not options[0]["complete"]:

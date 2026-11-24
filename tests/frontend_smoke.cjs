@@ -308,8 +308,9 @@ async function openApp(browser, options = {}) {
         }
         if (url.pathname === '/api/itx/route') {
             itxRequests.push({ pathname: url.pathname, query: url.search });
-            return route.fulfill({ json: { trains: [{ train_no: '1001', origin: url.searchParams.get('origin'),
-                destination: url.searchParams.get('destination'), departure_time: '18:00', arrival_time: '19:00', fare: 6000 }] } });
+            const origin = url.searchParams.get('origin'), destination = url.searchParams.get('destination');
+            return route.fulfill({ json: { origin, destination, date: url.searchParams.get('date'),
+                trains: [{ train_no: '1001', origin, destination, departure_time: '18:00', arrival_time: '19:00', fare: 6000 }] } });
         }
         if (url.pathname === '/search_poi') {
             const query = url.searchParams.get('q') || '';
@@ -470,8 +471,18 @@ test('390px initial layout, campus data, keyboard destination selection and clea
         const { page } = app;
         await page.locator('#map-status').waitFor({ state: 'hidden' });
         await noOverflow(page);
+        assert.equal(await page.locator('#journey-scope-national').isVisible(), false, 'Optional controls start closed');
+        assert.equal(await page.getByRole('button', { name: '지금 출발' }).getAttribute('aria-pressed'), 'true');
+        assert.equal(await page.getByRole('button', { name: '날짜·시간 선택' }).isVisible(), true);
+        assert.equal(await page.locator('#national-departure').isVisible(), false);
+        assert.equal(await page.locator('#map-journey-widget').isVisible(), false, 'The map selector starts out of the way');
         assert.ok((await page.locator('#dest-input').boundingBox()).height >= 44, 'Destination entry remains usable by touch');
         await screenshot(page, 'mobile-initial-preview.png');
+        await page.locator('#journey-options > summary').press('Enter');
+        await page.locator('#journey-start-map').click();
+        await page.locator('#map-journey-widget').waitFor({ state: 'visible' });
+        assert.equal(await page.locator('#map-pick-origin').getAttribute('aria-pressed'), 'true');
+        await page.locator('#map-journey-reset').click();
         const hallym = await chooseBuilding(page);
         await selectDestination(page);
         const changeDestination = page.getByRole('button', { name: '목적지 다시 선택', exact: true });
@@ -511,7 +522,7 @@ test('building journey request preserves campus and destination; known total ren
     } finally { await app.close(); }
 });
 
-test('nationwide search shows campus walk, overnight arrival and the official booking link', async browser => {
+test('nationwide search shows a compact recommendation with walking, booking and alternatives on demand', async browser => {
     const busan = { name: '부산역', sub: '부산광역시 동구', lat: 35.115, lon: 129.041 };
     const app = await openApp(browser, { timezoneId: 'America/New_York',
         searchHandler: (route, query, url) => {
@@ -526,46 +537,56 @@ test('nationwide search shows campus walk, overnight arrival and the official bo
             const origin = { name: payload.origin.name, lat: 37.88695, lon: 127.73585 };
             const station = { name: '춘천역', lat: 37.8844, lon: 127.7166 };
             const depart = '2030-10-21T20:00:00+09:00', arrive = '2030-10-22T01:42:00+09:00';
+            const primary = { departure_at: depart, arrival_at: arrive, total_min: 342, fare_won: null, transfer_count: 0, source: 'MOTIS',
+                segments: [
+                    { mode: 'walk', from_place: origin, to_place: station, duration_min: 25,
+                        departure_at: depart, arrival_at: '2030-10-21T20:25:00+09:00' },
+                    { mode: 'train', service_name: 'KTX', route_name: '경부선', from_place: station, to_place: busan, duration_min: 317,
+                        departure_at: '2030-10-21T20:25:00+09:00', arrival_at: arrive,
+                        source: 'MOTIS', realtime: true,
+                        booking: { name: '코레일', url: 'https://www.korail.com/ticket' } }
+                ] };
+            const alternative = { ...primary, total_min: 362, arrival_at: '2030-10-22T02:02:00+09:00',
+                segments: [primary.segments[0], { ...primary.segments[1], service_name: 'ITX-마음', duration_min: 337,
+                    arrival_at: '2030-10-22T02:02:00+09:00', realtime: false }] };
             return route.fulfill({ json: { mode: 'national_journeys', status: 'ok', origin, destination: busan,
-                journeys: [{ departure_at: depart, arrival_at: arrive, total_min: 342, fare_won: null, transfer_count: 0,
-                    segments: [
-                        { mode: 'walk', from_place: origin, to_place: station, duration_min: 25,
-                            departure_at: depart, arrival_at: '2030-10-21T20:25:00+09:00' },
-                        { mode: 'train', service_name: 'KTX', route_name: '경부선', from_place: station, to_place: busan, duration_min: 317,
-                            departure_at: '2030-10-21T20:25:00+09:00', arrival_at: arrive,
-                            booking: { name: '코레일', url: 'https://www.korail.com/ticket' } }
-                    ] }] } });
+                journeys: [primary, null, alternative] } });
         });
         const building = await chooseBuilding(page);
         await selectDestination(page, '부산역', '부산역');
         await page.locator('#route-submit').click();
-        const itinerary = page.locator('#result-container .national-itinerary');
+        const itinerary = page.locator('#result-container .national-itinerary--primary');
         await itinerary.waitFor({ state: 'visible' });
         assert.deepEqual(payload, { origin: { name: building, campus: 'hallym', building },
             destination: { name: busan.name, lat: busan.lat, lon: busan.lon } });
         assert.equal(app.requests.length, 0);
         assert.match(await itinerary.innerText(), /5시간 42분[\s\S]*다음 날 오전 1:42 도착/);
-        const firstStep = itinerary.locator('.national-segment').first();
-        assert.match(await firstStep.innerText(), /출발 도보[\s\S]*춘천역[\s\S]*25분/);
-        assert.ok((await firstStep.innerText()).includes(building));
         assert.match(await itinerary.innerText(), /KTX 경부선/);
-        assert.equal(await itinerary.getByRole('link', { name: /코레일 예매/ }).getAttribute('href'),
-            'https://www.korail.com/ticket');
-        await itinerary.getByRole('link', { name: /코레일 예매/ }).evaluate(link => {
-            link.addEventListener('click', event => event.preventDefault(), { once: true });
-            link.click();
-        });
-        assert.equal(await page.locator('#route-detail').isVisible(), false, 'The booking link does not open route details');
+        assert.match(await itinerary.innerText(), /일부 실시간 반영/);
+        assert.equal(await itinerary.locator('.national-segment').count(), 0);
+        assert.equal(await page.locator('.national-alternatives .route-select').isVisible(), false);
         await screenshot(page, 'national-journey-preview.png');
         await itinerary.getByRole('button', { name: '경로 자세히 보기' }).click();
         await page.locator('#route-detail').waitFor({ state: 'visible' });
-        assert.match(await page.locator('#route-detail-content').innerText(), /KTX 경부선[\s\S]*부산역/);
+        const detail = page.locator('#route-detail-content');
+        const firstStep = detail.locator('.national-segment').first();
+        assert.match(await firstStep.innerText(), /출발 도보[\s\S]*춘천역[\s\S]*25분/);
+        assert.ok((await firstStep.innerText()).includes(building));
+        assert.match(await detail.innerText(), /KTX 경부선[\s\S]*부산역/);
+        assert.match(await detail.innerText(), /실시간 운행 정보 반영/);
+        assert.equal(await detail.getByRole('link', { name: /코레일 예매/ }).getAttribute('href'), 'https://www.korail.com/ticket');
+        await page.locator('#route-detail-close').click();
+        await page.locator('.national-alternatives > summary').press('Enter');
+        await page.locator('.national-alternatives .route-select[data-journey-index="2"]').click();
+        await detail.getByText('ITX-마음 경부선', { exact: true }).waitFor({ state: 'visible' });
+        assert.doesNotMatch(await detail.innerText(), /실시간 운행 정보 반영/);
     } finally { await app.close(); }
 });
 
 test('school-bound nationwide search sends the selected campus destination and Korean departure date', async browser => {
     const seoul = { name: '서울역', sub: '서울특별시 용산구', lat: 37.555, lon: 126.97 };
     const app = await openApp(browser, { viewport: { width: 1440, height: 1000 },
+        timezoneId: 'America/New_York', fixedNow: '2030-10-21T14:55:12Z',
         searchHandler: route => route.fulfill({ json: [seoul] }) });
     const page = app.page;
     let payload;
@@ -575,19 +596,86 @@ test('school-bound nationwide search sends the selected campus destination and K
             return route.fulfill({ json: { mode: 'national_journeys', status: 'partial', journeys: [],
                 warnings: ['해당 날짜의 운행 정보를 확인하지 못했어요.'] } });
         });
+        await page.locator('#journey-options > summary').press('Enter');
         await page.locator('#journey-scope-national').click();
         await page.locator('#national-to-campus').click();
         await page.locator('#tab-knu').click();
         const building = await page.locator('#building-select option').nth(1).getAttribute('value');
         await page.locator('#building-select').selectOption(building);
         await selectDestination(page, '서울역', '서울역');
-        assert.equal(await page.locator('#journey-place-label').innerText(), '출발할 장소');
+        assert.equal(await page.locator('#journey-place-label').innerText(), '출발지');
+        assert.match(await page.locator('#journey-options-label').innerText(), /학교로 가기/);
+        await page.getByRole('button', { name: '날짜·시간 선택' }).click();
+        assert.equal(await page.locator('#national-departure').inputValue(), '2030-10-22T00:10');
         await page.locator('#national-departure').fill('2030-10-22T06:30');
+        await page.locator('#journey-options > summary').click();
+        assert.equal(await page.locator('#national-departure').isVisible(), true);
         await page.locator('#route-submit').click();
         await page.getByText('확인할 수 있는 통학 경로가 부족해요').waitFor({ state: 'visible' });
         assert.deepEqual(payload, { origin: { name: seoul.name, lat: seoul.lat, lon: seoul.lon },
             destination: { name: building, campus: 'knu', building }, departure_at: '2030-10-22T06:30+09:00' });
         assert.equal(app.requests.length, 0);
+    } finally { await app.close(); }
+});
+
+test('scheduled time is applied to ordinary building, GPS and map trips and can be reset', async browser => {
+    const app = await openApp(browser, { viewport: { width: 1440, height: 1000 }, fixedNow: '2030-10-21T01:00:00Z' });
+    const { page } = app;
+    const datetime = page.locator('#national-departure');
+    const payloads = [];
+    try {
+        await page.route('**/api/journeys', route => {
+            payloads.push(route.request().postDataJSON());
+            return route.fulfill({ json: { mode: 'national_journeys', status: 'empty', journeys: [] } });
+        });
+        const building = await chooseBuilding(page);
+        await page.getByRole('button', { name: '날짜·시간 선택' }).click();
+        const submit = page.locator('#route-submit');
+        await submit.click();
+        assert.match(await page.locator('#search-status').innerText(), /목적지를 선택/);
+        await selectDestination(page);
+        await datetime.fill('2030-10-21T09:59');
+        await submit.click();
+        assert.equal(await datetime.getAttribute('aria-invalid'), 'true');
+        assert.equal(payloads.length, 0);
+        assert.equal(app.requests.length, 0);
+
+        await datetime.fill('2030-10-21T12:30');
+        const buildingRequest = page.waitForResponse('**/api/journeys');
+        await submit.click();
+        await buildingRequest;
+        assert.deepEqual(payloads[0].origin, { name: building, building, campus: 'hallym' });
+        assert.equal(payloads[0].departure_at, '2030-10-21T12:30+09:00');
+
+        await selectTool(page, 'journey');
+        await page.locator('#origin-gps').click();
+        const gpsRequest = page.waitForResponse('**/api/journeys');
+        await submit.click();
+        await gpsRequest;
+        assert.equal(payloads[1].origin.name, '현재 위치');
+        assert.equal(payloads[1].departure_at, payloads[0].departure_at);
+
+        await selectTool(page, 'journey');
+        await page.locator('#journey-options > summary').click();
+        await page.locator('#journey-start-map').click();
+        const mapRequest = page.waitForResponse('**/api/journeys');
+        await page.evaluate(() => {
+            window.AppModules.mapJourney.pickPoint(37.88, 127.73);
+            window.AppModules.mapJourney.pickPoint(37.89, 127.74);
+        });
+        await mapRequest;
+        assert.equal(payloads[2].origin.lat, 37.88);
+        assert.equal(payloads[2].destination.lat, 37.89);
+        assert.equal(payloads[2].departure_at, payloads[0].departure_at);
+
+        await selectTool(page, 'journey');
+        await page.getByRole('button', { name: '지금 출발' }).click();
+        assert.equal(await datetime.isVisible(), false);
+        const currentRequest = page.waitForResponse('**/get_route_info');
+        await submit.click();
+        await currentRequest;
+        assert.equal(app.requests.length, 1);
+        assert.equal(payloads.length, 3);
     } finally { await app.close(); }
 });
 

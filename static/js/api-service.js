@@ -105,6 +105,11 @@
         }
     }
 
+    function departureTime() {
+        const input = document.getElementById('national-departure');
+        return input?.disabled === false ? input.value : null;
+    }
+
     function stateSnapshot(mode, ignorePosition) {
         const building = document.getElementById('building-select');
         const position = window.AppState.getCurrentPosition();
@@ -113,7 +118,7 @@
             mode: mode,
             scope: window.AppState.getJourneyScope(),
             direction: window.AppState.getJourneyDirection(),
-            departure: document.getElementById('national-departure')?.value,
+            departure: departureTime(),
             selectedMode: window.AppState.getOriginMode(),
             campus: selectedCampus,
             building: (mode === 'building' || mode === 'national') && building ? building.value : null,
@@ -334,8 +339,14 @@
         return outsideLocalArea(point) || (region.test(address) && !/(?:^|\s)춘천(?:시)?(?:\s|,|$)/.test(address));
     }
 
-    function requestNationalRoute(origin, destination, { departure, mode = 'national', pendingToken } = {}) {
+    function requestNationalRoute(origin, destination, { mode = 'national', pendingToken } = {}) {
         const payload = { origin, destination };
+        const departure = departureTime();
+        // A GPS lookup may finish after the chosen minute has passed.
+        if (pendingToken && departure !== null && !window.AppModules.ui.validateDeparture({ reveal: true })) {
+            cancelPendingRequests({ keepMapJourney: true });
+            return Promise.resolve();
+        }
         if (departure) payload.departure_at = departure + '+09:00';
         const summary = { origin, destination, location: origin.name, lat: origin.lat, lon: origin.lon,
             dest_name: destination.name, dest_lat: destination.lat, dest_lon: destination.lon,
@@ -344,11 +355,14 @@
     }
 
     function findRoutesFromMap(payload) {
+        if (!window.AppModules.ui.validateDeparture({ reveal: true })) {
+            return Promise.reject(new Error('출발 시각을 확인해 주세요.'));
+        }
         const origin = { name: payload.location, lat: payload.lat, lon: payload.lon };
         const destination = { name: payload.dest_name, lat: payload.dest_lat, lon: payload.dest_lon };
-        if (outsideLocalArea(origin) || outsideLocalArea(destination) || window.AppState.getJourneyScope() === 'national') {
-            return requestNationalRoute(origin, destination, { mode: 'map',
-                departure: document.getElementById('national-departure')?.value });
+        if (departureTime() !== null || outsideLocalArea(origin) || outsideLocalArea(destination) ||
+                window.AppState.getJourneyScope() === 'national') {
+            return requestNationalRoute(origin, destination, { mode: 'map' });
         }
         return requestRoute(payload, 'map');
     }
@@ -372,7 +386,7 @@
             status.classList.remove('status-error');
         }
         const origin = { name: '현재 위치', lat: Number(lat), lon: Number(lon) };
-        if (destination.name && (outsideLocalArea(origin) || destinationUsesNationalRoute(destination))) {
+        if (destination.name && (departureTime() !== null || outsideLocalArea(origin) || destinationUsesNationalRoute(destination))) {
             return requestNationalRoute(origin, destination, { mode: 'gps', pendingToken });
         }
         return requestRoute({
@@ -406,7 +420,7 @@
             status.classList.remove('status-error');
         }
         const destination = window.AppState.getDestination();
-        if (destinationUsesNationalRoute(destination)) {
+        if (destination.name && (departureTime() !== null || destinationUsesNationalRoute(destination))) {
             const origin = { name: building, building, campus: selectedCampus };
             return requestNationalRoute(origin, destination, { mode: 'building' });
         }

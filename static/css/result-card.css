@@ -5,17 +5,25 @@
 .route-card.is-selected { border-color: var(--green-dark); box-shadow: 0 0 0 1px var(--green-dark); background: #f4fbf2; }
 .result-card.national-itinerary { padding: 0; overflow: hidden; color: #243532; background: #fff; }
 .national-itinerary.is-selected { border-color: #8bb1a4; box-shadow: 0 4px 18px #1b4e4312; background: #fff; }
-.national-itinerary-header { padding: 18px 20px 15px; background: #f4f7f2; border-bottom: 1px solid #e2e8df; }
+.national-itinerary-header { padding: 14px 16px 12px; background: #f4f7f2; border-bottom: 1px solid #e2e8df; }
 .national-itinerary--primary .national-itinerary-header { background: #edf5eb; }
 .national-itinerary-kicker { margin: 0 0 5px; color: #355e4b; font-size: 13px; font-weight: 800; }
 .national-itinerary-primary { display: flex; flex-wrap: wrap; align-items: baseline; column-gap: 12px; row-gap: 2px; }
 .national-itinerary-primary > strong { font-size: clamp(22px, 7vw, 34px); line-height: 1.15; letter-spacing: -.045em; font-variant-numeric: tabular-nums; }
 .national-itinerary-primary > span { color: #3b564e; font-size: 14px; font-weight: 700; }
-.national-itinerary-meta { margin: 8px 0 0; color: #4f655e; font-size: 12px; line-height: 1.5; }
-.national-itinerary-actions { margin: 0 16px; border-top: 1px solid #e2e8df; }
+.national-itinerary-route { margin: 8px 0 0; color: #2a493d; font-size: 14px; font-weight: 720; line-height: 1.5; }
+.national-itinerary-meta { margin: 4px 0 0; color: #4f655e; font-size: 12px; line-height: 1.5; }
+.national-itinerary-actions { margin: 0 14px; }
 .national-detail-button { display: flex; align-items: center; justify-content: space-between; gap: 8px; width: 100%; min-height: 46px; padding: 7px 3px; border: 0; color: #275b48; background: transparent; text-align: left; font: inherit; font-size: 13px; font-weight: 740; cursor: pointer; }
 .national-detail-button > .icon { width: 16px; height: 16px; }
 .national-detail-button:focus-visible { outline: 2px solid #226d59; outline-offset: -2px; border-radius: 5px; }
+.national-alternatives { margin-bottom: 14px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); }
+.national-alternatives > summary { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 44px; padding: 8px 13px; list-style: none; color: var(--ink); font-size: 13px; font-weight: 700; cursor: pointer; }
+.national-alternatives > summary::-webkit-details-marker { display: none; }
+.national-alternatives > summary > .icon { flex: 0 0 15px; width: 15px; height: 15px; }
+.national-alternatives[open] > summary > .icon { transform: rotate(180deg); }
+.national-alternatives > summary:focus-visible { outline: 2px solid #226d59; outline-offset: -2px; border-radius: 10px; }
+.national-alternatives > .national-itinerary { margin: 0 9px 9px; }
 .route-select[aria-pressed="true"] { color: var(--green-dark); background: var(--green-soft); }
 .route-detail-layer { position: absolute; inset: 0; z-index: 4; pointer-events: none; }
 .route-detail { display: flex; flex-direction: column; min-height: 0; max-height: min(520px, 65dvh); border: 1px solid #c4ddc8; border-radius: 16px; background: #f9fcf8; color: var(--ink); box-shadow: var(--shadow); overflow: hidden; pointer-events: auto; }

@@ -96,6 +96,8 @@
 
 .map-journey-widget button:focus-visible { outline: 3px solid var(--green-dark, #187526); outline-offset: 3px; }
 
+#app-shell:not(.search-closed) .map-stage:not(.is-map-picking) .map-journey-widget { display: none; }
+
 /* The existing detail view takes priority over these compact map overlays. */
 .map-stage:has(#route-detail:not([hidden])) .map-journey-widget { visibility: hidden; pointer-events: none; }
 

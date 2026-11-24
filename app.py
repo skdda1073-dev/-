@@ -23,6 +23,7 @@ from services.ride_room_routes import create_ride_room_blueprint
 from services.intercity_booking_service import BookingIntercityService
 from services.intercity_routes import create_intercity_blueprint
 from services.mobility_validation import MobilityInputError, require_json_object
+from services.motis_journey_provider import MotisJourneyProvider
 from services.national_bus_repository import NationalBusRepository
 from services.national_journey_service import IntercityJourneyProvider, NationalJourneyService, journey_departure, journey_point
 from services.national_transit_repository import NationalTransitRepository
@@ -99,6 +100,9 @@ except Exception as e:
 
 place_search_service = PlaceSearchService(TMAP_APP_KEY, CAMPUS_BUILDINGS)
 national_transit_repository = NationalTransitRepository(national_data_dir)
+motis_journey_provider = MotisJourneyProvider(
+    settings.motis_base_url, user_agent="HallymCapstone/1.0 (+https://github.com/skdda1073-dev/-)",
+) if settings.motis_base_url else None
 national_journey_service = NationalJourneyService(
     national_transit_repository, walking_service.get_time, local_transit=transit_service,
     intercity=IntercityJourneyProvider(
@@ -106,6 +110,7 @@ national_journey_service = NationalJourneyService(
         walking_service.get_time, regional_transit=national_transit_repository,
     ),
     bus_repository=NationalBusRepository(national_data_dir),
+    motis=motis_journey_provider,
 )
 
 # Independent mobility APIs preserve the existing transit response contract.
@@ -192,6 +197,7 @@ def health():
         "status": "ok" if ready else "degraded",
         "configured": configured,
         "checks": {"csv": csv_check, "campus": {"status": "ok" if campus_ok else "error"},
+                   "motis": {"status": "configured" if motis_journey_provider is not None else "disabled"},
                    "bus_routes": {
                        "source": "tago", "status": "configured" if configured["tago_api_key"] else "missing_key",
                        "key_setting": "TAGO_API_KEY" if settings.tago_api_key else "PUBLIC_DATA_KEY",

@@ -305,6 +305,7 @@
         city_bus: ['시내버스', 'bus', 'city'],
         bus: ['시내버스', 'bus', 'city'], shuttle: ['학교 셔틀', 'bus', 'city'],
         subway: ['지하철·전철', 'train', 'metro'], metro: ['지하철·전철', 'train', 'metro'],
+        tram: ['트램', 'train', 'metro'],
         rail: ['철도', 'train', 'rail'], train: ['철도', 'train', 'rail'],
         intercity_bus: ['시외버스', 'bus', 'coach'], express_bus: ['고속버스', 'bus', 'coach'],
         ferry: ['여객선', 'pin', 'rail'], flight: ['항공', 'pin', 'rail'], air: ['항공', 'pin', 'rail']
@@ -350,27 +351,36 @@
         return `<a class="national-booking" href="${escapeHtml(url.href)}" target="_blank" rel="noopener noreferrer" aria-label="${escapeHtml(provider + ' 예매 · ' + start + '에서 ' + end + '까지')}">${escapeHtml(provider)} 예매${icon('arrow-up-right')}</a>`;
     }
 
-    function nationalTimeline(journey, detailed = false) {
+    function nationalRouteName(leg, label) {
+        const service = text(leg.service_name).trim();
+        const route = text(leg.route_name).trim();
+        if (route && service.startsWith(route + ' ')) return service;
+        return [...new Set([service, route])]
+            .filter(name => name && name !== label).join(' ');
+    }
+
+    function nationalTimeline(journey) {
         const segments = journey.segments;
+        const firstMovement = segments.findIndex(leg => leg.mode !== 'wait');
         return `<ol class="national-timeline" aria-label="통학 경로 구간">${segments.map((leg, index) => {
             const mode = text(leg.mode);
-            const [baseLabel, symbol, tone] = travelModes[mode] || ['이동', 'route', 'wait'];
-            let label = baseLabel;
+            const presentation = travelModes[mode];
+            const [baseLabel, symbol, tone] = Array.isArray(presentation) ? presentation : ['이동', 'route', 'wait'];
+            let label = mode === 'wait' && leg.route_name === '출발까지 대기' ? leg.route_name : baseLabel;
             if (tone === 'walk' && mode !== 'transfer_walk' && segments.length > 1) {
-                label = index === 0 ? '출발 도보' : index === segments.length - 1 ? '도착 도보' : '환승 도보';
+                label = index === firstMovement ? '출발 도보' : index === segments.length - 1 ? '도착 도보' : '환승 도보';
             }
             const origin = text(record(leg.from_place).name) || '출발 지점';
             const destination = text(record(leg.to_place).name) || '도착 지점';
-            const route = text(leg.route_name).trim();
-            const service = text(leg.service_name).trim();
-            const routeLabel = [service, route].filter((name, position, values) =>
-                name && name !== label && values.indexOf(name) === position).join(' ');
+            const routeLabel = nationalRouteName(leg, label);
             const duration = wholeDuration(leg.duration_min) || '시간 미확인';
             const charge = number(leg.fare_won);
             const fare = charge === null ? '요금 미확인' : Math.round(charge).toLocaleString('ko-KR') + '원';
             const depart = arrivalLabel(leg.departure_at, journey.departure_at);
             const arrive = arrivalLabel(leg.arrival_at, journey.departure_at);
-            const source = text(leg.source) || text(record(leg.source).name);
+            const sourceName = text(leg.source) || text(record(leg.source).name);
+            const source = [sourceName, leg.realtime === true ? (sourceName === 'TAGO' ? '실시간 출발 반영' : '실시간 운행 정보 반영') : '']
+                .filter(Boolean).join(' · ');
             const endpoints = origin === destination ? escapeHtml(origin)
                 : `${escapeHtml(origin)} <span class="national-endpoint-arrow" aria-label="에서">→</span> ${escapeHtml(destination)}`;
             const timed = depart || arrive
@@ -384,11 +394,25 @@
                     <p class="national-segment-mode">${escapeHtml(label)}${routeLabel ? `<span>${escapeHtml(routeLabel)}</span>` : ''}</p>
                     <p class="national-segment-title">${endpoints}</p>
                     ${timed}<p class="national-segment-facts">${escapeHtml(costs)}</p>
-                    ${detailed && source ? `<p class="national-segment-source">${escapeHtml(source)}</p>` : ''}
+                    ${source ? `<p class="national-segment-source">${escapeHtml(source)}</p>` : ''}
                 </div>
                 ${bookingMarkup(leg.booking, origin, destination)}
             </li>`;
         }).join('')}</ol>`;
+    }
+
+    function nationalRouteSummary(segments) {
+        const routes = [];
+        for (const leg of segments) {
+            const mode = travelModes[text(leg.mode)];
+            if (Array.isArray(mode) && mode[2] !== 'walk' && mode[2] !== 'wait') {
+                const line = mode[2] === 'metro' ? text(leg.route_name).trim() : '';
+                routes.push(line || nationalRouteName(leg, mode[0]) || mode[0]);
+            }
+        }
+        if (!routes.length && segments.every(leg => travelModes[text(leg.mode)]?.[2] === 'walk')) return '도보';
+        const summary = routes.slice(0, 4).join(' → ');
+        return routes.length > 4 ? `${summary} 외 ${routes.length - 4}개` : summary;
     }
 
     function nationalCard(journey, index, mapIndex, response) {
@@ -399,6 +423,14 @@
         const priority = complete ? (first && response.status === 'ok' ? '추천 경로' : '통학 경로') : '확인된 구간';
         const transferCount = number(journey.transfer_count);
         const totalFare = number(journey.fare_won);
+        const realtime = journey.segments.some(leg => leg.realtime === true);
+        const scheduled = complete && journey.segments.some(leg => ['subway', 'train', 'intercity_bus', 'express_bus', 'shuttle'].includes(leg.mode));
+        const timingSource = realtime ? '일부 실시간 반영' : scheduled ? '시간표 기준' : '';
+        const requestedStart = first ? scheduleTime(response.departure_at) : null;
+        const departure = requestedStart ? `${kstCalendar.format(requestedStart)} ${kstClock.format(requestedStart)} 출발 기준` : '';
+        const meta = [departure, transferCount === null ? '' : transferCount === 0 ? '환승 없음' : `환승 ${transferCount}회`,
+            totalFare === null ? '' : `${Math.round(totalFare).toLocaleString('ko-KR')}원`, timingSource].filter(Boolean).join(' · ');
+        const summary = nationalRouteSummary(journey.segments);
         return `<article class="result-card route-card national-itinerary${first ? ' national-itinerary--primary' : ''}" data-journey-index="${mapIndex}" aria-labelledby="national-route-title-${index}">
             <header class="national-itinerary-header">
                 <h3 id="national-route-title-${index}" class="national-itinerary-kicker">${priority}</h3>
@@ -406,9 +438,9 @@
                     <strong>${escapeHtml(complete ? (journey.estimated ? '약 ' : '') + duration : '총 소요 미확인')}</strong>
                     ${arrival ? `<span>${escapeHtml(arrival)} 도착</span>` : ''}
                 </div>
-                <p class="national-itinerary-meta">${transferCount === null ? '' : `환승 ${transferCount}회 · `}${totalFare === null ? '총요금 미확인' : `${Math.round(totalFare).toLocaleString('ko-KR')}원`}</p>
+                ${summary ? `<p class="national-itinerary-route">${escapeHtml(summary)}</p>` : ''}
+                ${meta ? `<p class="national-itinerary-meta">${escapeHtml(meta)}</p>` : ''}
             </header>
-            ${nationalTimeline(journey)}
             <div class="national-itinerary-actions">
                 <button type="button" class="route-select national-detail-button" data-journey-index="${mapIndex}" aria-controls="route-detail" aria-expanded="false" aria-pressed="false">경로 자세히 보기${icon('chevron-down')}</button>
             </div>
@@ -435,8 +467,12 @@
         lastJourneyResponse = payload;
         validJourneyIndices = new Set(candidates.map(item => item.index));
         setResultStatus(payload.status === 'ok' ? 'ready' : 'partial');
-        container.innerHTML = candidates.map((item, index) => nationalCard(item.journey, index, item.index, payload)).join('')
-            + resultsNotes(payload.warnings);
+        const [primary, ...alternatives] = candidates.map((item, index) => nationalCard(item.journey, index, item.index, payload));
+        const moreRoutes = alternatives.length ? `<details class="national-alternatives">
+            <summary><span>다른 경로 ${alternatives.length}개</span>${icon('chevron-down')}</summary>
+            ${alternatives.join('')}
+        </details>` : '';
+        container.innerHTML = primary + moreRoutes + resultsNotes(payload.warnings);
         selectJourney(candidates[0].index, { present: options.present });
     }
 
@@ -489,7 +525,7 @@
             if (changed) {
                 const content = document.getElementById('route-detail-content');
                 const legs = national ? [] : journeyLegs(journey);
-                content.innerHTML = (national ? nationalTimeline(journey, true)
+                content.innerHTML = (national ? nationalTimeline(journey)
                     : journeyTimeline(journey, legs, lastJourneyResponse, routeTiming(journey, legs))) + routeWarnings(journey.warnings);
                 content.scrollTop = 0;
             }

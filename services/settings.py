@@ -3,6 +3,7 @@
 from dataclasses import dataclass, field
 import os
 from pathlib import Path
+from urllib.parse import urlsplit
 
 from dotenv import dotenv_values
 
@@ -30,6 +31,7 @@ class Settings:
     weather_data_key: str = field(default="", repr=False)
     airkorea_data_key: str = field(default="", repr=False)
     airkorea_station_name: str = "중앙로"
+    motis_base_url: str = field(default="", repr=False)
 
     @property
     def bus_data_key(self):
@@ -87,6 +89,18 @@ def load_settings(base_dir, environ=None):
             raise ValueError("port range")
     except (ValueError, OverflowError):
         raise ConfigurationError("PORT는 1~65535 사이의 정수로 설정하세요.") from None
+    motis_base_url = value("MOTIS_BASE_URL").rstrip("/")
+    if motis_base_url:
+        try:
+            url = urlsplit(motis_base_url)
+            local_http = url.scheme == "http" and url.hostname in {"localhost", "127.0.0.1", "::1"}
+            if (not url.hostname or url.username is not None or url.password is not None
+                    or url.query or url.fragment or url.path
+                    or not (local_http or url.scheme == "https")
+                    or (url.port is not None and not 1 <= url.port <= 65535)):
+                raise ValueError("invalid MOTIS URL")
+        except ValueError:
+            raise ConfigurationError("MOTIS_BASE_URL에 로컬 HTTP 또는 HTTPS 서버 주소를 입력하세요.") from None
     return Settings(
         tmap_app_key=value("TMAP_APP_KEY"),
         public_data_key=value("PUBLIC_DATA_KEY"),
@@ -95,6 +109,7 @@ def load_settings(base_dir, environ=None):
         weather_data_key=value("WEATHER_DATA_KEY") or value("PUBLIC_DATA_KEY"),
         airkorea_data_key=value("AIRKOREA_DATA_KEY") or value("PUBLIC_DATA_KEY"),
         airkorea_station_name=value("AIRKOREA_STATION_NAME", "중앙로") or "중앙로",
+        motis_base_url=motis_base_url,
         naver_map_client_id=value("NAVER_MAP_CLIENT_ID"),
         debug=debug_text in {"true", "1", "yes"}, port=port,
         flask_secret_key=value("FLASK_SECRET_KEY"),

@@ -90,10 +90,7 @@
         if (field) field.hidden = mode !== 'building';
         if (status) {
             status.classList.remove('status-error');
-            const toCampus = window.AppState.getJourneyScope() === 'national' && window.AppState.getJourneyDirection() === 'to_campus';
-            status.textContent = mode === 'building'
-                ? (select && select.value ? select.value + (toCampus ? '에 도착해요.' : '에서 출발해요.') : '학교 안 건물을 골라 주세요.')
-                : (window.AppState.getCurrentPosition() ? '현재 위치에서 출발해요.' : '검색할 때 현재 위치를 확인해요.');
+            status.textContent = '';
         }
         if (changed && mode === 'building' && select && options.focus !== false) select.focus();
         syncUI();
@@ -258,8 +255,7 @@
         if (input) { input.value = ''; input.hidden = true; input.style.display = 'none'; }
         if (tag) { tag.hidden = false; tag.style.display = ''; }
         if (text) text.textContent = destName;
-        const fromPlace = window.AppState.getJourneyScope() === 'national' && window.AppState.getJourneyDirection() === 'to_campus';
-        setSearchStatus(fromPlace ? '출발할 장소를 선택했어요.' : '도착할 장소를 선택했어요.');
+        setSearchStatus('');
         syncUI();
         const submit = document.getElementById('route-submit');
         if (submit && options.focus !== false) submit.focus({ preventScroll: true });
