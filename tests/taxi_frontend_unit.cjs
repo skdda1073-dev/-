@@ -150,10 +150,11 @@ const taxiNode = (app, name) => descendants(app.elements['taxi-content']).find(n
 const splitButtons = app => descendants(app.elements['taxi-content']).filter(node => node.classList.contains('taxi-split-choice'));
 const selectCount = async (app, count) => { await splitButtons(app).find(button => button.dataset.count === String(count)).emit('click'); };
 
-test('ordinary markup loads taxi once outside the room template, without initial GPS or requests', async () => {
+test('ordinary markup loads taxi and shared rooms once, without initial GPS or requests', async () => {
     const app = memoryUI(); await flush();
-    const template = markup.match(/<template\b[^>]*id="real-mobility-template"[\s\S]*?<\/template>/)?.[0];
-    assert.ok(template); assert.doesNotMatch(template, /id="taxi-section"|data-taxi-src/);
+    assert.doesNotMatch(markup, /real-mobility-template/);
+    assert.ok(markup.includes('id="ride-room-section"'));
+    assert.equal((markup.match(/filename='js\/ride-room-controller\.js'/g) || []).length, 1);
     assert.equal((markup.match(/filename='js\/taxi-controller\.js'/g) || []).length, 1);
     assert.ok(markup.indexOf('id="taxi-section"') > markup.indexOf('id="transport-panel-taxi"'));
     assert.equal(app.elements['taxi-section'].hidden, false);

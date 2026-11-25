@@ -12,9 +12,12 @@
     let listLoading = false;
     let createContext = null;
     let meeting = null;
-    let meetingController = null;
-    let meetingTimer = null;
-    let meetingVersion = 0;
+    let destination = null;
+    const pickers = { meeting: {}, destination: {} };
+    let listTimer = null;
+    let listFingerprint = null;
+    let listFilters = null;
+    let listPaged = false;
     let createBusy = false;
     let createAttempt = null;
     let createContextInvalidated = false;
@@ -152,16 +155,16 @@
         active = null;
     }
 
-    function cancelMeeting() {
-        meetingVersion += 1;
-        clearTimeout(meetingTimer);
-        if (meetingController) meetingController.abort();
-        meetingController = null;
+    function cancelPicker(picker) {
+        clearTimeout(picker.timer);
+        picker.controller?.abort();
+        picker.controller = null;
     }
 
     function setView(next) {
         stopRoom();
-        cancelMeeting();
+        Object.values(pickers).forEach(cancelPicker);
+        clearTimeout(listTimer);
         if (listController) listController.abort();
         listVersion += 1;
         listLoading = false;
@@ -172,7 +175,7 @@
         ['list', 'create', 'detail'].forEach(function(name) { show('room-' + name + '-view', name === next); });
         show('room-create-current', next !== 'create');
         status('');
-        if (window.AppModules.ui) window.AppModules.ui.setPlannerExpanded(true);
+        window.AppModules.shell.refreshUnloadGuard();
     }
 
     async function openList(query) {
@@ -182,16 +185,7 @@
         await loadList(false);
     }
 
-    async function loadList(more) {
-        if (view !== 'list' || listLoading) return;
-        const version = ++listVersion;
-        const generation = viewVersion;
-        if (listController) listController.abort();
-        const controller = new AbortController();
-        listController = controller;
-        listLoading = true;
-        byId('room-load-more').disabled = true;
-        if (!more) { listCursor = null; byId('room-list').replaceChildren(); }
+    function readFilters() {
         const query = new URLSearchParams({ limit: '20' });
         const keyword = byId('room-filter-q').value.trim();
         if (keyword) query.set('q', keyword);
@@ -201,14 +195,37 @@
             const value = isoKST(byId('room-filter-' + name).value);
             if (value) query.set(name, value);
         });
+        return query;
+    }
+
+    async function loadList(more, background = false) {
+        if (view !== 'list' || listLoading) return;
+        clearTimeout(listTimer);
+        if (!more && !background) {
+            listFilters = readFilters();
+            listPaged = false;
+            listFingerprint = null;
+        }
+        const query = new URLSearchParams(listFilters);
+        const generation = viewVersion;
+        const version = ++listVersion;
+        const controller = new AbortController();
+        listController = controller;
+        listLoading = true;
+        byId('room-load-more').disabled = true;
         if (more && listCursor) query.set('cursor', listCursor);
-        status('모집방을 확인하고 있어요…');
+        if (!background) status('모집방을 확인하고 있어요…');
         try {
             await ensureSession();
             if (generation !== viewVersion || version !== listVersion) return;
             const data = await api('?' + query.toString(), 'GET', null, controller.signal);
             if (generation !== viewVersion || version !== listVersion) return;
             const rooms = Array.isArray(data.rooms) ? data.rooms : [];
+            const fingerprint = JSON.stringify([rooms, data.next_cursor]);
+            if (background && listFingerprint === fingerprint) return;
+            const list = byId('room-list');
+            const focusedId = list.contains(document.activeElement) ? document.activeElement.dataset.roomId : null;
+            if (!more) list.replaceChildren();
             rooms.forEach(function(item) {
                 const room = item.room || item;
                 const card = node('article', undefined, 'room-card');
@@ -216,48 +233,35 @@
                     node('p', kstDate(room.departure_at)), node('p', room.participant_count + '/' + room.capacity + '명 · ' + (labels[room.status] || '상태 확인 중')));
                 const button = node('button', '방 자세히 보기', 'room-button room-button--secondary');
                 button.type = 'button';
+                button.dataset.roomId = room.id;
                 button.addEventListener('click', function() { openRoom(room.id); });
                 card.appendChild(button);
                 byId('room-list').appendChild(card);
             });
+            if (focusedId) Array.from(list.querySelectorAll('button')).find(button => button.dataset.roomId === focusedId)?.focus({ preventScroll: true });
+            listPaged = listPaged || more;
+            listFingerprint = fingerprint;
             listCursor = data.next_cursor || null;
             show('room-load-more', Boolean(listCursor));
-            status(!more && !rooms.length ? '조건에 맞는 모집방이 없어요. 현재 목적지로 새 방을 만들 수 있어요.' : '모집 목록을 확인했어요. 방을 열어도 자동으로 참가하지 않아요.');
+            status(!more && !rooms.length ? '조건에 맞는 모집방이 없어요. 새 모집방을 만들어 보세요.' : '방을 열고 닉네임을 입력하면 참가할 수 있어요.');
         } catch (error) {
             if (generation === viewVersion && version === listVersion && error.name !== 'AbortError') status(error.message, true);
         } finally {
             if (generation === viewVersion && version === listVersion) {
                 listLoading = false;
                 byId('room-load-more').disabled = false;
+                if (!document.hidden && !listPaged) listTimer = setTimeout(() => loadList(false, true), 5000);
             }
         }
     }
 
-    function snapshot() {
-        const position = window.AppState.getCurrentPosition();
-        return JSON.stringify({
-            campus: window.AppState.getSelectedCampus(), mode: window.AppState.getOriginMode(),
-            building: byId('building-select').value, destination: window.AppState.getDestination(),
-            position: position ? [position.lat, position.lon] : null
-        });
-    }
-
-    function createFromCurrent() {
-        const destination = window.AppState.getDestination();
-        if (!validPlace(destination)) {
-            status('먼저 경로 검색에서 목적지를 검색하고 선택해 주세요.', true);
-            focus('dest-input');
-            return;
-        }
-        const initial = snapshot();
-        openCreate({ payload: { dest_name: destination.name, dest_lat: destination.lat, dest_lon: destination.lon,
-            campus: window.AppState.getSelectedCampus(), location: byId('building-select').value || '내 실시간 위치' },
-            mode: window.AppState.getOriginMode(), isCurrent: function() { return initial === snapshot(); } });
+    function startCreate(place) {
+        window.AppModules.shell.select('rooms', { roomAction: 'create', place });
     }
 
     function updateCreateButton() {
-        const current = createContext && !createContextInvalidated && createContext.isCurrent();
-        byId('room-create-submit').disabled = createBusy || !current || !meeting || !byId('room-meeting-confirm').checked;
+        const current = !createContext || (!createContextInvalidated && createContext.isCurrent());
+        byId('room-create-submit').disabled = createBusy || !current || !destination || !meeting || !byId('room-meeting-confirm').checked;
     }
 
     function invalidateSearchContext() {
@@ -267,11 +271,14 @@
         updateCreateButton();
     }
 
-    async function openCreate(context) {
-        if (!context || !context.isCurrent() || !validPlace({ name: context.payload.dest_name,
-            lat: context.payload.dest_lat, lon: context.payload.dest_lon })) return;
+    async function openCreate(context, place) {
+        if (context && !context.isCurrent()) return;
         setView('create');
-        createContext = context;
+        if (window.matchMedia('(max-width: 799px)').matches) window.AppModules.workspaceSheet?.reveal('full');
+        createContext = context || null;
+        const selected = context ? { name: context.payload.dest_name, lat: context.payload.dest_lat, lon: context.payload.dest_lon }
+            : (place || window.AppState.getDestination());
+        destination = validPlace(selected) ? { name: selected.name, lat: Number(selected.lat), lon: Number(selected.lon) } : null;
         createContextInvalidated = false;
         meeting = null;
         createBusy = false;
@@ -284,7 +291,11 @@
         byId('room-departure').value = localInput(new Date(Date.now() + 30 * 60000));
         setText('room-meeting-status', '');
         setText('room-create-context', '');
-        setText('room-create-destination', context.payload.dest_name);
+        byId('room-destination-query').value = destination?.name || selected?.name || '';
+        byId('room-destination-query').readOnly = Boolean(context);
+        byId('room-destination-options').replaceChildren();
+        setText('room-destination-status', destination ? '선택한 목적지 · ' + destination.name : '검색 결과에서 목적지를 선택해 주세요.');
+        if (!destination && byId('room-destination-query').value) searchPlace('destination');
         updateCreateButton();
         focus('room-title');
         const generation = viewVersion;
@@ -292,56 +303,67 @@
         catch (error) { if (generation === viewVersion) status(error.message, true); }
     }
 
-    function searchMeeting() {
-        cancelMeeting();
-        meeting = null;
-        byId('room-meeting-confirm').checked = false;
-        byId('room-meeting-confirm').disabled = true;
-        show('room-meeting-selected', false);
-        show('room-meeting-consent', false);
-        byId('room-meeting-options').replaceChildren();
+    function searchPlace(kind) {
+        const picker = pickers[kind];
+        cancelPicker(picker);
+        const prefix = 'room-' + kind + '-';
+        const input = byId(prefix + 'query');
+        const options = byId(prefix + 'options');
+        options.replaceChildren();
+        if (kind === 'meeting') {
+            meeting = null;
+            byId('room-meeting-confirm').checked = false;
+            byId('room-meeting-confirm').disabled = true;
+            show('room-meeting-selected', false);
+            show('room-meeting-consent', false);
+        } else {
+            destination = null;
+        }
         updateCreateButton();
-        const query = byId('room-meeting-query').value.trim();
-        if (!query) { setText('room-meeting-status', ''); return; }
-        const version = meetingVersion;
-        const generation = viewVersion;
-        setText('room-meeting-status', '장소 검색 중…');
-        meetingTimer = setTimeout(async function() {
-            const controller = new AbortController();
-            meetingController = controller;
-            const timeout = setTimeout(function() { controller.abort(); }, 15000);
+        const query = input.value.trim();
+        setText(prefix + 'status', query ? '장소 검색 중…' : '');
+        if (!query) return;
+        const controller = new AbortController();
+        picker.controller = controller;
+        picker.timer = setTimeout(async function() {
+            const timeout = setTimeout(() => controller.abort(), 15000);
             try {
-                // This picker reuses the API, never the destination controller or AppState setters.
-                const response = await fetch('/search_poi?q=' + encodeURIComponent(query) + '&campus=' + encodeURIComponent(createContext.payload.campus), {
+                const params = new URLSearchParams({ q: query, campus: window.AppState.getSelectedCampus() });
+                const response = await fetch('/search_poi?' + params, {
                     credentials: 'same-origin', signal: controller.signal, cache: 'no-store'
                 });
                 const items = await response.json();
-                if (generation !== viewVersion || version !== meetingVersion) return;
-                if (!response.ok || !Array.isArray(items)) throw new Error(items && typeof items.error === 'string' ? items.error : '장소 검색을 연결하지 못했어요.');
+                if (picker.controller !== controller) return;
+                if (!response.ok || !Array.isArray(items)) throw new Error(items?.error || '장소 검색에 실패했어요.');
                 const places = items.filter(validPlace).slice(0, 12);
-                places.forEach(function(place) {
+                for (const place of places) {
                     const button = node('button', undefined, 'room-place-option');
                     button.type = 'button';
                     button.append(node('span', place.name), node('small', typeof place.sub === 'string' ? place.sub : ''));
                     button.addEventListener('click', function() {
-                        if (version !== meetingVersion || generation !== viewVersion) return;
-                        meeting = { name: place.name.trim(), lat: Number(place.lat), lon: Number(place.lon) };
-                        byId('room-meeting-options').replaceChildren();
-                        setText('room-meeting-selected', meeting.name);
-                        show('room-meeting-selected', true);
-                        byId('room-meeting-confirm').disabled = false;
-                        show('room-meeting-consent', true);
-                        setText('room-meeting-status', '');
+                        if (picker.controller !== controller) return;
+                        const point = { name: place.name.trim(), lat: Number(place.lat), lon: Number(place.lon) };
+                        input.value = point.name;
+                        options.replaceChildren();
+                        if (kind === 'meeting') {
+                            meeting = point;
+                            setText('room-meeting-selected', point.name);
+                            show('room-meeting-selected', true);
+                            show('room-meeting-consent', true);
+                            byId('room-meeting-confirm').disabled = false;
+                            focus('room-meeting-confirm');
+                        } else {
+                            destination = point;
+                            focus('room-meeting-query');
+                        }
+                        setText(prefix + 'status', kind === 'destination' ? '선택한 목적지 · ' + point.name : '');
                         updateCreateButton();
-                        focus('room-meeting-confirm');
                     });
-                    byId('room-meeting-options').appendChild(button);
-                });
-                setText('room-meeting-status', places.length ? '' : '검색 결과가 없어요.');
-            } catch (error) {
-                if (generation === viewVersion && version === meetingVersion && error.name !== 'AbortError') {
-                    setText('room-meeting-status', error instanceof TypeError || error instanceof SyntaxError ? '장소 검색을 연결하지 못했어요.' : error.message);
+                    options.appendChild(button);
                 }
+                setText(prefix + 'status', places.length ? '' : '검색 결과가 없어요.');
+            } catch (error) {
+                if (picker.controller === controller) setText(prefix + 'status', '장소 검색에 실패했어요. 다시 검색해 주세요.');
             } finally {
                 clearTimeout(timeout);
             }
@@ -351,12 +373,13 @@
     async function submitCreate(event) {
         event.preventDefault();
         if (createBusy) return;
-        if (!createContext || createContextInvalidated || !createContext.isCurrent()) { invalidateSearchContext(); return; }
+        if (createContext && (createContextInvalidated || !createContext.isCurrent())) { invalidateSearchContext(); return; }
+        if (!destination) { status('검색 결과에서 목적지를 선택해 주세요.', true); return; }
         if (!meeting || !byId('room-meeting-confirm').checked) { status('공개 집결 장소를 선택하고 확인해 주세요.', true); return; }
         const departure = isoKST(byId('room-departure').value);
         if (!departure) { status('한국 시간으로 출발시각을 입력해 주세요.', true); return; }
         const payload = { title: byId('room-title').value.trim(), nickname: byId('room-create-nickname').value.trim(),
-            meeting: { ...meeting }, destination: { name: createContext.payload.dest_name, lat: createContext.payload.dest_lat, lon: createContext.payload.dest_lon },
+            meeting: { ...meeting }, destination: { ...destination },
             departure_at: departure, capacity: Number(byId('room-capacity').value) };
         const fingerprint = JSON.stringify(payload);
         if (!createAttempt || createAttempt.fingerprint !== fingerprint) createAttempt = { fingerprint: fingerprint, id: uuid() };
@@ -373,8 +396,10 @@
         } catch (error) {
             if (generation === viewVersion) status(error.message, true);
         } finally {
-            createBusy = false;
-            if (view === 'create' && generation === viewVersion) updateCreateButton();
+            if (view === 'create' && generation === viewVersion) {
+                createBusy = false;
+                updateCreateButton();
+            }
         }
     }
 
@@ -711,7 +736,22 @@
         initialized = true;
         byId('room-open-list').addEventListener('click', function() { openList(); });
         byId('room-hide').addEventListener('click', hide);
-        byId('room-create-current').addEventListener('click', createFromCurrent);
+        const shell = window.AppModules.shell;
+        shell.onMenuSelect(function(name, options) {
+            if (name !== 'rooms') {
+                if (view) setView(null);
+            } else if (options.roomAction === 'create') {
+                openCreate(options.context, options.place);
+            } else {
+                openList(options.query);
+            }
+        });
+        shell.setDirtyProvider(() => (view === 'create' && Boolean(byId('room-title').value || byId('room-create-nickname').value
+            || byId('room-meeting-query').value || (byId('room-destination-query').value && !destination)))
+            || (view === 'detail' && Boolean(byId('room-message-body').value)));
+        byId('taxi-new-room').addEventListener('click', () => startCreate());
+        byId('taxi-browse-rooms').addEventListener('click', () => shell.select('rooms', { query: '' }));
+        byId('room-create-current').addEventListener('click', () => openCreate());
         byId('room-filter-form').addEventListener('submit', function(event) {
             event.preventDefault();
             if (listController) listController.abort();
@@ -721,7 +761,7 @@
         byId('room-load-more').addEventListener('click', function() { loadList(true); });
         byId('room-create-form').addEventListener('submit', submitCreate);
         byId('room-create-cancel').addEventListener('click', function() { openList(); });
-        byId('room-meeting-query').addEventListener('input', searchMeeting);
+        for (const kind of Object.keys(pickers)) byId('room-' + kind + '-query').addEventListener('input', () => searchPlace(kind));
         byId('room-meeting-confirm').addEventListener('change', updateCreateButton);
         byId('room-detail-back').addEventListener('click', function() { openList(); });
         byId('room-join-form').addEventListener('submit', joinRoom);
@@ -732,6 +772,8 @@
         byId('room-close-no').addEventListener('click', function() { show('room-close-confirm', false); focus('room-close'); });
         byId('room-close-yes').addEventListener('click', closeRoom);
         document.addEventListener('visibilitychange', function() {
+            clearTimeout(listTimer);
+            if (view === 'list' && !document.hidden && !listPaged) loadList(false, true);
             if (!active) return;
             if (document.hidden) {
                 stopPolling(active);
@@ -746,7 +788,9 @@
         });
     }
 
-    window.AppModules.rideRooms = { init: init, openList: openList, openCreate: openCreate, invalidateSearchContext: invalidateSearchContext };
+    window.AppModules.rideRooms = { init: init, startCreate, invalidateSearchContext,
+        openList: query => window.AppModules.shell.select('rooms', { query }),
+        openCreate: context => window.AppModules.shell.select('rooms', { roomAction: 'create', context }) };
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init, { once: true });
     else init();
 })();

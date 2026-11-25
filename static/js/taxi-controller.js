@@ -26,6 +26,8 @@
         clearTimeout(expiryTimer);
         expiryTimer = null;
         context = null;
+        const actions = byId('taxi-room-actions');
+        if (actions) actions.hidden = true;
         const section = byId('taxi-section');
         if (section) { section.hidden = false; section.setAttribute('aria-busy', 'false'); }
         const heading = byId('taxi-route');
@@ -101,6 +103,8 @@
         clearTimeout(expiryTimer);
         expiryTimer = null;
         context = nextContext || null;
+        const actions = byId('taxi-room-actions');
+        if (actions) actions.hidden = true;
         const section = byId('taxi-section');
         const heading = byId('taxi-route');
         if (section) section.hidden = false;
@@ -148,6 +152,8 @@
             setButton('다시 조회', false);
             return;
         }
+        const actions = byId('taxi-room-actions');
+        if (actions) actions.hidden = !context;
         const seconds = estimate.ride_duration_seconds;
         const amount = estimate.fare && estimate.fare.amount_krw;
         const hasFare = estimate.status === 'ok' && Number.isSafeInteger(amount) && amount > 0;

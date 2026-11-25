@@ -4,11 +4,8 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs/promises');
 const path = require('node:path');
 const { chromium } = require('playwright');
-const { openApp: openBaseApp, activateRealMobility, selectTool, chooseBuilding, selectDestination, clearDestination, noOverflow, resultContains,
+const { openApp, selectTool, chooseBuilding, selectDestination, clearDestination, noOverflow, resultContains,
     taxiFixture, journeyFixture, DESTINATION, INJECTION, BASE_URL } = require('./frontend_smoke.cjs');
-
-// These room checks opt into preserved room markup; all provider requests are mocked.
-const openApp = (browser, options = {}) => openBaseApp(browser, { ...options, realMobility: true });
 
 const tests = [];
 const test = (name, run) => tests.push({ name, run });
@@ -76,7 +73,7 @@ function mockRoom(options = {}) {
 }
 
 async function openMockRoom(page) {
-    await page.locator('#room-open-list').click();
+    await selectTool(page, 'rooms');
     await page.locator('#room-list .room-card button').first().click();
     await visibleText(page, '#room-detail-title', '자동화 검증용 모집방');
     await page.locator('#room-member-content').waitFor({ state: 'visible' });
@@ -160,7 +157,7 @@ test('taxi estimate expiration clears values without automatic provider refresh'
 test('room configuration failure leaves transit and taxi usable', async browser => {
     const app = await openApp(browser);
     try {
-        await app.page.locator('#room-open-list').click();
+        await selectTool(app.page, 'rooms');
         await visibleText(app.page, '#room-status', '자동화 검증에서 채팅 기능을 사용하지 않아요');
         await app.page.locator('#room-hide').click();
         await search(app.page);
@@ -172,7 +169,7 @@ test('all-status and Seoul time filters are sent explicitly', async browser => {
     const mock = mockRoom();
     const app = await openApp(browser, { roomHandler: mock.handler, timezoneId: 'America/New_York' });
     try {
-        await app.page.locator('#room-open-list').click();
+        await selectTool(app.page, 'rooms');
         await app.page.locator('#room-list .room-card').waitFor({ state: 'visible' });
         assert.equal(new URLSearchParams(app.roomRequests.find(request => request.pathname === '/api/ride-rooms').query).get('status'), 'all');
         await app.page.locator('#room-filter-from').fill('2030-01-01T10:00');
@@ -218,8 +215,7 @@ test('room creation retries retain their ID and a changed search invalidates the
         assert.equal(await app.page.locator('#room-create-submit').isEnabled(), true);
         await selectTool(app.page, 'journey');
         await app.page.locator('#tab-knu').click();
-        assert.equal(await app.page.locator('#room-create-submit').isDisabled(), true);
-        await visibleText(app.page, '#room-create-context', '경로가 바뀌었어요');
+        assert.equal(await app.page.locator('#room-create-form').isVisible(), false);
         assert.equal(creates, 2);
     } finally { await app.close(); }
 });
@@ -258,7 +254,7 @@ test('desktop room metadata renders as text and controls fit the planner', async
     mock.participants[0].nickname = INJECTION;
     const app = await openApp(browser, { roomHandler: mock.handler, viewport: { width: 1440, height: 1000 } });
     try {
-        await app.page.locator('#room-open-list').click();
+        await selectTool(app.page, 'rooms');
         await app.page.locator('#room-list .room-card button').first().click();
         await visibleText(app.page, '#room-detail-title', INJECTION);
         assert.equal(await app.page.locator('#ride-room-section img').count(), 0);
@@ -406,7 +402,7 @@ if (process.env.CAPSTONE_LIVE_ROOM_TESTS === '1') test('two isolated browsers us
         assert.ok(payload.headers['x-csrf-token']);
         assert.equal(payload.body.actor_id, undefined);
         assert.equal(payload.body.user_id, undefined);
-        await second.page.locator('#room-open-list').click();
+        await selectTool(second.page, 'rooms');
         await second.page.locator('#room-filter-q').fill(DESTINATION.name);
         await second.page.locator('#room-filter-form button[type="submit"]').click();
         await second.page.locator('#room-list .room-card').filter({ hasText: title }).locator('button').click();
@@ -451,8 +447,7 @@ if (process.env.CAPSTONE_LIVE_ROOM_TESTS === '1') test('two isolated browsers us
         await preview(page, 'mobile-shared-ride-test-preview.png');
         hostTab = await first.context.newPage();
         await hostTab.goto(BASE_URL);
-        await activateRealMobility(hostTab);
-        await hostTab.locator('#room-open-list').click();
+        await selectTool(hostTab, 'rooms');
         await hostTab.locator('#room-list .room-card').filter({ hasText: title }).locator('button').click();
         await visibleText(hostTab, '#room-detail-count', '현재 4명');
         assert.equal(await hostTab.locator('#room-join-form').isVisible(), false);

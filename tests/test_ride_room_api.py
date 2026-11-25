@@ -155,6 +155,21 @@ class RideRoomApiTests(unittest.TestCase):
                                                      environ_overrides={"REMOTE_ADDR": remote})
                 self.assert_error(blocked, 403, "CHAT_HTTPS_REQUIRED")
 
+    def test_local_tunnel_preserves_public_origin_and_cookie_session(self):
+        client = self.make_app(self.service, secure=True).test_client()
+        base = "http://tonghak.com"
+        local = {"REMOTE_ADDR": "127.0.0.1"}
+        headers = {"X-Forwarded-Proto": "https", "Origin": "https://tonghak.com"}
+        session_response = client.get("/api/ride-rooms/session", base_url=base, headers=headers, environ_overrides=local)
+        headers["X-CSRF-Token"] = session_response.json["csrf_token"]
+        created = client.post("/api/ride-rooms", base_url=base, json=self.room_payload(),
+                              headers=headers, environ_overrides=local)
+        self.assertEqual(created.status_code, 201)
+        for origin, remote in (("https://other.example", "127.0.0.1"), ("https://tonghak.com", "192.0.2.10")):
+            result = client.post("/api/ride-rooms", base_url=base, json=self.room_payload(),
+                                 headers={**headers, "Origin": origin}, environ_overrides={"REMOTE_ADDR": remote})
+            self.assert_error(result, 403, "ORIGIN_INVALID")
+
     def test_json_object_limits_and_forbidden_client_authority_fields(self):
         for value in (None, [], "text", 3):
             with self.subTest(value=value):

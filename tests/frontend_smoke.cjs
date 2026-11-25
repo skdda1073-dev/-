@@ -173,24 +173,6 @@ const MAP_SDK = String.raw`(() => {
         } } };
 })();`;
 
-// Test-only room activation. The ordinary page already loads its taxi estimate.
-async function activateRealMobility(page) {
-    const sources = await page.evaluate(() => {
-        const template = document.getElementById('real-mobility-template');
-        const demo = document.getElementById('transport-demo');
-        const taxi = document.getElementById('taxi-section');
-        // Preserve the existing estimate and listeners before hiding the tabbed demo.
-        if (taxi && demo.contains(taxi)) template.before(taxi);
-        demo.hidden = true;
-        const actions = document.getElementById('taxi-room-actions');
-        if (actions) actions.hidden = false;
-        if (!document.getElementById('ride-room-section')) template.before(template.content.cloneNode(true));
-        return [template.dataset.roomSrc].filter(src => src && !Array.from(document.scripts).some(script =>
-            script.src === new URL(src, document.baseURI).href));
-    });
-    for (const src of sources) await page.addScriptTag({ url: src });
-}
-
 // Synthetic contract fixture, not an alternate production timetable or calendar.
 function shuttleFixture(params = new URLSearchParams()) {
     const at = params.get('at') || '2026-10-19T07:50:00+09:00';
@@ -356,11 +338,6 @@ async function openApp(browser, options = {}) {
         if (!options.keepCommuteAdviceOpen && await page.locator('#commute-advice-close').isVisible()) {
             await page.locator('#commute-advice-close').click();
         }
-        if (options.realMobility) {
-            // Room regression coverage opts into inert markup; the taxi script stays loaded once.
-            await activateRealMobility(page);
-        }
-
         assert.deepEqual(await page.evaluate(() => window.__testGPSCalls), [], 'Loading the app must not request GPS permission');
         assert.deepEqual(errors, [], 'App startup has no unhandled JavaScript errors');
     } catch (error) {
@@ -704,15 +681,11 @@ test('walking advice shows taxi recruitment at ten minutes and opens the existin
         assert.match(await suggestion.innerText(), /택시를 타는 것을 추천해요[\s\S]*도보 약 10분/);
         assert.match(await banner.innerText(), /택시 모집방을 만드시겠어요/);
         await banner.click();
-        assert.equal(await page.locator('#demo-party-form').isVisible(), true);
-        assert.equal(await page.locator('#demo-destination').inputValue(), DESTINATION.name);
-        assert.equal(await page.evaluate(() => document.activeElement.id), 'demo-title');
+        assert.equal(await page.locator('#room-create-form').isVisible(), true);
+        assert.equal(await page.locator('#room-destination-query').inputValue(), DESTINATION.name);
+        assert.equal(await page.evaluate(() => document.activeElement.id), 'room-title');
         assert.equal(await page.locator('#workspace-panel').getAttribute('data-position'), 'full');
-        await page.locator('#demo-destination').fill('기존 작성 중인 목적지');
-        await selectTool(page, 'journey');
-        await page.locator('#results-show').click(); await banner.click();
-        assert.equal(await page.locator('#demo-destination').inputValue(), '기존 작성 중인 목적지');
-        assert.equal(app.taxiRequests.length + app.roomRequests.length, 0, 'The banner only opens the form');
+        assert.equal(app.roomRequests.filter(request => request.method === 'POST').length, 0, 'Opening the form does not publish a room');
     } finally { await app.close(); }
 });
 
@@ -738,7 +711,7 @@ test('scheduled walking-only results also offer the taxi room form', async brows
         assert.equal(await page.locator('.national-itinerary--primary .national-itinerary-kicker').innerText(), '도보 참고 경로');
         assert.match(await page.locator('#result-container > article').first().innerText(), /택시를 타는 것을 추천해요/);
         await page.locator('.taxi-room-banner').click();
-        assert.equal(await page.locator('#demo-destination').inputValue(), DESTINATION.name);
+        assert.equal(await page.locator('#room-destination-query').inputValue(), DESTINATION.name);
     } finally { await app.close(); }
 });
 
@@ -1227,6 +1200,6 @@ function adviceFixture(campus, overrides = {}) {
         alerts: [], summary: '확인된 예보와 대기질에서 추가 준비 안내는 없어요.', ...overrides,
         weather: { ...weather, ...(overrides.weather || {}) }, air: { ...air, ...(overrides.air || {}) } };
 }
-module.exports = { openApp, selectTool, activateRealMobility, chooseBuilding, selectDestination, clearDestination, noOverflow, resultContains,
+module.exports = { openApp, selectTool, chooseBuilding, selectDestination, clearDestination, noOverflow, resultContains,
     taxiFixture, journeyFixture, nearbyFixture, shuttleFixture, intercityFixture, adviceFixture, DESTINATION, INJECTION, BASE_URL };
 if (require.main === module) run().catch(error => { console.error(error.stack || error); process.exitCode = 1; });

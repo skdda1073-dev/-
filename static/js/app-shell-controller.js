@@ -107,7 +107,6 @@
     function select(name, options = {}) {
         if (!initialized) init();
         if (!tabs.some(tab => keyOf(tab) === name)) return false;
-        menuListeners.forEach(listener => listener(name, options));
         navigation++;
         resultOpen = false;
         detailView = false;
@@ -118,6 +117,7 @@
         render();
         resizeMap();
         if (options.focus || mobile()) byId('tool-heading').focus({ preventScroll: true });
+        menuListeners.forEach(listener => listener(name, options));
         return true;
     }
     function closeTool() {
@@ -254,7 +254,7 @@
     }
     function setDirtyProvider(provider) { dirtyProvider = provider; refreshUnloadGuard(); }
     function reload() {
-        if (hasUnsavedData() && !window.confirm('새로고침하면 작성 중인 내용과 시연방·대화가 사라집니다. 새로고침할까요?')) return;
+        if (hasUnsavedData() && !window.confirm('새로고침하면 아직 제출하지 않은 입력 내용이 사라져요. 새로고침할까요?')) return;
         window.removeEventListener('beforeunload', beforeUnload);
         guarding = false;
         try { window.location.reload(); }

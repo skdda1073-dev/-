@@ -154,7 +154,6 @@ function harness({ width = 1440, seen = false, storageFails = false, introFails 
     context.window = context; vm.createContext(context);
     vm.runInContext(source('app-shell-controller'), context);
     context.AppModules.shell.init();
-    vm.runInContext(source('transport-demo-controller'), context);
     vm.runInContext(source('intro-controller'), context);
     return { context, document, ids, storage, windowListeners, timers,
         shell: context.AppModules.shell, el: id => ids.get(id),
@@ -993,201 +992,22 @@ test('refresh guard attaches only while dirty; cancel keeps data; confirmed titl
     const app = harness();
     assert.equal((app.windowListeners.get('beforeunload') || []).length, 0);
     await app.el('app-reload').emit('click'); assert.equal(app.counters().reloads, 1);
-    app.el('demo-title').value = '보존할 초안'; await app.el('demo-title').emit('input');
+    app.shell.setDirtyProvider(() => Boolean(app.el('room-title').value));
+    app.el('room-title').value = '보존할 초안'; await app.el('room-title').emit('input');
     assert.equal(app.windowListeners.get('beforeunload').length, 1);
     let prevented = false;
     const unload = { preventDefault() { prevented = true; } };
     app.windowListeners.get('beforeunload')[0](unload);
     assert.equal(prevented, true); assert.equal(unload.returnValue, '');
     await app.el('app-reload').emit('click'); assert.equal(app.counters().reloads, 1);
-    assert.equal(app.el('demo-title').value, '보존할 초안');
+    assert.equal(app.el('room-title').value, '보존할 초안');
     assert.equal(app.windowListeners.get('beforeunload').length, 1);
-    app.el('demo-title').value = ''; await app.el('demo-title').emit('input');
+    app.el('room-title').value = ''; await app.el('room-title').emit('input');
     assert.equal(app.windowListeners.get('beforeunload').length, 0);
-    app.el('demo-title').value = '다시 작성'; await app.el('demo-title').emit('input');
+    app.el('room-title').value = '다시 작성'; await app.el('room-title').emit('input');
     app.setAccept(true); await app.el('app-reload').emit('click');
     assert.equal(app.counters().reloads, 2); assert.equal(app.windowListeners.get('beforeunload').length, 0);
 });
-test('created rooms, membership, messages and draft survive tool closing and navigation', async () => {
-    const app = harness(); app.shell.select('taxi');
-    for (const [key, value] of Object.entries({ title: '메모리 시연', destination: '남춘천역', from: '2030-10-21T18:00' })) app.el('demo-' + key).value = value;
-    await app.el('demo-party-form').emit('submit');
-    assert.equal(app.el('demo-toast').textContent, '생성완료!');
-    assert.equal(app.el('demo-room-list').children.length, 1);
-    assert.equal(app.shell.getState().active, 'taxi');
-    app.shell.select('rooms');
-    const post = app.el('demo-room-list').children[0].children[0]; await post.emit('click');
-    await app.el('demo-join').emit('click'); assert.equal(app.el('demo-count').textContent, '2/4명');
-    app.el('demo-chat-input').value = '테스트 메시지'; await app.el('demo-chat-input').emit('input');
-    await app.el('demo-chat-form').emit('submit');
-    app.el('demo-chat-input').value = '남겨 둔 초안'; await app.el('demo-chat-input').emit('input');
-    app.el('demo-party-dialog').close(); await flush();
-    app.shell.select('intercity'); app.shell.closeTool(); app.shell.select('rooms');
-    assert.equal(app.el('demo-room-list').children[0].children[0], post);
-    await post.emit('click');
-    assert.equal(app.el('demo-count').textContent, '2/4명');
-    assert.match(app.el('demo-chat-messages').textContent, /테스트 메시지/);
-    assert.equal(app.el('demo-chat-input').value, '남겨 둔 초안');
-    assert.equal(app.windowListeners.get('beforeunload').length, 1);
-    await app.advance(1400); assert.equal(app.shell.getState().active, 'rooms');
-});
-
-async function readyDemo() {
-    const app = harness({ seen: true }); app.shell.select('taxi'); await app.advance(260); return app;
-}
-async function fillDemo(app, fields = {}) {
-    for (const [name, value] of Object.entries({ title: '단일 시각 시연', destination: '남춘천역', from: '2030-10-21T18:00', ...fields })) {
-        app.el('demo-' + name).value = value; await app.el('demo-' + name).emit('input');
-    }
-}
-test('single departure validates real Korean calendar times without erasing other fields', async () => {
-    const app = await readyDemo();
-    assert.equal(app.el('demo-to'), undefined); assert.equal(app.el('demo-to-error'), undefined);
-    assert.equal(app.el('demo-party-form').querySelectorAll('input').length, 3);
-    assert.match(app.el('demo-from').parentElement.textContent, /출발 시각 · 한국 시간/);
-    for (const from of ['', 'invalid', '2030-02-29T18:00', '2030-02-30T18:00', '2030-13-01T18:00', '2030-10-21T24:00', '2030-10-21T18:60']) {
-        await fillDemo(app, { from }); await app.el('demo-party-form').emit('submit');
-        assert.equal(app.el('demo-room-list').children.length, 0);
-        assert.equal(app.el('demo-from').getAttribute('aria-invalid'), 'true');
-        assert.equal(app.el('demo-title').value, '단일 시각 시연');
-        assert.equal(app.el('demo-destination').value, '남춘천역');
-        assert.equal(app.el('demo-toast').hidden, true);
-        assert.equal(app.timers.size, 0, 'Invalid input schedules neither feedback nor navigation');
-    }
-    await fillDemo(app, { from: '2032-02-29T18:00' }); await app.el('demo-party-form').emit('submit');
-    const post = app.el('demo-room-list').children[0].children[0];
-    assert.match(post.textContent, /출발 예정 · 2032-02-29 18:00/);
-    app.shell.select('rooms'); await post.emit('click');
-    assert.equal(app.el('demo-room-time').textContent, '2032-02-29 18:00');
-    assert.doesNotMatch(post.textContent, / ~ /);
-});
-test('success stays in taxi for 999ms then opens rooms, focuses the new post and ends its feedback', async () => {
-    const app = await readyDemo(); await fillDemo(app);
-    const focus = app.document.activeElement;
-    await app.el('demo-party-form').emit('submit');
-    assert.equal(app.el('demo-toast').textContent, '생성완료!');
-    assert.equal(app.document.activeElement, focus, 'The notification never takes focus');
-    const post = app.el('demo-room-list').children[0].children[0];
-    await app.advance(999);
-    assert.equal(app.shell.getState().active, 'taxi'); assert.equal(app.el('demo-toast').classList.contains('is-fading'), false);
-    await app.advance(1);
-    assert.equal(app.shell.getState().active, 'rooms');
-    assert.equal(app.el('demo-party-dialog').open, false);
-    assert.equal(app.document.activeElement, post);
-    assert.equal(post.classList.contains('is-new'), true);
-    assert.equal(post.scrollCalls || 0, 0, 'Visible posts never trigger scrolling');
-    assert.equal(app.el('demo-toast').classList.contains('is-fading'), true);
-    await app.advance(399); assert.equal(app.el('demo-toast').hidden, false);
-    await app.advance(1); assert.equal(app.el('demo-toast').hidden, true);
-    await app.advance(1400); assert.equal(post.classList.contains('is-new'), false);
-    assert.equal(app.timers.size, 0);
-});
-test('rapid and duplicate submissions create only one post and one scheduled transition', async () => {
-    const app = await readyDemo(); await fillDemo(app);
-    const submissions = Array.from({ length: 20 }, () => app.el('demo-party-form').emit('submit'));
-    await Promise.all(submissions);
-    assert.equal(app.el('demo-room-list').children.length, 1);
-    assert.equal(app.timers.size, 2, 'Only fade and auto-move deadlines exist');
-    await app.el('demo-party-form').emit('submit');
-    assert.equal(app.timers.size, 2); assert.equal(app.el('demo-room-list').children.length, 1);
-    await app.advance(1400); assert.equal(app.shell.getState().active, 'rooms');
-    app.shell.select('taxi'); await app.advance(260);
-    const timers = app.timers.size;
-    await app.el('demo-party-form').emit('submit');
-    assert.equal(app.el('demo-toast').hidden, true); assert.equal(app.timers.size, timers);
-    assert.equal(app.el('demo-room-list').children.length, 1);
-});
-test('every manual menu choice cancels auto-move, including direct rooms and repeated taxi', async () => {
-    for (const name of ['journey', 'shuttle', 'subway', 'intercity', 'taxi', 'rooms']) {
-        const app = await readyDemo(); await fillDemo(app); await app.el('demo-party-form').emit('submit');
-        await app.advance(500); app.shell.select(name, { focus: true });
-        const navigation = app.shell.getNavigation(), focus = app.document.activeElement;
-        await app.advance(2000);
-        assert.equal(app.shell.getState().active, name);
-        assert.equal(app.shell.getNavigation(), navigation, 'No hidden second selection occurs');
-        assert.equal(app.document.activeElement, focus);
-        assert.equal(app.el('demo-room-list').children.length, 1);
-        assert.equal(app.el('demo-room-list').children[0].children[0].classList.contains('is-new'), false);
-        assert.equal(app.timers.size, 0);
-    }
-});
-test('new-post reset, form editing, closing tools and opening posts supersede a pending move', async () => {
-    for (const action of ['reset', 'edit', 'close', 'open']) {
-        const app = await readyDemo(); await fillDemo(app); await app.el('demo-party-form').emit('submit');
-        const post = app.el('demo-room-list').children[0].children[0];
-        if (action === 'reset') await app.el('demo-new-post').emit('click');
-        if (action === 'edit') { app.el('demo-title').value = '다음 모집글'; await app.el('demo-title').emit('input'); }
-        if (action === 'close') app.shell.closeTool();
-        if (action === 'open') await post.emit('click');
-        const focus = app.document.activeElement;
-        await app.advance(2000);
-        assert.equal(app.shell.getState().active, 'taxi'); assert.equal(app.document.activeElement, focus);
-        assert.equal(app.el('demo-room-list').children.length, 1);
-        if (action === 'reset') for (const field of ['title', 'destination', 'from']) assert.equal(app.el('demo-' + field).value, '');
-    }
-});
-test('new generation clears previous feedback and highlights only the latest unique post', async () => {
-    const early = await readyDemo(); await fillDemo(early, { title: '첫 예약' }); await early.el('demo-party-form').emit('submit');
-    await early.advance(500); await fillDemo(early, { title: '교체 예약' }); await early.el('demo-party-form').emit('submit');
-    await early.advance(500);
-    assert.equal(early.shell.getState().active, 'taxi');
-    assert.equal(early.el('demo-toast').classList.contains('is-fading'), false, 'Old fade deadline was cleared');
-    await early.advance(500);
-    assert.equal(early.shell.getState().active, 'rooms');
-    assert.match(early.document.activeElement.textContent, /교체 예약/);
-    const app = await readyDemo(); await fillDemo(app, { title: '첫 방' }); await app.el('demo-party-form').emit('submit');
-    const first = app.el('demo-room-list').children[0].children[0];
-    await app.advance(1000); assert.equal(first.classList.contains('is-new'), true);
-    app.shell.select('taxi'); await app.el('demo-new-post').emit('click');
-    await fillDemo(app, { title: '새 방', from: '2030-10-22T10:00' }); await app.el('demo-party-form').emit('submit');
-    const latest = app.el('demo-room-list').children[0].children[0];
-    assert.notEqual(latest.dataset.roomId, first.dataset.roomId);
-    assert.equal(app.el('demo-room-list').children[1].children[0], first);
-    assert.equal(first.classList.contains('is-new'), false);
-    assert.equal(app.el('demo-toast').classList.contains('is-fading'), false);
-    await app.advance(999); assert.equal(app.shell.getState().active, 'taxi');
-    await app.advance(1); assert.equal(app.document.activeElement, latest); assert.equal(latest.classList.contains('is-new'), true);
-    await app.advance(1800); assert.equal(latest.classList.contains('is-new'), false);
-});
-test('independent rooms retain membership, composition-safe chat, drafts and scroll', async () => {
-    const app = await readyDemo(); await fillDemo(app, { title: '첫 대화방' }); await app.el('demo-party-form').emit('submit');
-    await app.advance(1000); const first = app.el('demo-room-list').children[0].children[0]; await first.emit('click');
-    await app.el('demo-join').emit('click'); await app.el('demo-join').emit('click');
-    assert.equal(app.el('demo-count').textContent, '2/4명'); assert.match(first.textContent, /2\/4명/);
-    app.el('demo-chat-input').value = '한글 조합';
-    await app.el('demo-chat-input').emit('keydown', { key: 'Enter', isComposing: true });
-    await app.el('demo-chat-input').emit('keydown', { key: 'Enter', shiftKey: true });
-    assert.equal(app.el('demo-chat-messages').querySelectorAll('.demo-message').length, 0);
-    await app.el('demo-chat-input').emit('keydown', { key: 'Enter' });
-    assert.equal(app.el('demo-chat-messages').querySelectorAll('.demo-message').length, 1);
-    app.el('demo-chat-input').value = '첫 방 초안'; await app.el('demo-chat-input').emit('input');
-    app.el('demo-chat-messages').scrollHeight = 1000; app.el('demo-chat-messages').scrollTop = 0;
-    app.el('demo-party-dialog').close(); await flush(); assert.equal(app.document.activeElement, first);
-    app.shell.select('taxi'); await app.el('demo-new-post').emit('click'); await fillDemo(app, { title: '둘째 대화방' });
-    await app.el('demo-party-form').emit('submit'); await app.advance(1000);
-    const second = app.el('demo-room-list').children[0].children[0]; await second.emit('click');
-    assert.equal(app.el('demo-count').textContent, '1/4명'); assert.equal(app.el('demo-chat-input').value, '');
-    assert.equal(app.el('demo-chat-messages').querySelectorAll('.demo-message').length, 0);
-    app.el('demo-chat-input').value = '둘째 초안'; await app.el('demo-chat-input').emit('input'); app.el('demo-party-dialog').close(); await flush();
-    await first.emit('click');
-    assert.equal(app.el('demo-count').textContent, '2/4명'); assert.equal(app.el('demo-chat-input').value, '첫 방 초안');
-    assert.match(app.el('demo-chat-messages').textContent, /한글 조합/); assert.equal(app.el('demo-chat-messages').scrollTop, 0);
-    app.el('demo-party-dialog').close(); await flush(); await second.emit('click');
-    assert.equal(app.el('demo-chat-input').value, '둘째 초안');
-});
-test('only an out-of-view new post scrolls; single-field drafts retain refresh protection', async () => {
-    const app = await readyDemo();
-    app.el('demo-from').value = '2030-10-21T18:00'; await app.el('demo-from').emit('input');
-    assert.equal(app.windowListeners.get('beforeunload').length, 1);
-    await app.el('app-reload').emit('click'); assert.equal(app.el('demo-from').value, '2030-10-21T18:00');
-    app.el('demo-from').value = ''; await app.el('demo-from').emit('input'); assert.equal(app.windowListeners.get('beforeunload').length, 0);
-    await fillDemo(app); await app.el('demo-party-form').emit('submit');
-    const post = app.el('demo-room-list').children[0].children[0]; post.getBoundingClientRect = () => ({ top: 900, bottom: 1000 });
-    await app.advance(1000); assert.equal(post.scrollCalls, 1);
-    app.shell.select('taxi'); await app.el('demo-new-post').emit('click');
-    assert.equal(app.windowListeners.get('beforeunload').length, 1, 'Created rooms remain protected after clearing the form');
-});
-
 test('map selection opens the shared results pipeline without overwriting GPS or search inputs', async () => {
     const app = harness(), routing = app.loadMapJourney();
     app.context.AppState.setCurrentPosition(37.77, 127.66);
@@ -1760,6 +1580,6 @@ test('scooter advice stays conditional without an ETA and absent or transit reco
         try { await item.run(); console.log('PASS ' + item.name); }
         catch (error) { failures++; console.error('FAIL ' + item.name + '\n' + error.stack); }
     }
-    console.log(`${tests.length - failures}/${tests.length} shell/intro/demo memory DOM checks passed; no browser or API used`);
+    console.log(`${tests.length - failures}/${tests.length} shell/intro memory DOM checks passed; no browser or API used`);
     if (failures) process.exitCode = 1;
 })();

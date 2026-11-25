@@ -5,7 +5,7 @@
 'use strict';
 const assert = require('node:assert/strict');
 const { chromium } = require('playwright');
-const { openApp, selectTool, activateRealMobility, chooseBuilding, selectDestination, clearDestination,
+const { openApp, selectTool, chooseBuilding, selectDestination, clearDestination,
     noOverflow, taxiFixture, DESTINATION } = require('./frontend_smoke.cjs');
 const tests = [];
 const test = (name, run) => tests.push({ name, run });
@@ -15,7 +15,7 @@ async function prepare(page) {
     await selectTool(page, 'taxi');
 }
 
-for (const width of [360, 390, 1440]) test(`${width}px ordinary taxi tab queries directly and preserves the demo`, async browser => {
+for (const width of [360, 390, 1440]) test(`${width}px ordinary taxi tab queries directly and opens shared recruitment`, async browser => {
     const app = await openApp(browser, { viewport: { width, height: 900 } });
     try {
         const page = app.page;
@@ -23,26 +23,18 @@ for (const width of [360, 390, 1440]) test(`${width}px ordinary taxi tab queries
         await selectTool(page, 'taxi');
         assert.equal(await page.locator('#taxi-section').isVisible(), true);
         assert.equal(await page.locator('#taxi-room-actions').isVisible(), false);
-        assert.equal(await page.locator('#demo-party-form').isVisible(), true);
+        assert.equal(await page.locator('#taxi-new-room').isVisible(), true);
         const panel = page.locator('#transport-panel-taxi');
-        assert.equal(await panel.getByRole('heading', { name: '택시 모집방 만들기' }).isVisible(), true);
+        assert.equal(await panel.getByRole('heading', { name: '택시 동승 모집' }).isVisible(), true);
         assert.doesNotMatch(await panel.innerText(), /TMAP|출발·도착 수정/);
-        assert.equal(await panel.locator('section').first().getAttribute('aria-labelledby'), 'demo-party-heading');
-        assert.equal(await page.locator('#ride-room-section').count(), 0);
+        assert.equal(await panel.locator('section').first().getAttribute('aria-labelledby'), 'taxi-party-heading');
+        assert.equal(await page.locator('#ride-room-section').isVisible(), false);
         assert.equal(await page.locator('script[src$="/taxi-controller.js"]').count(), 1);
         assert.equal(app.taxiRequests.length, 0); assert.equal(app.roomRequests.length, 0);
         if (width === 360) {
-            await page.locator('#demo-party-form button[type="submit"]').click();
-            const title = page.locator('#demo-title');
-            assert.equal(await title.getAttribute('aria-invalid'), 'true');
-            await title.fill('춘천역 동승');
-            assert.equal(await title.getAttribute('aria-invalid'), null);
-            assert.equal(await page.locator('#demo-title-error').isVisible(), false);
-            assert.equal(await page.locator('#demo-destination').getAttribute('aria-invalid'), 'true');
-            await page.locator('#demo-destination').fill('춘천역');
-            await page.locator('#demo-from').fill('2030-10-21T18:00');
-            assert.equal(await page.locator('#demo-destination-error').isVisible(), false);
-            assert.equal(await page.locator('#demo-from-error').isVisible(), false);
+            await page.locator('#taxi-new-room').click();
+            assert.equal(await page.locator('#room-create-form').isVisible(), true);
+            assert.equal(await page.locator('#room-create-submit').isDisabled(), true);
         }
         await chooseBuilding(page); await selectDestination(page);
         await selectTool(page, 'taxi');
@@ -50,7 +42,7 @@ for (const width of [360, 390, 1440]) test(`${width}px ordinary taxi tab queries
         await visibleText(page, '#taxi-content', '예상요금 약 10,001원');
         assert.equal(app.taxiRequests.length, 1); assert.equal(app.requests.length, 0);
         assert.equal(app.taxiRequests[0].lat, undefined);
-        assert.equal(app.roomRequests.length, 0);
+        assert.equal(app.roomRequests.filter(request => request.method === 'POST').length, 0);
         assert.deepEqual(await page.evaluate(() => window.__testGPSCalls), []);
         const people = page.getByRole('group', { name: '함께 타는 인원' });
         assert.equal(await people.getByRole('button').count(), 3);
@@ -144,12 +136,11 @@ test('partial, expired and retried quotes never fabricate a zero fare', async br
     } finally { await app.close(); }
 });
 
-test('room test activation preserves the taxi card and asks for consent only after choosing a meeting place', async browser => {
+test('shared room entry preserves the taxi card and asks for consent only after choosing a meeting place', async browser => {
     const app = await openApp(browser, { roomHandler: route => route.fulfill({ json: { ready: true, csrf_token: 'test-csrf' } }) });
     try {
         const page = app.page; await prepare(page); await page.locator('#taxi-refresh').click();
         await visibleText(page, '#taxi-content', '10,001원');
-        await activateRealMobility(page); await activateRealMobility(page);
         await visibleText(page, '#taxi-content', '10,001원');
         assert.equal(await page.locator('#taxi-section').count(), 1);
         assert.equal(await page.locator('#ride-room-section').count(), 1);
@@ -162,7 +153,7 @@ test('room test activation preserves the taxi card and asks for consent only aft
             return ids.length === new Set(ids).size;
         }), true);
         await page.locator('#taxi-create-room').click();
-        assert.equal(await page.locator('#room-create-destination').innerText(), DESTINATION.name);
+        assert.equal(await page.locator('#room-destination-query').inputValue(), DESTINATION.name);
         assert.equal(await page.locator('#room-meeting-consent').isVisible(), false);
         assert.equal(await page.locator('#room-create-submit').isDisabled(), true);
         const meetingQuery = page.locator('#room-meeting-query');

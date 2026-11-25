@@ -373,19 +373,12 @@
                     </div>
                 </section>
                 <section id="transport-panel-taxi" class="transport-panel" role="tabpanel" aria-labelledby="transport-tab-taxi" tabindex="0" hidden>
-                    <section class="taxi-party" aria-labelledby="demo-party-heading">
-                        <h2 id="demo-party-heading">택시 모집방 만들기</h2>
-                        <p class="demo-caption">시연방 · 새로고침 시 초기화</p>
-                        <form id="demo-party-form" novalidate>
-                            <label class="demo-field" for="demo-title">제목<input id="demo-title" type="text" required aria-describedby="demo-title-error"></label>
-                            <p id="demo-title-error" class="demo-error" aria-live="polite"></p>
-                            <label class="demo-field" for="demo-destination">목적지<input id="demo-destination" type="text" required aria-describedby="demo-destination-error"></label>
-                            <p id="demo-destination-error" class="demo-error" aria-live="polite"></p>
-                            <label class="demo-field" for="demo-from">출발 시각 · 한국 시간<input id="demo-from" type="datetime-local" required aria-describedby="demo-from-error"></label><p id="demo-from-error" class="demo-error" aria-live="polite"></p>
-                            <button class="demo-button" type="submit">모집하기</button>
-                            <button id="demo-new-post" class="demo-button demo-button--secondary" type="button" hidden>새 모집글 작성</button>
-                            <p id="demo-create-status" class="demo-caption" role="status"></p>
-                        </form>
+                    <section class="taxi-party" aria-labelledby="taxi-party-heading">
+                        <h2 id="taxi-party-heading">택시 동승 모집</h2>
+                        <div class="room-actions">
+                            <button id="taxi-new-room" class="room-button" type="button">모집방 만들기</button>
+                            <button id="taxi-browse-rooms" class="room-button room-button--secondary" type="button">방 찾기</button>
+                        </div>
                     </section>
                     <section id="taxi-section" class="taxi-section" aria-labelledby="taxi-heading">
                         <div class="taxi-card">
@@ -400,20 +393,13 @@
                     </section>
                 </section>
                 <section id="transport-panel-rooms" class="transport-panel" role="tabpanel" aria-labelledby="transport-tab-rooms" tabindex="0" hidden>
-                    <h2>방 찾기</h2><p class="demo-caption">이 페이지에서 만든 시연 모집방이에요.</p>
-                    <div id="demo-room-empty"><p>아직 모집 중인 택시팟이 없어요.</p><button id="demo-go-create" class="demo-button" type="button">모집하러 가기</button></div>
-                    <ul id="demo-room-list" class="demo-room-list" aria-label="택시팟 모집 게시물"></ul>
-                </section>
-                </div>
-                <div id="app-status" class="app-status" role="status" aria-live="polite"></div>
-                <template id="real-mobility-template" data-room-src="{{ url_for('static', filename='js/ride-room-controller.js') }}">
                 <section id="ride-room-section" class="ride-rooms" aria-labelledby="ride-room-heading">
                     <h2 id="ride-room-heading" tabindex="-1">택시 동승 모집</h2>
                     <p class="room-caption">같은 택시를 탈 사람과 웹 안에서 대화해 보세요. 참가 버튼은 탑승 의사를 등록해요.</p>
                     <button id="room-open-list" class="room-button" type="button">동승 모집 보기</button>
                     <p id="room-status" class="room-status" role="status" aria-live="polite"></p>
                     <div id="room-panel" hidden>
-                        <div class="room-actions"><button id="room-create-current" class="room-button" type="button">현재 목적지로 방 만들기</button><button id="room-hide" class="room-button room-button--secondary" type="button">모집 화면 닫기</button></div>
+                        <div class="room-actions"><button id="room-create-current" class="room-button" type="button">모집방 만들기</button><button id="room-hide" class="room-button room-button--secondary" type="button">모집 화면 닫기</button></div>
                         <div id="room-list-view">
                             <h3 tabindex="-1" id="room-list-heading">모집 목록</h3>
                             <form id="room-filter-form">
@@ -429,17 +415,17 @@
                         <div id="room-create-view" hidden>
                             <h3 tabindex="-1" id="room-create-heading">모집방 만들기</h3>
                             <p id="room-create-context" class="room-status" role="status"></p>
-                            <dl class="room-create-destination">
-                                <dt>공개 목적지</dt><dd id="room-create-destination"></dd>
-                            </dl>
                             <form id="room-create-form">
                                 <label class="room-field" for="room-title">제목<input id="room-title" type="text" maxlength="60" required></label>
                                 <label class="room-field" for="room-create-nickname">닉네임<input id="room-create-nickname" type="text" maxlength="20" required autocomplete="nickname"></label>
+                                <label class="room-field" for="room-destination-query">목적지<input id="room-destination-query" type="search" maxlength="100" autocomplete="off" placeholder="목적지 검색" aria-describedby="room-destination-status" required></label>
+                                <p id="room-destination-status" class="room-caption" role="status"></p>
+                                <div id="room-destination-options" class="room-place-options" role="group" aria-label="목적지 검색 결과"></div>
                                 <label class="room-field" for="room-meeting-query">공개 집결지<input id="room-meeting-query" type="search" maxlength="100" autocomplete="off" placeholder="장소 검색" aria-describedby="room-meeting-status"></label>
                                 <p id="room-meeting-status" class="room-caption" role="status"></p>
                                 <div id="room-meeting-options" class="room-place-options" role="group" aria-label="집결지 검색 결과"></div>
                                 <p id="room-meeting-selected" class="room-selected-place" hidden></p>
-                                <label id="room-meeting-consent" class="room-check" hidden><input id="room-meeting-confirm" type="checkbox" required disabled><span>집결지를 참가자에게 공개할게요.</span></label>
+                                <label id="room-meeting-consent" class="room-check" hidden><input id="room-meeting-confirm" type="checkbox" required disabled><span>집결지를 모집 목록에 공개할게요.</span></label>
                                 <label class="room-field" for="room-departure">출발 시각 · 한국 시간<input id="room-departure" type="datetime-local" required aria-describedby="room-departure-window"></label>
                                 <p id="room-departure-window" class="room-caption">지금부터 24시간 이내</p>
                                 <label class="room-field" for="room-capacity">정원 · 방장 포함<select id="room-capacity"><option value="2">2명</option><option value="3">3명</option><option value="4">4명</option></select></label>
@@ -468,7 +454,9 @@
                     </div>
                     <details class="room-help"><summary>닉네임 세션과 이용 안내</summary><p>닉네임은 대학생·실명 인증이 아니에요. 쿠키를 삭제하거나 다른 기기를 사용하면 참가 권한이 이어지지 않아요.</p><p>방을 닫거나 연결이 끊겨도 참가 인원은 자동으로 줄지 않아요. 일반 참가자는 나가기를, 방장은 방 종료를 눌러 주세요.</p><p>출발시각이 지나면 새 참가와 메시지 전송이 멈춰요. 방과 대화는 출발시각 이후 24시간이 지난 뒤 정리 대상이 돼요. 결제·정산 기능은 제공하지 않아요.</p></details>
                 </section>
-                </template>
+                </section>
+                </div>
+                <div id="app-status" class="app-status" role="status" aria-live="polite"></div>
             </div>
         </main>
                 <section id="results-section" class="results-section" aria-labelledby="results-heading" hidden>
@@ -488,24 +476,6 @@
             </div>
         </div>
     </div>
-    <dialog id="demo-party-dialog" class="party-dialog" aria-labelledby="demo-dialog-heading" aria-describedby="demo-dialog-disclaimer">
-        <header class="party-dialog-header"><h2 id="demo-dialog-heading">택시 모집방</h2><button id="demo-close" class="demo-button demo-button--secondary" type="button" aria-label="모집방 닫기" autofocus>닫기</button></header>
-        <p id="demo-dialog-disclaimer" class="demo-caption">시연용 · 새로고침하면 모집방이 초기화돼요.</p>
-        <section class="party-info" aria-label="모집 정보"><span class="party-state">모집 중</span><h3 id="demo-room-title"></h3><dl><dt>목적지</dt><dd id="demo-room-destination"></dd><dt>출발 예정 시각 · 한국 시간</dt><dd id="demo-room-time"></dd></dl></section>
-        <section class="party-members" aria-labelledby="demo-members-heading"><h3 id="demo-members-heading">참가 현황 <span id="demo-count" role="status">1/4명</span></h3><ul id="demo-members"></ul></section>
-        <section class="party-chat" aria-labelledby="demo-chat-heading">
-            <h3 id="demo-chat-heading">택시팟 채팅</h3>
-            <p class="demo-caption">채팅 시연용 · 다른 사용자에게 전송되지 않습니다</p>
-            <div id="demo-chat-messages" class="demo-chat-messages" role="log" aria-live="polite" aria-relevant="additions" aria-label="이 방의 시연 대화" tabindex="0"></div>
-            <form id="demo-chat-form" novalidate>
-                <label class="demo-field" for="demo-chat-input">메시지<textarea id="demo-chat-input" rows="3" maxlength="500" aria-describedby="demo-chat-status" placeholder="첫 인사를 남겨보세요!"></textarea></label>
-                <p id="demo-chat-status" class="demo-caption" role="status"></p>
-                <button id="demo-chat-send" class="demo-button" type="submit">보내기</button>
-            </form>
-        </section>
-        <footer class="party-dialog-actions"><button id="demo-join" class="demo-button" type="button">같이 타요!</button></footer>
-    </dialog>
-    <div id="demo-toast" class="demo-toast" role="status" aria-live="polite" aria-atomic="true" hidden></div>
     <script id="campus-building-data" type="application/json">{{ {'hallym': hallym_buildings, 'knu': knu_buildings} | tojson }}</script>
     <script src="{{ url_for('static', filename='js/main.js') }}" defer></script>
     <script src="{{ url_for('static', filename='js/workspace-sheet.js') }}" defer></script>
@@ -519,7 +489,7 @@
     <script src="{{ url_for('static', filename='js/ui-renderer.js') }}" defer></script>
     <script src="{{ url_for('static', filename='js/ui-controller.js') }}" defer></script>
     <script src="{{ url_for('static', filename='js/taxi-controller.js') }}" defer></script>
-    <script src="{{ url_for('static', filename='js/transport-demo-controller.js') }}" defer></script>
+    <script src="{{ url_for('static', filename='js/ride-room-controller.js') }}" defer></script>
     <script src="{{ url_for('static', filename='js/itx-timetable.js') }}" defer></script>
     <script src="{{ url_for('static', filename='js/shuttle-timetable.js') }}" defer></script>
     <script src="{{ url_for('static', filename='js/intercity-timetable.js') }}" defer></script>

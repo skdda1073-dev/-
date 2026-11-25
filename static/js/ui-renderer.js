@@ -167,13 +167,12 @@
 
     function taxiRecommendation(walkMinutes, walkDistance, destination, lookupReason = '', warnings = []) {
         if (walkMinutes === null || walkMinutes < TAXI_SUGGESTION_MINUTES) return '';
-        const name = text(record(destination).name).trim();
         const walkLength = distance(walkDistance);
         return `<article class="result-card route-taxi-recommendation${lookupReason ? ' route-walk-card' : ''}" aria-labelledby="taxi-recommendation-title">
             <span class="route-mobility-kicker">이동 추천</span>
             <h3 id="taxi-recommendation-title">택시를 타는 것을 추천해요</h3>
             <p class="taxi-room-walk-reference">${icon('walk')}<span>도보 약 ${minutes(walkMinutes)}${walkLength ? ` · ${walkLength}` : ''}</span></p>
-            <button class="taxi-room-banner" type="button" data-destination="${escapeHtml(name)}">
+            <button class="taxi-room-banner" type="button" data-destination="${escapeHtml(record(destination).name)}" data-lat="${escapeHtml(record(destination).lat)}" data-lon="${escapeHtml(record(destination).lon)}">
                 <span class="taxi-room-banner-icon">${icon('taxi')}</span>
                 <strong>택시 모집방을 만드시겠어요?</strong>${icon('arrow-right')}</button>
             ${routeWarnings([lookupReason, ...warnings], '경로 확인 안내')}</article>`;
@@ -616,7 +615,7 @@
         container.addEventListener('click', event => {
             const taxi = event.target?.closest?.('.taxi-room-banner');
             if (taxi && container.contains(taxi)) {
-                window.AppModules.demo?.openCreate(taxi.dataset.destination);
+                window.AppModules.rideRooms.startCreate({ name: taxi.dataset.destination, lat: taxi.dataset.lat, lon: taxi.dataset.lon });
                 return;
             }
             if (event.target?.closest?.('.route-cautions, a')) return;
