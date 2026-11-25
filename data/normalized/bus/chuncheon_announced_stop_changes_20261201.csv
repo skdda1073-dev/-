@@ -1,0 +1,8 @@
+route_label,departure_direction_as_published,change_type,source_ars_code,stop_name,effective_from,change_status,source
+3,후평동,drop_stop,2388,고용복지센터,2026-12-01,announced,data/raw/bus/시내버스 일부개편 사항(2026.12.1.).hwp
+3,후평동,new_stop,2171,투탑시티2차,2026-12-01,announced,data/raw/bus/시내버스 일부개편 사항(2026.12.1.).hwp
+3,후평동,new_stop,1785,현진에버빌1차,2026-12-01,announced,data/raw/bus/시내버스 일부개편 사항(2026.12.1.).hwp
+4,학곡리,drop_stop,2387,스무숲입구,2026-12-01,announced,data/raw/bus/시내버스 일부개편 사항(2026.12.1.).hwp
+4,학곡리,drop_stop,1661,현진에버빌1차,2026-12-01,announced,data/raw/bus/시내버스 일부개편 사항(2026.12.1.).hwp
+4,학곡리,add_stop,2105,성림초등학교,2026-12-01,announced,data/raw/bus/시내버스 일부개편 사항(2026.12.1.).hwp
+4,학곡리,add_stop,1122,퇴계주공6차,2026-12-01,announced,data/raw/bus/시내버스 일부개편 사항(2026.12.1.).hwp

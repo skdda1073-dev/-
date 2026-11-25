@@ -25,7 +25,8 @@ def main():
 
     with tempfile.TemporaryDirectory(prefix="capstone-unit-") as temporary:
         fake_environment = {
-            "TMAP_APP_KEY": "", "PUBLIC_DATA_KEY": "", "NAVER_MAP_CLIENT_ID": "",
+            "TMAP_APP_KEY": "", "PUBLIC_DATA_KEY": "", "TAGO_API_KEY": "", "SEOUL_BUS_API_KEY": "",
+            "TRAIN_API_KEY": "", "NAVER_MAP_CLIENT_ID": "",
             "FLASK_SECRET_KEY": "", "APP_DEBUG": "false", "PORT": "5000",
             "SESSION_COOKIE_SECURE": "false", "RIDE_ROOM_DB_PATH": str(Path(temporary) / "rooms.sqlite3"),
             "TAXI_CACHE_TTL_SECONDS": "60", "TAXI_CACHE_MAX_ENTRIES": "512",

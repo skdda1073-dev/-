@@ -1,0 +1,138 @@
+/* Map point selector stays available beside the workspace. */
+.map-journey-widget {
+    --map-journey-weather-clearance: 0px;
+    position: absolute;
+    top: max(16px, var(--map-journey-weather-clearance));
+    left: 16px;
+    z-index: 3;
+    width: min(330px, calc(100% - 32px));
+    min-width: 0;
+    max-height: calc(100% - max(16px, var(--map-journey-weather-clearance)) - 8px);
+    padding: 10px 12px;
+    overflow-y: auto;
+    border: 1px solid #d5e3d7;
+    border-radius: 16px;
+    background: var(--surface, #fff);
+    color: var(--ink, #18352b);
+    box-shadow: 0 5px 22px #18352b1a;
+    overflow-wrap: anywhere;
+    overscroll-behavior: contain;
+}
+
+.map-journey-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 6px;
+    cursor: grab;
+    touch-action: none;
+    user-select: none;
+    -webkit-user-select: none;
+}
+
+.map-journey-widget.is-dragging { z-index: 4; box-shadow: 0 8px 28px #18352b33; }
+.map-journey-widget.is-dragging .map-journey-heading { cursor: grabbing; }
+.map-journey-heading:focus-visible { outline: 3px solid var(--green-dark, #187526); outline-offset: 3px; border-radius: 6px; }
+.map-journey-reset { cursor: pointer; }
+
+.map-journey-heading h2 {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+    font-size: 14px;
+    font-weight: 800;
+    line-height: 1.4;
+}
+
+.map-journey-heading .icon { width: 17px; height: 17px; color: var(--green-dark, #187526); }
+
+.map-journey-reset {
+    flex: 0 0 auto;
+    min-height: 32px;
+    padding: 5px 8px;
+    border-radius: 8px;
+    background: #f2f6f2;
+    color: #52665a;
+    font-size: 11px;
+    font-weight: 650;
+}
+
+.map-journey-points { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 6px; }
+
+.map-point-pick {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: center;
+    gap: 3px;
+    min-width: 0;
+    min-height: 54px;
+    padding: 7px 9px;
+    border: 1px solid #d6e2d8;
+    border-radius: 10px;
+    background: #f9fcf8;
+    color: var(--ink, #18352b);
+    text-align: left;
+    transition: border-color .15s ease, background-color .15s ease;
+}
+
+.map-point-kind { display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 750; line-height: 1.3; }
+.map-point-dot { flex: 0 0 auto; width: 7px; height: 7px; border-radius: 50%; background: var(--green-dark, #187526); }
+.map-point-pick--destination .map-point-dot { border-radius: 2px; background: #a44836; }
+.map-point-label { display: block; width: 100%; overflow: hidden; color: #5c7063; font-size: 11px; line-height: 1.4; text-overflow: ellipsis; white-space: nowrap; }
+.map-point-pick[aria-pressed="true"] { border-color: var(--green-dark, #187526); background: var(--green-soft, #e8f7e9); box-shadow: inset 0 0 0 1px var(--green-dark, #187526); }
+.map-point-pick[aria-pressed="true"] .map-point-kind { color: var(--green-dark, #187526); }
+.map-point-pick:hover:not(:disabled) { border-color: #91ba99; background: #eef7ed; }
+.map-point-pick:disabled { cursor: not-allowed; opacity: .6; }
+
+.map-journey-status { margin-top: 7px; color: #52665a; font-size: 11px; line-height: 1.5; }
+.map-journey-status.status-error { color: #a83b26; }
+.is-map-picking .map-canvas { cursor: crosshair; }
+
+.map-journey-widget button:focus-visible { outline: 3px solid var(--green-dark, #187526); outline-offset: 3px; }
+
+.map-journey-actions { display: flex; align-items: center; gap: 4px; }
+.map-journey-close { display: grid; place-items: center; min-width: 40px; min-height: 40px; border-radius: 50%; background: transparent; }
+.map-journey-close:hover { background: #f2f6f2; }
+
+@media (max-width: 1279px) {
+    .map-journey-widget { --map-journey-weather-clearance: 106px; }
+}
+
+@media (max-width: 799px) {
+    .map-journey-widget {
+        left: 10px;
+        width: min(330px, calc(100% - 72px));
+        padding: 8px 10px;
+        border-radius: 13px;
+    }
+    .map-journey-heading { margin-bottom: 4px; }
+    .map-journey-heading h2 { font-size: 13px; }
+    .map-journey-reset { min-height: 30px; padding: 4px 7px; }
+    .map-point-pick { min-height: 44px; padding: 6px 8px; gap: 2px; }
+    .map-point-label { font-size: 10px; }
+    .map-journey-status { margin-top: 5px; font-size: 10px; }
+}
+
+.map-stage--compact-tools .map-journey-widget {
+    --map-journey-weather-clearance: 0px;
+    --map-journey-right-clearance: 60px;
+    width: min(330px, calc(100% - var(--map-journey-right-clearance) - 24px));
+}
+
+@media (max-width: 799px) {
+    .map-stage--compact-tools .map-journey-widget {
+        --map-journey-right-clearance: 0px;
+        --map-journey-bottom-clearance: 60px;
+        top: var(--map-control-gutter);
+        left: var(--map-control-gutter);
+        width: min(330px, calc(100% - 2 * var(--map-control-gutter)));
+        max-height: calc(100% - var(--map-journey-bottom-clearance) - var(--map-control-gutter) - 6px);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .map-point-pick { transition: none; }
+}

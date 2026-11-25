@@ -11,7 +11,7 @@
 | 담당자 | 역할 | GitHub 브랜치 | 주로 만지는 파일 |
 | --- | --- | --- | --- |
 | 고경완 | UI/UX | `고경완` | `templates/index.html`, `static/css/**`, 화면 관련 `static/js/**` |
-| 권오준 | 데이터 | `권오준` | `data_preprocessing.ipynb`, 학교·건물 좌표 CSV 파일 |
+| 권오준 | 데이터 | `권오준` | `data/preparation/data_preprocessing.ipynb`, 학교·건물 좌표 CSV 파일 |
 | 이준엽 | 백엔드 | `이준엽` | `app.py`, `services/**`, `requirements.txt`, `static/js/api-service.js` |
 
 ### 역할별 파일 범위
@@ -30,10 +30,10 @@
 
 #### 권오준 — 데이터
 
-- `data_preprocessing.ipynb`: 데이터 전처리
-- `강원대학교 건물별 좌표.csv`
-- `한림대학교 건물별 좌표.csv`
-- `한림대_강원대_캠퍼스맵_통합_좌표.csv`
+- `data/preparation/data_preprocessing.ipynb`: 데이터 전처리
+- `data/raw/campus/강원대학교 건물별 좌표.csv`
+- `data/raw/campus/한림대학교 건물별 좌표.csv`
+- `data/normalized/campus/한림대_강원대_캠퍼스맵_통합_좌표.csv`
 
 CSV의 **열 이름, 좌표 형식, 파일명**을 바꿀 때에는 이준엽에게 먼저 알립니다. 백엔드가 그 형식을 읽고 있을 수 있기 때문입니다.
 
@@ -50,7 +50,7 @@ API 응답 JSON의 키 이름이나 형식을 바꿀 때에는 고경완에게 �
 
 - `static/js/main.js`: 각 JavaScript 모듈을 연결하고 처음 실행하는 파일
 - `AGENTS.md`: Codex 작업 규칙
-- `README.md`, [개발회고록](docs/개발회고록.md), `TEAM_WORKFLOW.md`: 공용 문서
+- [프로젝트 구조](docs/PROJECT_STRUCTURE.md), [개발회고록](docs/개발회고록.md), `TEAM_WORKFLOW.md`: 공용 문서
 
 이 파일들은 한 사람이 임의로 수정하지 않습니다. 팀 채팅에서 “무엇을 바꾸는지 / 왜 바꾸는지 / 영향 파일”을 먼저 공유하고 합의한 뒤 작업합니다.
 
@@ -169,7 +169,7 @@ git switch --track origin/권오준
 ```bash
 git status --short
 git diff --check
-git add "한림대학교 건물별 좌표.csv" "한림대_강원대_캠퍼스맵_통합_좌표.csv"
+git add "data/raw/campus/한림대학교 건물별 좌표.csv" "data/normalized/campus/한림대_강원대_캠퍼스맵_통합_좌표.csv"
 git commit -m "data: 한림대 건물 좌표 보정"
 git push -u origin 권오준
 ```
@@ -212,25 +212,9 @@ git push -u origin 이준엽
 
 ---
 
-## 7. 지금 완료된 모듈화 작업은 어떻게 올리나요?
+## 7. 통합본 검토
 
-현재 완료된 프런트엔드 모듈 분리·API 오류 처리 커밋은 역할 브랜치가 아니라 별도 작업 브랜치인 `refactor/module-split`에 있습니다. 이 커밋은 UI와 API 연결 파일이 함께 들어 있어 특정 한 사람의 이름 브랜치로 억지로 옮기지 않습니다.
-
-이 작업을 GitHub에 먼저 안전하게 올리는 명령은 아래 한 줄입니다.
-
-```bash
-git push -u origin refactor/module-split
-```
-
-이 명령은 **현재 로컬의 `refactor/module-split` 커밋만** GitHub에 같은 이름의 새 브랜치로 올립니다. `main`에는 아무 커밋도 추가하지 않습니다.
-
-그 뒤 GitHub에서 다음처럼 PR을 만듭니다.
-
-1. GitHub 저장소를 엽니다.
-2. `Compare & pull request`를 누릅니다.
-3. `base`가 `main`, `compare`가 `refactor/module-split`인지 확인합니다.
-4. 변경 파일과 화면 동작을 팀이 확인합니다.
-5. 통합 담당자만 병합합니다.
+제출용 통합본은 `main` 브랜치에 있습니다. 통합 변경은 `이준엽` 브랜치에서 검증한 뒤 `main`을 대상으로 PR을 엽니다. 팀원은 [실행 안내](docs/BACKEND_SETUP.md)에 따라 화면과 회귀 테스트를 확인합니다.
 
 > push는 **이미 커밋된 내용만** GitHub으로 보냅니다. 컴퓨터에 남아 있는 미커밋 파일이나 stage만 된 파일은 push에 포함되지 않습니다.
 

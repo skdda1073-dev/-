@@ -10,6 +10,12 @@
 ./.venv/bin/python app.py
 ```
 
+Cloudflare Tunnel에서 `tonghak.com`을 운영하는 Mac은 Flask를 루프백 5050 포트에 실행한다. 기존 `.env`의 고정 세션 키와 SQLite 경로를 사용한다. 터널의 서비스 주소는 `http://127.0.0.1:5050`이다.
+
+```bash
+PORT=5050 APP_DEBUG=false SESSION_COOKIE_SECURE=true ./.venv/bin/python app.py
+```
+
 `.env.example`의 새 설정을 참고하여 개인 `.env`에 직접 추가하고 서버를 재시작한다. 기존 키를 덮어쓰지 않는다. 코드 변경 과정에서 실제 `.env`는 수정하지 않았다.
 
 | 설정 | 기본값·정책 |
@@ -17,7 +23,7 @@
 | `TMAP_APP_KEY` | 기존 키. 자동차·택시 경로 상품 사용 권한 별도 필요 |
 | `FLASK_SECRET_KEY` | 기본 미설정. 최소 32바이트의 고정 비밀값, 기존 API 키와 다른 값. 모든 worker가 공유 |
 | `RIDE_ROOM_DB_PATH` | `instance/ride_rooms.sqlite3`, 상대경로는 프로젝트 루트 기준 |
-| `SESSION_COOKIE_SECURE` | 코드 기본 `true`. 로컬 HTTP 개발에서만 `false`; HTTPS 배포에서는 `true` |
+| `SESSION_COOKIE_SECURE` | 기본 `true`. 서버와 브라우저가 같은 기기에서 로컬 HTTP로 접속하면 자동으로 `Secure`를 생략한다. HTTPS 배포에서는 `true`를 사용한다. |
 | `TAXI_CACHE_TTL_SECONDS` | 60초 (설정 범위 1~300초) |
 | `TAXI_CACHE_MAX_ENTRIES` | 512개 (1~4096) |
 | `RIDE_ROOM_MESSAGE_RATE_PER_MINUTE` | 익명 세션당 15회 (1~120) |
@@ -33,9 +39,9 @@
 
 1. 기존 화면에서 출발지와 목적지를 선택하고 검색한다. 버스·셔틀과 택시는 독립적으로 조회된다. 목적지 없는 주변 정류장 검색에는 택시 요청을 보내지 않는다.
 2. 택시 카드의 2·3·4명 분담은 가정이다. 요금이 없으면 시간은 유지하고 요금·분담만 조회 불가로 표시한다.
-3. 같이 탈 사람 찾기로 목적지·서울 시각 출발 구간·상태를 필터링한다. 목록 열람은 참가가 아니다.
-4. 방 만들기에서 공개 집결지를 별도로 검색·선택·확인한다. GPS 현재 위치는 자동 공개하지 않는다. 제목·닉네임·출발 예정 시각·정원을 입력한다. 방장은 참가자 1명으로 포함된다.
-5. 방에 참가한 사람만 메시지와 방 견적을 볼 수 있다. 일반 참가자는 나가기, 방장은 종료를 사용한다. 종료 확인 문구는 새 참가·메시지 전송 중단을 알린다.
+3. 모집방 탭은 출발 전이며 방장이 종료하지 않은 방을 최신순으로 표시한다. 열린 목록은 약 5초마다 갱신된다. 방 상세의 링크 복사 버튼으로 공유한 주소를 열면 같은 방이 표시된다. 참가하려면 닉네임을 입력하고 참가 버튼을 누른다.
+4. 택시 탭, 모집방 탭과 길찾기 결과의 모집 버튼은 같은 방 만들기 화면을 연다. **모이는 곳**에서 한림대 또는 강원대 건물을 고르거나 다른 장소를 검색한다. 목적지를 선택하고 제목·닉네임·출발 시각·정원을 입력한다. 방장은 참가자 1명으로 포함된다.
+5. 방에 참가한 사람만 메시지와 방 견적을 볼 수 있다. 일반 참가자는 나갈 수 있다. 방장은 방을 종료하거나 방과 대화를 삭제할 수 있다. 작성자 권한은 방을 만든 브라우저의 세션으로 확인한다.
 
 출발 시각은 Asia/Seoul 기준으로 입력·표시하며 서버 기준 `현재 < 출발 <= 현재+24시간`만 새 방으로 허용한다. API는 반드시 시간대가 있는 ISO 8601을 받는다. DB에는 UTC 시각을 저장한다.
 
@@ -76,7 +82,7 @@
 
 TMAP 호출은 `POST https://apis.openapi.sk.com/tmap/routes?version=1`, 서버 appKey 헤더, `requests.post(data=payload)` form 방식이다. X는 경도, Y는 위도, WGS84GEO이며 `searchOption=24`, `commercialVehicle=Y`, `carType=1`, `totalValue=2`를 사용한다. carType은 통행료 산정 구분이며 정원·택시 등급이 아니다. 요약 응답의 검증된 합계 properties를 읽고 전체 형상 응답은 S 합계를 우선한다. 첫 LineString 구간 시간을 전체 시간으로 사용하지 않는다. 옵션 권한 오류 시 일반 경로로 자동 대체하지 않는다.
 
-프로세스 메모리 캐시는 좌표·경로 옵션 기준이고 인원수는 키에 넣지 않는다. 원본 형상은 저장하지 않으며 실패·만료 값을 최신값으로 반환하지 않는다. 공급자 견적을 DB·localStorage·오프라인 캐시에 영구 보관하지 않는다. 사용자가 선택·확인한 집결지·목적지만 사용자 입력으로 방 DB에 저장한다.
+프로세스 메모리 캐시는 좌표·경로 옵션 기준이고 인원수는 키에 넣지 않는다. 원본 형상은 저장하지 않으며 실패·만료 값을 최신값으로 반환하지 않는다. 공급자 견적을 DB·localStorage·오프라인 캐시에 영구 보관하지 않는다. 방 DB에는 사용자가 선택하고 확인한 모이는 곳과 목적지를 저장한다.
 
 택시 오류: 키 미설정 `TAXI_KEY_MISSING` 503, 공급자 권한 `TAXI_PROVIDER_AUTH` 502, 쿼터 `TAXI_PROVIDER_QUOTA` 503, timeout `TAXI_PROVIDER_TIMEOUT` 504, 네트워크·응답 오류 502. 공급자 인증 실패는 최종 사용자의 로그인 문제로 안내하지 않는다.
 
@@ -87,12 +93,13 @@ TMAP 호출은 `POST https://apis.openapi.sk.com/tmap/routes?version=1`, 서버 
 | Method / 경로 | 입력·응답 |
 |---|---|
 | GET `/session` | `{ready:true,csrf_token}`; actor 토큰·해시 비공개 |
-| GET `` | `q` 목적지명 부분검색, `from`/`to` 시간대 포함 출발구간, `status` 기본 open(`all` 가능), `limit` 기본20/최대50, `cursor`. `{rooms,next_cursor,has_more}` |
+| GET `` | `q` 목적지명 부분검색, `from`/`to` 시간대 포함 출발구간, `status` 기본 `open`. 모집 목록은 출발 전이며 종료되지 않은 방(`active`)을 조회한다. `all`도 지원한다. `limit` 기본 20/최대 50, `cursor`, `sort` 기본 출발 시각순(`newest`는 최신 등록순). `{rooms,next_cursor,has_more}` |
 | POST `` | 아래 생성 JSON. 최초201/동일 재시도200, `{room,self,participants}` |
 | GET `/<id>` | `{room,self,participants?}`; 회원 목록은 실제 참가자에게만 제공 |
 | POST `/<id>/join` | `{nickname}`. 중복 참가로 인원 증가하지 않음 |
 | POST `/<id>/leave` | `{}`. 일반 참가자만, 반복 요청도 추가 차감 없음 |
 | POST `/<id>/close` | `{}`. 방장만, 반복 종료도 같은 결과 |
+| DELETE `/<id>` | `{}`. 서버가 방을 만든 세션인지 확인하고 방·참가자·대화를 삭제한 뒤 `{deleted:true}`를 반환한다. 다른 세션은 403, 이미 삭제된 방의 상세는 404다. |
 | GET `/<id>/estimate` | 참가자만. `{estimate,room_version,participant_count,current_split,capacity_preview}` |
 | GET `/<id>/messages` | `after_id`, `limit` 기본50/최대100. 아래 메시지 응답 |
 | POST `/<id>/messages` | `{body,client_message_id}`. 최초201/동일 재시도200, `{message,room_version}` |
@@ -102,7 +109,7 @@ TMAP 호출은 `POST https://apis.openapi.sk.com/tmap/routes?version=1`, 서버 
   "client_room_id": "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx",
   "title": "사용자가 정한 모집 제목",
   "nickname": "사용자 닉네임",
-  "meeting": {"name": "공개할 집결 장소", "lat": 37.88, "lon": 127.73},
+  "meeting": {"name": "모이는 곳", "lat": 37.88, "lon": 127.73},
   "destination": {"name": "목적지", "lat": 37.87, "lon": 127.74},
   "departure_at": "2026-10-20T18:00:00+09:00",
   "capacity": 4
@@ -111,7 +118,7 @@ TMAP 호출은 `POST https://apis.openapi.sk.com/tmap/routes?version=1`, 서버 
 
 위 식별자 표기는 자리표시자다. 실제 요청에는 `crypto.randomUUID()` 등 유효 UUID를 사용하고 출발 시각도 현재 기준으로 바꾼다. 닉네임 1~20자, 제목 1~60자, 장소명 1~100자, 메시지 1~500자다. 같은 세션의 같은 생성 ID·같은 본문은 기존 방을 반환하고 다른 본문이면409다. 메시지는 `(방, actor, client_message_id)` 기준으로 같은 규칙을 적용하므로 다른 사람이 같은 ID를 사용해도 기존 메시지를 바꾸지 않는다. 재시도는 빈도 제한을 추가 차감하지 않는다.
 
-`room`은 `id,title,meeting,destination,departure_at,capacity,participant_count,status,room_version,created_at,closed_at`을 포함한다. `self`는 `joined,is_host,member_id`이다. 공개 회원은 `member_id,nickname,is_host`만 안정적인 최초 참가 순서로 제공한다.
+`room`은 `id,title,meeting,destination,departure_at,capacity,participant_count,status,room_version,created_at,closed_at`을 포함한다. `self`는 `joined,is_host,can_delete,member_id`를 제공한다. 서버가 요청 세션과 작성자를 확인해 `can_delete`를 반환한다. 공개 회원은 `member_id,nickname,is_host`만 안정적인 최초 참가 순서로 제공한다.
 
 메시지 응답은 `{messages,next_after_id,has_more,room,participants,self,cached_estimate}`이다. 메시지에는 `id,member_id,nickname,body,created_at`이 있다. 첫 조회는 최근 N개를 오래된 순서로 반환한다(이전 N개보다 오래된 기록의 역방향 페이지 기능은 없음). 이후 after_id 조회는 해당 ID 이후 N+1개로 has_more를 계산하고, 클라이언트는 has_more인 동안 직렬로 따라잡는다. 빈 응답은 기존 after_id를 유지한다. 메시지가 없어도 인원·상태·room_version을 함께 받는다.
 
@@ -121,16 +128,16 @@ TMAP 호출은 `POST https://apis.openapi.sk.com/tmap/routes?version=1`, 서버 
 
 모든 신규 API 오류는 `{code,error}`이고 개인화·세션·채팅·견적 응답은 오류도 `Cache-Control:no-store`이다. 400 입력 오류, 403 참가 권한·CSRF·출처, 404 방 없음, 409 정원·상태·재시도 충돌, 413 본문 16KiB 초과, 429 빈도 제한(`Retry-After`), 503 설정·DB 이용 불가로 구분한다. DB 경로·외부 원문·키·스택은 응답에 포함하지 않는다.
 
-## 보관과 수동 정리
+## 보관과 정리
 
-출발 시각이 지나면 즉시 expired 상태이며 데이터 삭제와는 별개다. 출발 예정 시각 이후 24시간이 지난 방·종속 참가자·메시지는 다음 명령으로 정리한다.
+출발 시각이 지난 방은 모집 목록에서 내려간다. 출발 예정 시각부터 24시간이 지난 방·참가자·메시지는 이후 모집방 API 요청에서 묶음으로 정리한다. 방장이 삭제를 확인하면 방과 대화는 즉시 제거된다. 기존 관리 명령으로도 보관 기한이 지난 방을 확인하고 정리할 수 있다.
 
 ```bash
 ./.venv/bin/python scripts/cleanup_ride_rooms.py --limit 200
 ./.venv/bin/python scripts/cleanup_ride_rooms.py --limit 200 --apply
 ```
 
-첫 명령은 미리보기이고 DB가 없어도 새 DB를 만들지 않는다. 실제 삭제는 두 번째처럼 관리자가 명시적으로 선택한다. 자동 크론·배포·실제 방 정리는 수행하지 않았다. 방 DB와 journal/WAL/SHM은 Git에서 제외한다.
+첫 명령은 미리보기이며 저장소가 없어도 새 DB를 만들지 않는다. 두 번째 명령은 보관 기한이 지난 방을 삭제한다. 방 DB와 journal/WAL/SHM은 Git에서 제외한다.
 
 ## 검증과 두 브라우저 점검
 
@@ -141,6 +148,8 @@ TMAP 호출은 `POST https://apis.openapi.sk.com/tmap/routes?version=1`, 서버 
 node tests/frontend_smoke.cjs
 CAPSTONE_LIVE_ROOM_TESTS=1 node tests/mobility_frontend_smoke.cjs
 ```
+
+별도로 `node tests/shared_rooms_e2e.cjs`를 실행하면 임시 Flask와 SQLite에서 두 독립 브라우저의 목록 갱신, 공유 링크, 참가, 채팅 및 Flask 재시작 후 복원을 검증한다. 기본 Python은 프로젝트의 `.venv`이며 `CAPSTONE_PYTHON`으로 지정할 수 있다.
 
 첫 명령은 모든 기존·신규 unittest를 실행하되 프로젝트 `.env` 로딩을 차단하고 가짜 설정·임시 DB·외부 HTTP 차단을 적용한다. 설정 테스트 자체의 임시 `.env`는 허용한다. 두 번째 명령은 실제 `.env`를 읽지 않고 외부 API를 차단한 임시 서버를 `127.0.0.1:8765`에서 실행하며, 합성 견적(10,001원)은 테스트용일 뿐 실제 춘천 운임이 아니다. 테스트 DB는 종료 시 제거된다. 일반 `unittest discover`도 가능하지만 개인 설정을 읽을 수 있으므로 위 격리 실행기를 권장한다.
 
@@ -153,6 +162,10 @@ CAPSTONE_LIVE_ROOM_TESTS=1 node tests/mobility_frontend_smoke.cjs
 실제 TMAP 연결: 사용자가 좌표·기존 키 사용·대상을 명시 승인한 뒤 한림대 공학관(37.88695,127.73585) → 강원대 60주년 기념관(37.86815,127.74165)으로 자동차 API를 정확히 1회 호출했다. 택시 전용·영업용·요약 옵션에서 status=ok, 유효 주행시간·거리·예상요금 필드 수신을 확인했다. 키·원문 응답·견적 금액은 출력하거나 저장하지 않았다. 이 확인은 실제 미터 운임 정확도·배차 대기·미래 출발 교통 예측 검증을 의미하지 않는다.
 
 ## 변경 파일
+
+2026-11-25 모집방 변경은 `app.py`, `services/ride_room_repository.py`, `services/ride_room_service.py`, `services/ride_room_routes.py`, `static/js/ride-room-controller.js`, `templates/index.html`에 반영했다. 검증은 `tests/test_ride_room_api.py`, `tests/mobility_frontend_smoke.cjs`, `tests/shared_rooms_e2e.cjs`에서 실행한다. 전체 Python 테스트 623개와 브라우저 회귀 검사 14개가 통과했으며 두 세션에서 참가와 방 삭제가 서로의 화면에 반영되는 것도 확인했다.
+
+### 최초 구현
 
 추가23개·수정8개이며 기존 사용자 파일과 상위 Git·브랜치는 변경하지 않는다. 테스트 환경을 재현하기 위한 두 실행기도 포함한다. 실제 `.env`·가상환경·CSV·공용 main.js·기존 지도/버스/셔틀 서비스는 수정하지 않았다.
 

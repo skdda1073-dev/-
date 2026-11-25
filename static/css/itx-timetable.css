@@ -1,184 +1,214 @@
-/* ITX 전용 스타일: 기존 지도/길찾기 컴포넌트에는 영향을 주지 않습니다. */
+/* ITX controls and comparable planned times stay inside their own panel. */
+#transport-panel-subway {
+    padding: 0;
+    background: transparent;
+}
+
 #itx-timetable {
-    margin-top: 30px;
-    padding: 26px;
-    border: 1px solid var(--line, #e2eae4);
-    border-radius: var(--radius-card, 22px);
-    background: #fff;
-    color: var(--ink, #18352b);
-    box-shadow: 0 5px 24px rgba(21, 61, 72, .04);
-}
-
-#itx-timetable .itx-heading {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: 16px;
-    padding-bottom: 16px;
-}
-
-#itx-timetable .itx-heading h2 {
-    margin: 4px 0 6px;
-    font-size: clamp(1.25rem, 2.6vw, 1.65rem);
-    line-height: 1.3;
-}
-
-#itx-timetable .itx-description,
-#itx-timetable .itx-note,
-#itx-timetable .itx-warning {
-    margin: 0;
-    color: var(--muted, #6a7a73);
-    font-size: .91rem;
-    line-height: 1.6;
-}
-
-#itx-timetable .itx-heading-mark {
-    display: grid;
-    place-items: center;
-    width: 44px;
-    height: 44px;
-    flex-shrink: 0;
-    background: var(--green-soft, #e8f7e9);
-    border-radius: 12px;
-    font-size: 1.45rem;
+    width: 100%;
+    min-width: 0;
+    color: var(--ink);
+    container-type: inline-size;
 }
 
 #itx-timetable .itx-controls {
-    display: flex;
-    align-items: end;
-    flex-wrap: wrap;
-    gap: 12px;
-    margin: 6px 0 18px;
+    display: grid;
+    gap: 10px;
 }
 
-#itx-timetable .itx-controls label {
-    display: flex;
-    flex: 1 1 170px;
-    flex-direction: column;
-    gap: 7px;
-    font-size: .88rem;
+.itx-search-card {
+    padding: 16px;
+    border-radius: var(--radius-card);
+    background: var(--green-deep);
+    color: white;
+}
+
+.itx-search-card h2 {
+    font-size: 16px;
+    font-weight: 800;
+    letter-spacing: -.02em;
+}
+
+.itx-station-pair {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 46px minmax(0, 1fr);
+    align-items: center;
+    gap: 8px;
+    margin: 16px 0;
+}
+
+.itx-station {
+    display: grid;
+    min-width: 0;
+    text-align: center;
+    color: #c6dfd5;
+    font-size: 13px;
+    font-weight: 700;
+}
+
+.itx-station-choice { position: relative; min-width: 0; }
+
+.itx-station-choice select {
+    width: 100%;
+    min-width: 0;
+    min-height: 44px;
+    padding: 4px 18px 4px 4px;
+    border: 0;
+    border-radius: 7px;
+    appearance: none;
+    background: transparent;
+    color: white;
+    font-size: 22px;
+    font-weight: 800;
+    letter-spacing: -.04em;
+    text-align: center;
+    text-align-last: center;
+    text-overflow: ellipsis;
+    cursor: pointer;
+}
+
+.itx-station-choice select option { background: var(--surface); color: var(--ink); }
+.itx-station-choice .icon {
+    position: absolute;
+    top: 50%;
+    right: 3px;
+    width: 14px;
+    height: 14px;
+    transform: translateY(-50%);
+    pointer-events: none;
+}
+
+#itx-swap {
+    display: grid;
+    place-items: center;
+    width: 46px;
+    height: 46px;
+    padding: 0;
+    border-radius: 50%;
+    background: #d1eee2;
+    color: var(--green-deep);
+}
+
+#itx-swap .icon { width: 22px; height: 22px; }
+#itx-swap:hover:not(:disabled) { background: #edfaf4; }
+
+.itx-departure {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1.25fr) minmax(0, 1fr);
+    align-items: center;
+    gap: 8px;
+    padding: 0 9px;
+    border: 1px solid #b2e1cd57;
+    border-radius: 10px;
+    background: #fff1;
+    color-scheme: dark;
+}
+
+.itx-departure > span { color: #c6dfd5; font-size: 13px; font-weight: 700; }
+.itx-departure input {
+    width: 100%;
+    min-width: 0;
+    min-height: 44px;
+    padding: 2px 0;
+    border: 0;
+    background: transparent;
+    color: white;
+    font-size: 16px;
     font-weight: 650;
 }
 
-#itx-timetable .itx-controls select {
-    box-sizing: border-box;
-    width: 100%;
-    min-height: 44px;
-    padding: 9px 11px;
-    border: 1px solid var(--line, #e2eae4);
-    border-radius: 10px;
-    background: #fff;
-    color: var(--ink, #18352b);
-    font: inherit;
-}
-
 #itx-timetable #itx-load {
-    min-height: 44px;
-    padding: 9px 20px;
+    min-height: 48px;
+    padding: 11px 16px;
     border: 0;
-    border-radius: 10px;
+    border-radius: 99px;
     background: var(--green-dark, #187526);
     color: #fff;
     font: inherit;
     font-weight: 700;
-    cursor: pointer;
 }
 
 #itx-timetable #itx-load:hover { background: var(--green-deep, #145520); }
-#itx-timetable #itx-load:disabled { cursor: wait; opacity: .55; }
-#itx-timetable :is(select, button):focus-visible {
-    outline: 3px solid var(--green, #2ba331);
-    outline-offset: 2px;
+#itx-timetable :disabled { cursor: not-allowed; opacity: .6; }
+#itx-timetable :is(select, input, button, [tabindex="-1"]):focus-visible {
+    outline: 3px solid var(--green-dark, #187526);
+    outline-offset: 3px;
 }
+#itx-timetable .itx-search-card :is(select, input, button):focus-visible { outline-color: #d1eee2; }
 
 #itx-timetable .itx-status {
-    margin: 8px 0 12px;
-    font-size: .94rem;
-    font-weight: 650;
+    margin: 8px 0 16px;
+    font-size: 14px;
+    line-height: 1.7;
+    overflow-wrap: anywhere;
+}
+#itx-timetable .itx-status:empty { margin: 0; }
+#itx-timetable .itx-status[data-state="error"] { color: #973a24; }
+
+#itx-timetable .itx-results {
+    min-width: 0;
+    margin-top: 18px;
+    padding-top: 18px;
+    border-top: 1px solid var(--line, #e2eae4);
+}
+#itx-timetable #itx-results-heading {
+    margin: 0;
+    font-size: 19px;
+    font-weight: 750;
+    line-height: 1.45;
+    overflow-wrap: anywhere;
+    scroll-margin-block: 14px;
+}
+#itx-timetable .itx-result-meta {
+    margin: 7px 0 16px;
+    color: #53685a;
+    font-size: 14px;
+    line-height: 1.65;
+    overflow-wrap: anywhere;
+}
+#itx-timetable .itx-train-list { margin: 0; padding: 0; list-style: none; }
+#itx-timetable .itx-train {
+    min-width: 0;
+    padding: 18px 0;
+    border-top: 1px solid var(--line, #e2eae4);
+}
+#itx-timetable .itx-train-times {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px;
+}
+#itx-timetable .itx-time-group { min-width: 0; }
+#itx-timetable .itx-time-group:last-child { text-align: right; }
+#itx-timetable .itx-time-label { display: block; color: #53685a; font-size: 13px; }
+#itx-timetable .itx-time {
+    display: block;
+    margin-top: 3px;
+    font-size: clamp(1.5rem, 7vw, 1.875rem);
+    font-weight: 750;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -.02em;
+    line-height: 1.25;
+    overflow-wrap: anywhere;
+}
+#itx-timetable .itx-train-details {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    margin-top: 12px;
+    color: #53685a;
+    font-size: 14px;
     line-height: 1.6;
 }
+#itx-timetable .itx-train-details span { min-width: 0; overflow-wrap: anywhere; }
+#itx-timetable .itx-train-details span:last-child { text-align: right; }
+#itx-timetable .itx-empty { padding: 12px 0; font-size: 14px; line-height: 1.7; }
 
-#itx-timetable .itx-table-wrap {
-    max-height: 480px;
-    overflow: auto;
-    border: 1px solid var(--line, #e2eae4);
-    border-radius: 12px;
+#itx-timetable .itx-warning,
+#itx-timetable .itx-note { margin-top: 14px; color: #53685a; font-size: 13px; line-height: 1.7; overflow-wrap: anywhere; }
+#itx-timetable .itx-warning { padding: 12px; border-radius: 10px; background: #fff7e6; color: #76570c; }
+
+@container (max-width: 330px) {
+    .itx-departure { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 5px; padding: 6px 8px 0; }
+    .itx-departure > span { grid-column: 1 / -1; }
+    .itx-departure input::-webkit-calendar-picker-indicator { margin-inline: 2px 0; padding: 1px; }
 }
-
-#itx-timetable .itx-table {
-    width: 100%;
-    min-width: 570px;
-    border-collapse: collapse;
-    font-size: .92rem;
-    text-align: left;
-}
-
-#itx-timetable .itx-table caption {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    padding: 0;
-    margin: -1px;
-    overflow: hidden;
-    clip: rect(0, 0, 0, 0);
-    white-space: nowrap;
-    border: 0;
-}
-
-#itx-timetable .itx-table th {
-    position: sticky;
-    top: 0;
-    z-index: 1;
-    background: var(--green-soft, #e8f7e9);
-    font-weight: 750;
-}
-
-#itx-timetable .itx-table th,
-#itx-timetable .itx-table td {
-    padding: 12px 13px;
-    border-bottom: 1px solid var(--line, #e2eae4);
-    white-space: nowrap;
-}
-
-#itx-timetable .itx-table tbody tr:last-child td { border-bottom: none; }
-#itx-timetable .itx-table tbody tr:hover { background: #f7fcf7; }
-
-#itx-timetable .itx-warning {
-    margin-top: 14px;
-    padding: 10px 13px;
-    border-radius: 10px;
-    background: #f7faf7;
-}
-
-#itx-timetable .itx-note { margin-top: 13px; }
-
-@media (max-width: 640px) {
-    #itx-timetable { margin-top: 20px; padding: 18px 14px; border-radius: 15px; }
-    #itx-timetable .itx-controls { gap: 10px; }
-    #itx-timetable .itx-controls label { flex-basis: 130px; }
-    #itx-timetable #itx-load { width: 100%; }
-}
-
-/* 구간별 조회: 날짜 선택도 기존 역 드롭다운과 같은 스타일 */
-#itx-timetable .itx-controls input[type="date"] {
-    box-sizing: border-box;
-    width: 100%;
-    min-height: 44px;
-    padding: 9px 11px;
-    border: 1px solid var(--line, #e2eae4);
-    border-radius: 10px;
-    background: #fff;
-    color: var(--ink, #18352b);
-    font: inherit;
-}
-#itx-timetable .itx-controls select:disabled {
-    opacity: .65;
-    cursor: wait;
-}
-#itx-timetable .itx-controls input[type="date"]:focus-visible {
-    outline: 3px solid var(--green, #2ba331);
-    outline-offset: 2px;
-}
-
-/* 최신 팀 화면의 초록색 패널 안에 자연스럽게 들어가도록 간격 조정 */
-#itx-timetable { width: 100%; box-sizing: border-box; }

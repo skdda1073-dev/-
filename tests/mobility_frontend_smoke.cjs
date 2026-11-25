@@ -4,11 +4,8 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs/promises');
 const path = require('node:path');
 const { chromium } = require('playwright');
-const { openApp: openBaseApp, activateRealMobility, chooseBuilding, selectDestination, clearDestination, noOverflow, resultContains,
+const { openApp, selectTool, chooseBuilding, selectDestination, clearDestination, noOverflow, resultContains,
     taxiFixture, journeyFixture, DESTINATION, INJECTION, BASE_URL } = require('./frontend_smoke.cjs');
-
-// These checks deliberately activate preserved live markup, with provider requests mocked.
-const openApp = (browser, options = {}) => openBaseApp(browser, { ...options, realMobility: true });
 
 const tests = [];
 const test = (name, run) => tests.push({ name, run });
@@ -24,10 +21,22 @@ async function preview(page, filename) {
     await page.screenshot({ path: path.join(process.env.CAPSTONE_SCREENSHOT_DIR, filename), fullPage: true, animations: 'disabled' });
 }
 
-async function search(page) {
+async function submitJourney(page, result) {
+    await selectTool(page, 'journey');
+    await page.locator('#route-submit').click();
+    await resultContains(page, result);
+}
+
+async function refreshTaxi(page) {
+    await selectTool(page, 'taxi');
+    await page.locator('#taxi-refresh').click();
+}
+
+async function search(page, result = '총 소요 추정') {
     await chooseBuilding(page);
     await selectDestination(page);
-    await page.locator('#route-submit').click();
+    await submitJourney(page, result);
+    await refreshTaxi(page);
 }
 
 function mockRoom(options = {}) {
@@ -64,7 +73,7 @@ function mockRoom(options = {}) {
 }
 
 async function openMockRoom(page) {
-    await page.locator('#room-open-list').click();
+    await selectTool(page, 'rooms');
     await page.locator('#room-list .room-card button').first().click();
     await visibleText(page, '#room-detail-title', '자동화 검증용 모집방');
     await page.locator('#room-member-content').waitFor({ state: 'visible' });
@@ -80,16 +89,15 @@ test('transit and taxi partial failures remain independent; building payload and
             : route.fulfill({ json: taxiFixture(payload, { amount: count === 3 ? null : 10001 }) }),
     });
     try {
-        await search(app.page);
-        await resultContains(app.page, '버스 검증용 연결 실패');
+        await search(app.page, '버스 검증용 연결 실패');
         await visibleText(app.page, '#taxi-content', '예상요금 약 10,001원');
         assert.equal(app.taxiRequests[0].location, app.requests[0].location);
         assert.equal(app.taxiRequests[0].campus, app.requests[0].campus);
         assert.equal(app.taxiRequests[0].lat, undefined, 'Campus building coordinates are resolved by the server');
-        await app.page.locator('#route-submit').click();
-        await resultContains(app.page, '총 소요 추정');
+        await submitJourney(app.page, '총 소요 추정');
+        await refreshTaxi(app.page);
         await visibleText(app.page, '#taxi-content', '택시 검증용 연결 실패');
-        await app.page.locator('#route-submit').click();
+        await refreshTaxi(app.page);
         await visibleText(app.page, '#taxi-content', '요금 조회 불가');
         assert.match(await app.page.locator('#taxi-content').innerText(), /택시 이동 약 10분/);
         assert.doesNotMatch(await app.page.locator('#taxi-content').innerText(), /0원|NaN|undefined/);
@@ -113,20 +121,23 @@ for (const changed of ['destination', 'campus', 'building']) test(`uncancellable
         });
         await search(app.page);
         await started;
-        await resultContains(app.page, '총 소요 추정');
         if (changed === 'destination') { await clearDestination(app.page); await selectDestination(app.page); }
         else if (changed === 'campus') await chooseBuilding(app.page, 'knu');
         else {
+            await selectTool(app.page, 'journey');
             const second = await app.page.locator('#building-select option').evaluateAll(options => options.filter(option => option.value)[1]?.value);
             assert.ok(second);
             await app.page.locator('#building-select').selectOption(second);
         }
-        await app.page.locator('#taxi-section').waitFor({ state: 'hidden' });
+        await selectTool(app.page, 'taxi');
+        assert.equal(await app.page.locator('#taxi-section').isVisible(), true);
+        assert.doesNotMatch(await app.page.locator('#taxi-content').innerText(), /12,345원/);
         const oldResponse = app.page.waitForResponse(response => new URL(response.url()).pathname === '/api/taxi/estimate');
         release(); await oldResponse;
         await app.page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
-        assert.equal(await app.page.locator('#taxi-section').isVisible(), false);
-        await app.page.locator('#route-submit').click();
+        assert.equal(await app.page.locator('#taxi-section').isVisible(), true);
+        assert.doesNotMatch(await app.page.locator('#taxi-content').innerText(), /12,345원/);
+        await app.page.locator('#taxi-refresh').click();
         await visibleText(app.page, '#taxi-content', '예상요금 약 20,001원');
         assert.doesNotMatch(await app.page.locator('#taxi-content').innerText(), /12,345/);
     } finally { release(); await app.close(); }
@@ -146,29 +157,47 @@ test('taxi estimate expiration clears values without automatic provider refresh'
 test('room configuration failure leaves transit and taxi usable', async browser => {
     const app = await openApp(browser);
     try {
-        await app.page.locator('#room-open-list').click();
+        await selectTool(app.page, 'rooms');
         await visibleText(app.page, '#room-status', '자동화 검증에서 채팅 기능을 사용하지 않아요');
-        await app.page.locator('#room-hide').click();
+        await selectTool(app.page, 'journey');
         await search(app.page);
-        await resultContains(app.page, '총 소요 추정');
         await visibleText(app.page, '#taxi-content', '택시 이동 약 10분');
     } finally { await app.close(); }
 });
 
-test('all-status and Seoul time filters are sent explicitly', async browser => {
+test('shared rooms open immediately in newest order without a search form', async browser => {
     const mock = mockRoom();
     const app = await openApp(browser, { roomHandler: mock.handler, timezoneId: 'America/New_York' });
     try {
-        await app.page.locator('#room-open-list').click();
+        await selectTool(app.page, 'rooms');
         await app.page.locator('#room-list .room-card').waitFor({ state: 'visible' });
-        assert.equal(new URLSearchParams(app.roomRequests.find(request => request.pathname === '/api/ride-rooms').query).get('status'), 'all');
-        await app.page.locator('#room-filter-from').fill('2030-01-01T10:00');
-        await app.page.locator('#room-filter-to').fill('2030-01-01T11:00');
-        await app.page.locator('#room-filter-form button[type="submit"]').click();
-        await app.page.locator('#room-list .room-card').waitFor({ state: 'visible' });
-        const query = new URLSearchParams(app.roomRequests.filter(request => request.pathname === '/api/ride-rooms').at(-1).query);
-        assert.equal(query.get('from'), '2030-01-01T10:00:00+09:00');
-        assert.equal(query.get('to'), '2030-01-01T11:00:00+09:00');
+        const query = new URLSearchParams(app.roomRequests.find(request => request.pathname === '/api/ride-rooms').query);
+        assert.equal(query.get('status'), 'active');
+        assert.equal(query.get('sort'), 'newest');
+        for (const name of ['q', 'from', 'to']) assert.equal(query.has(name), false);
+        assert.equal(await app.page.locator('#room-list-view :is(input, select, form)').count(), 0);
+    } finally { await app.close(); }
+});
+
+test('older servers still show active rooms and omit unsupported delete controls', async browser => {
+    const mock = mockRoom();
+    const app = await openApp(browser, { roomHandler: (route, url, request) => {
+        if (url.pathname !== '/api/ride-rooms') return mock.handler(route, url, request);
+        if (url.searchParams.get('status') === 'active') return route.fulfill({ status: 400,
+            json: { code: 'INVALID_STATUS', error: '모집 상태 조건을 확인하세요.' } });
+        if (!url.searchParams.has('cursor')) return route.fulfill({ json: {
+            rooms: [{ room: { ...mock.room, title: '종료된 검증방', status: 'closed' } }], next_cursor: 'old-page',
+        } });
+        return mock.handler(route, url, request);
+    } });
+    try {
+        await openMockRoom(app.page);
+        assert.equal(await app.page.locator('#room-delete').isVisible(), false);
+        const queries = app.roomRequests.filter(request => request.pathname === '/api/ride-rooms')
+            .map(request => new URLSearchParams(request.query));
+        assert.deepEqual(queries.map(query => query.get('status')), ['active', 'all', 'all']);
+        assert.equal(queries[2].get('cursor'), 'old-page');
+        assert.doesNotMatch(await app.page.locator('#room-list').innerText(), /종료된 검증방/);
     } finally { await app.close(); }
 });
 
@@ -188,9 +217,14 @@ test('room creation retries retain their ID and a changed search invalidates the
         await app.page.locator('#taxi-create-room').click();
         await app.page.locator('#room-title').fill('검증용 생성');
         await app.page.locator('#room-create-nickname').fill('검증용 방장');
+        const departure = new Date(Date.now() + 39 * 60000 + 9 * 3600000).toISOString().slice(0, 16) + ':12.125';
+        await app.page.locator('#room-departure').fill(departure);
+        await visibleText(app.page, '#room-create-requirement', '모이는 곳을 선택해 주세요');
         await app.page.locator('#room-meeting-query').fill('공개 장소');
         await app.page.locator('#room-meeting-options button').first().click();
+        await visibleText(app.page, '#room-create-requirement', '모이는 곳 공개 안내에 체크해 주세요');
         await app.page.locator('#room-meeting-confirm').check();
+        assert.equal(await app.page.locator('#room-create-requirement').isVisible(), false);
         await app.page.locator('#room-create-submit').click();
         await visibleText(app.page, '#room-status', '검증용 생성 연결 실패');
         await app.page.locator('#room-create-submit').click();
@@ -198,14 +232,16 @@ test('room creation retries retain their ID and a changed search invalidates the
         const attempts = app.roomRequests.filter(request => request.pathname === '/api/ride-rooms' && request.method === 'POST');
         assert.equal(attempts.length, 2);
         assert.equal(attempts[0].body.client_room_id, attempts[1].body.client_room_id);
+        assert.equal(attempts[1].body.departure_at, departure + '+09:00');
+        await app.page.locator('#room-detail-back').click();
         await app.page.locator('#room-create-current').click();
         await app.page.locator('#room-meeting-query').fill('공개 장소');
         await app.page.locator('#room-meeting-options button').first().click();
         await app.page.locator('#room-meeting-confirm').check();
         assert.equal(await app.page.locator('#room-create-submit').isEnabled(), true);
+        await selectTool(app.page, 'journey');
         await app.page.locator('#tab-knu').click();
-        assert.equal(await app.page.locator('#room-create-submit').isDisabled(), true);
-        await visibleText(app.page, '#room-create-context', '경로가 바뀌었어요');
+        assert.equal(await app.page.locator('#room-create-form').isVisible(), false);
         assert.equal(creates, 2);
     } finally { await app.close(); }
 });
@@ -244,7 +280,7 @@ test('desktop room metadata renders as text and controls fit the planner', async
     mock.participants[0].nickname = INJECTION;
     const app = await openApp(browser, { roomHandler: mock.handler, viewport: { width: 1440, height: 1000 } });
     try {
-        await app.page.locator('#room-open-list').click();
+        await selectTool(app.page, 'rooms');
         await app.page.locator('#room-list .room-card button').first().click();
         await visibleText(app.page, '#room-detail-title', INJECTION);
         assert.equal(await app.page.locator('#ride-room-section img').count(), 0);
@@ -338,7 +374,7 @@ test('switching rooms discards an old poll even when cancellation is ignored; fa
         const count = polls(app).length;
         await delay(3300);
         assert.equal(polls(app).length, count, 'First failed poll waits six seconds before retry');
-        await app.page.locator('#room-hide').click();
+        await selectTool(app.page, 'journey');
     } finally { release(); await app.close(); }
 });
 
@@ -362,12 +398,17 @@ if (process.env.CAPSTONE_LIVE_ROOM_TESTS === '1') test('two isolated browsers us
             'Real room checks require scripts/run_mobility_test_server.py with its disposable database and blocked providers');
         const page = first.page;
         await selectDestination(page);
-        await page.locator('#route-submit').click();
+        await submitJourney(page, '총 소요 추정');
+        await refreshTaxi(page);
         await visibleText(page, '#taxi-content', '택시 이동 약 10분');
         await page.locator('#taxi-create-room').click();
         assert.equal(await page.locator('#room-meeting-confirm').isDisabled(), true);
         assert.equal(await page.locator('#room-create-submit').isDisabled(), true);
-        assert.equal(await page.locator('#room-meeting-selected').isVisible(), false);
+        assert.equal(await page.locator('#room-meeting-consent').isVisible(), false);
+        assert.equal(await page.locator('#room-meeting-query').inputValue(), '');
+        assert.equal(await page.locator('#room-meeting-options button').count(), 0);
+        assert.equal(await page.locator('#room-meeting-hallym').inputValue(), '');
+        assert.equal(await page.locator('#room-meeting-knu').inputValue(), '');
         assert.equal(first.roomRequests.filter(request => request.method === 'POST').length, 0);
         const title = '검증 모집 ' + Date.now();
         await page.locator('#room-title').fill(title);
@@ -391,9 +432,7 @@ if (process.env.CAPSTONE_LIVE_ROOM_TESTS === '1') test('two isolated browsers us
         assert.ok(payload.headers['x-csrf-token']);
         assert.equal(payload.body.actor_id, undefined);
         assert.equal(payload.body.user_id, undefined);
-        await second.page.locator('#room-open-list').click();
-        await second.page.locator('#room-filter-q').fill(DESTINATION.name);
-        await second.page.locator('#room-filter-form button[type="submit"]').click();
+        await selectTool(second.page, 'rooms');
         await second.page.locator('#room-list .room-card').filter({ hasText: title }).locator('button').click();
         await second.page.locator('#room-join-form').waitFor({ state: 'visible' });
         assert.equal(await second.page.locator('#room-member-content').isVisible(), false);
@@ -436,8 +475,7 @@ if (process.env.CAPSTONE_LIVE_ROOM_TESTS === '1') test('two isolated browsers us
         await preview(page, 'mobile-shared-ride-test-preview.png');
         hostTab = await first.context.newPage();
         await hostTab.goto(BASE_URL);
-        await activateRealMobility(hostTab);
-        await hostTab.locator('#room-open-list').click();
+        await selectTool(hostTab, 'rooms');
         await hostTab.locator('#room-list .room-card').filter({ hasText: title }).locator('button').click();
         await visibleText(hostTab, '#room-detail-count', '현재 4명');
         assert.equal(await hostTab.locator('#room-join-form').isVisible(), false);

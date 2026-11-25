@@ -1,15 +1,18 @@
 import os
 from datetime import datetime
 from flask import Flask, render_template, request, jsonify
+from flask.sessions import SecureCookieSessionInterface
 from math import isfinite
 from werkzeug.exceptions import HTTPException
 import pandas as pd
 from services.itx_pair_service import bp as itx_pair_bp
+from services.itx_pair_service import planned_itx_trips
 
 from services.settings import load_settings
 from services.place_search_service import PlaceSearchError, PlaceSearchService
 from services.public_transit_client import PublicDataError, PublicTransitClient
 from services.csv_transit_repository import CsvTransitRepository
+from services.chuncheon_bus_timing import ChuncheonBusTiming
 from services.transit_service import TransitService
 from services.walking_service import WalkingService
 from services.shuttle_repository import ShuttleDataError, ShuttleRepository
@@ -19,34 +22,82 @@ from services.taxi_service import TaxiService
 from services.taxi_routes import create_taxi_blueprint
 from services.ride_room_repository import RideRoomRepository
 from services.ride_room_service import RideRoomService
-from services.ride_room_routes import create_ride_room_blueprint
+from services.ride_room_routes import create_ride_room_blueprint, is_loopback_http_request
+from services.intercity_booking_service import BookingIntercityService
+from services.intercity_routes import create_intercity_blueprint
+from services.mobility_validation import MobilityInputError, require_json_object
+from services.motis_journey_provider import MotisJourneyProvider
+from services.national_bus_repository import NationalBusRepository
+from services.national_journey_service import (
+    IntercityJourneyProvider, NationalJourneyService, RegionalBusJourneyProvider, journey_departure, journey_point,
+)
+from services.national_transit_repository import NationalTransitRepository
+from services.gyeonggi_bus_arrivals import GyeonggiBusArrivals
+from services.seoul_bus_arrivals import SeoulBusArrivals
+from services.rail_bus_transfer import RailBusTransfers
+from services.commute_advice_service import CommuteAdviceService
+from services.commute_advice_routes import create_commute_advice_blueprint
 
 base_dir = os.path.abspath(os.path.dirname(__file__))
 template_dir = os.path.join(base_dir, 'templates')
+national_data_dir = os.path.join(base_dir, 'data')
+campus_data_dir = os.path.join(national_data_dir, 'raw', 'campus')
 settings = load_settings(base_dir)
 
 app = Flask(__name__, template_folder=template_dir)
 app.config["MAX_CONTENT_LENGTH"] = 16 * 1024
 app.register_blueprint(itx_pair_bp)
+intercity_service = BookingIntercityService()
+app.register_blueprint(create_intercity_blueprint(intercity_service))
+commute_advice_service = CommuteAdviceService(
+    settings.weather_data_key, settings.airkorea_data_key,
+    station_name=settings.airkorea_station_name,
+)
+app.register_blueprint(create_commute_advice_blueprint(commute_advice_service))
 # ==========================================
 # 🔑 1. API 키 설정
 # ==========================================
 NAVER_MAP_CLIENT_ID = settings.naver_map_client_id
 TMAP_APP_KEY = settings.tmap_app_key
 PUBLIC_DATA_KEY = settings.public_data_key
+BUS_DATA_KEY = settings.bus_data_key
 CITY_CODE = "32010" # 춘천시
 
-transit_client = PublicTransitClient(PUBLIC_DATA_KEY, CITY_CODE)
+transit_client = PublicTransitClient(BUS_DATA_KEY, CITY_CODE)
 walking_service = WalkingService(TMAP_APP_KEY)
-transit_repository = CsvTransitRepository(os.path.join(base_dir, "data", "chuncheon_bus_routes_20260326.csv"))
-shuttle_repository = ShuttleRepository(os.path.join(base_dir, "한림대_셔틀버스.csv"))
+motis_user_agent = "HallymCapstone/1.0 (+https://github.com/skdda1073-dev/-)"
+motis_journey_provider = MotisJourneyProvider(
+    settings.motis_base_url, user_agent=motis_user_agent,
+) if settings.motis_base_url else None
+ktdb_reference_provider = MotisJourneyProvider(
+    settings.ktdb_motis_base_url, user_agent=motis_user_agent,
+) if settings.ktdb_motis_base_url else None
+
+
+def motis_walking_time(*points):
+    if motis_journey_provider is not None:
+        measured = motis_journey_provider.walking_time(*points)
+        if measured != (-1, -1) or ktdb_reference_provider is None:
+            return measured
+    # The reference server uses a historical timetable, but has its own road graph.
+    return ktdb_reference_provider.walking_time(*points, reference=True)
+
+
+walking_fallback = motis_walking_time if motis_journey_provider or ktdb_reference_provider else None
+transit_repository = CsvTransitRepository(os.path.join(national_data_dir, "raw", "bus", "chuncheon_bus_routes_20260326.csv"))
+shuttle_repository = ShuttleRepository(os.path.join(campus_data_dir, "한림대_셔틀버스.csv"))
 shuttle_profile = ShuttleProfile(
     shuttle_repository, os.path.join(base_dir, "data", "hallym_shuttle_profile.json"),
-    os.path.join(base_dir, "한림대학교 건물별 좌표.csv"), transit_repository,
+    os.path.join(campus_data_dir, "한림대학교 건물별 좌표.csv"), transit_repository,
 )
-shuttle_service = ShuttleService(shuttle_repository, walking_service.get_time, profile=shuttle_profile)
+shuttle_service = ShuttleService(
+    shuttle_repository, walking_service.get_precise_time, profile=shuttle_profile,
+    routing_walk_fallback=walking_fallback,
+)
 transit_service = TransitService(
-    transit_client, walking_service.get_time, transit_repository, shuttle_service=shuttle_service,
+    transit_client, walking_service.get_precise_time, shuttle_service=shuttle_service,
+    ride_timing=ChuncheonBusTiming(os.path.join(national_data_dir, "normalized", "bus", "chuncheon_ride_time_estimates.json")),
+    shuttle_planner=shuttle_service.routing_plan, walking_fallback=walking_fallback,
 )
 
 # ==========================================
@@ -56,22 +107,21 @@ CAMPUS_BUILDINGS = {
     "hallym": {},
     "knu": {}
 }
-ALL_BUILDINGS = {}
+
 
 def load_csv_data(filename, campus_key):
-    filepath = os.path.join(base_dir, filename)
+    filepath = os.path.join(campus_data_dir, filename)
     if not os.path.exists(filepath):
         return
     try:
         df = pd.read_csv(filepath, encoding='utf-8')
     except UnicodeDecodeError:
         df = pd.read_csv(filepath, encoding='cp949')
-        
+
     for _, row in df.iterrows():
         b_name = str(row['건물명']).strip()
         coords = (float(row['위도(lat)']), float(row['경도(lon)']))
         CAMPUS_BUILDINGS[campus_key][b_name] = coords
-        ALL_BUILDINGS[b_name] = coords
 
 try:
     load_csv_data('한림대학교 건물별 좌표.csv', 'hallym')
@@ -80,7 +130,32 @@ try:
 except Exception as e:
     print("CSV 로드 오류:", e)
 
-place_search_service = PlaceSearchService(TMAP_APP_KEY, CAMPUS_BUILDINGS)
+national_transit_repository = NationalTransitRepository(national_data_dir, itx_schedule=planned_itx_trips)
+place_search_service = PlaceSearchService(TMAP_APP_KEY, CAMPUS_BUILDINGS,
+                                         station_lookup=national_transit_repository.matching_stations)
+national_bus_repository = NationalBusRepository(national_data_dir)
+seoul_bus_arrivals = SeoulBusArrivals(settings.seoul_arrival_key) if settings.seoul_arrival_key else None
+rail_bus_transfers = RailBusTransfers(
+    national_data_dir, settings.bus_data_key, walking_service.get_precise_time,
+    gyeonggi_arrivals=GyeonggiBusArrivals(settings.gbis_api_key) if settings.gbis_api_key else None,
+    walking_fallback=walking_fallback,
+    seoul_arrivals=seoul_bus_arrivals, seoul_routes=national_bus_repository.nearby_seoul_routes,
+)
+regional_bus_journey_provider = RegionalBusJourneyProvider(
+    national_bus_repository, walking_service.get_precise_time, local_transit=transit_service,
+    shuttle_service=shuttle_service, regional_bus_plan=rail_bus_transfers.plan_direct,
+)
+national_journey_service = NationalJourneyService(
+    national_transit_repository, walking_service.get_precise_time,
+    intercity=IntercityJourneyProvider(
+        intercity_service, place_search_service, os.path.join(national_data_dir, "chuncheon_intercity_terminals.json"),
+        walking_service.get_precise_time, regional_transit=national_transit_repository,
+        regional_bus=regional_bus_journey_provider.connections, motis=motis_journey_provider,
+        walking_fallback=walking_fallback,
+    ),
+    bus_repository=national_bus_repository, motis=motis_journey_provider, regional_bus=regional_bus_journey_provider,
+    rail_bus_transfers=rail_bus_transfers, walking_fallback=walking_fallback, ktdb_reference=ktdb_reference_provider,
+)
 
 # Independent mobility APIs preserve the existing transit response contract.
 taxi_service = TaxiService(
@@ -98,7 +173,7 @@ ride_room_service = RideRoomService(
 )
 chat_configured = (
     len(settings.flask_secret_key.encode("utf-8")) >= 32
-    and settings.flask_secret_key not in {TMAP_APP_KEY, PUBLIC_DATA_KEY, NAVER_MAP_CLIENT_ID}
+    and settings.flask_secret_key not in {TMAP_APP_KEY, PUBLIC_DATA_KEY, BUS_DATA_KEY, NAVER_MAP_CLIENT_ID}
 )
 app.config.update(
     SECRET_KEY=settings.flask_secret_key if chat_configured else None,
@@ -107,6 +182,14 @@ app.config.update(
     SESSION_COOKIE_SAMESITE="Lax",
     SESSION_COOKIE_SECURE=settings.session_cookie_secure,
 )
+
+
+class LoopbackCompatibleSessionInterface(SecureCookieSessionInterface):
+    def get_cookie_secure(self, app):
+        return super().get_cookie_secure(app) and not is_loopback_http_request()
+
+
+app.session_interface = LoopbackCompatibleSessionInterface()
 app.register_blueprint(create_taxi_blueprint(taxi_service, CAMPUS_BUILDINGS))
 app.register_blueprint(create_ride_room_blueprint(ride_room_service, configured=chat_configured))
 
@@ -114,7 +197,9 @@ app.register_blueprint(create_ride_room_blueprint(ride_room_service, configured=
 @app.errorhandler(HTTPException)
 def mobility_http_error(error):
     # Router-level 404/405 are not handled by a Blueprint error handler.
-    if request.path == "/api/ride-rooms" or request.path.startswith(("/api/ride-rooms/", "/api/taxi/")):
+    json_endpoints = ("/api/ride-rooms", "/api/journeys", "/api/commute-advice")
+    json_prefixes = ("/api/ride-rooms/", "/api/taxi/", "/api/intercity/", "/api/commute-advice/")
+    if request.path in json_endpoints or request.path.startswith(json_prefixes):
         status = error.code or 500
         code = {404: "NOT_FOUND", 405: "METHOD_NOT_ALLOWED", 413: "REQUEST_TOO_LARGE"}.get(status, "INVALID_REQUEST")
         response = jsonify(code=code, error="요청 경로 또는 형식을 확인해 주세요.")
@@ -145,6 +230,7 @@ def home():
         'index.html',
         hallym_buildings=list(CAMPUS_BUILDINGS["hallym"].keys()),
         knu_buildings=list(CAMPUS_BUILDINGS["knu"].keys()),
+        campus_buildings=CAMPUS_BUILDINGS,
         naver_map_client_id=NAVER_MAP_CLIENT_ID,
     )
 
@@ -158,13 +244,20 @@ def health():
     except PublicDataError:
         csv_check = {"status": "error", "code": "CSV_DATA"}
     campus_ok = all(CAMPUS_BUILDINGS.get(campus) for campus in ("hallym", "knu"))
-    ready = csv_check["status"] == "ok" and campus_ok and configured["tmap_app_key"]
+    ready = (csv_check["status"] == "ok" and campus_ok
+             and configured["tmap_app_key"] and configured["tago_api_key"])
     body = {
         "status": "ok" if ready else "degraded",
         "configured": configured,
-        "checks": {"csv": csv_check, "campus": {"status": "ok" if campus_ok else "error"}},
+        "checks": {"csv": csv_check, "campus": {"status": "ok" if campus_ok else "error"},
+                   "motis": {"status": "configured" if motis_journey_provider is not None else "disabled"},
+                   "seoul_bus_arrivals": {"status": "configured" if seoul_bus_arrivals is not None else "disabled"},
+                   "bus_routes": {
+                       "source": "tago", "status": "configured" if configured["tago_api_key"] else "missing_key",
+                       "key_setting": "TAGO_API_KEY" if settings.tago_api_key else "PUBLIC_DATA_KEY",
+                   }},
         "external_apis_verified": False,
-        "routing_mode": "csv_order_candidates",
+        "routing_mode": "tago_route_candidates",
     }
     return jsonify(body), 200 if ready else 503
 
@@ -172,13 +265,29 @@ def health():
 def search_poi():
     keyword = request.args.get('q', '').strip()
     try:
-        suggestions = place_search_service.search(keyword, campus=request.args.get("campus"))
+        suggestions = place_search_service.search(keyword, campus=request.args.get("campus"),
+                                                  scope=request.args.get("scope", "local"))
     except PlaceSearchError as error:
         return jsonify({"error": str(error), "code": error.code}), error.status_code
     response = jsonify(suggestions)
     if any(item.get("search_warning") for item in suggestions):
         response.headers["X-Search-Partial"] = "true"
     return response
+
+@app.route('/api/journeys', methods=['POST'])
+def national_journeys():
+    try:
+        data = require_json_object(request.get_json(silent=True))
+        origin = journey_point(data.get("origin"), "origin", CAMPUS_BUILDINGS)
+        destination = journey_point(data.get("destination"), "destination", CAMPUS_BUILDINGS)
+        departure_at = journey_departure(data.get("departure_at"))
+        response = jsonify(national_journey_service.plan(origin, destination, departure_at))
+        status = 200
+    except MobilityInputError as error:
+        response = jsonify(code=error.code, error=str(error))
+        status = error.status_code
+    response.headers["Cache-Control"] = "no-store"
+    return response, status
 
 @app.route('/shuttle_timetable', methods=['GET'])
 def shuttle_timetable():

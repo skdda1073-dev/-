@@ -1,6 +1,8 @@
 /** Shared browser state and application startup. No location permission is requested here. */
 var selectedCampus = 'hallym';
 var originMode = 'gps';
+var journeyScope = 'local';
+var journeyDirection = 'from_campus';
 var lastSearchMode = null;
 var currentLat = null;
 var currentLon = null;
@@ -8,14 +10,15 @@ var currentPositionAt = 0;
 var destLat = null;
 var destLon = null;
 var destName = '';
+var destAddress = '';
 var searchTimer = null;
 var map = null;
 var startMarker = null;
 var stationMarkers = [];
 
 var campusCenter = {
-    hallym: { lat: 37.8863, lon: 127.7381 },
-    knu: { lat: 37.8691, lon: 127.7442 }
+    hallym: { lat: 37.88665, lon: 127.7391, zoom: 16 },
+    knu: { lat: 37.8691, lon: 127.7442, zoom: 15 }
 };
 var buildingData = window.BUILDING_DATA || { hallym: [], knu: [] };
 
@@ -23,11 +26,23 @@ window.AppModules = window.AppModules || {};
 window.AppState = {
     getSelectedCampus: function() { return selectedCampus; },
     setSelectedCampus: function(value) {
-        if (value === 'hallym' || value === 'knu') selectedCampus = value;
+        if ((value !== 'hallym' && value !== 'knu') || value === selectedCampus) return;
+        selectedCampus = value;
+        if (typeof window.CustomEvent === 'function' && typeof window.dispatchEvent === 'function') {
+            window.dispatchEvent(new window.CustomEvent('commute:campus-change', { detail: { campus: value } }));
+        }
     },
     getOriginMode: function() { return originMode; },
     setOriginMode: function(value) {
         if (value === 'gps' || value === 'building') originMode = value;
+    },
+    getJourneyScope: function() { return journeyScope; },
+    setJourneyScope: function(value) {
+        if (value === 'local' || value === 'national') journeyScope = value;
+    },
+    getJourneyDirection: function() { return journeyDirection; },
+    setJourneyDirection: function(value) {
+        if (value === 'from_campus' || value === 'to_campus') journeyDirection = value;
     },
     getLastSearchMode: function() { return lastSearchMode; },
     setLastSearchMode: function(value) { lastSearchMode = value; },
@@ -50,17 +65,20 @@ window.AppState = {
             ? { lat: currentLat, lon: currentLon, capturedAt: currentPositionAt } : null;
     },
     getDestination: function() { return { name: destName, lat: destLat, lon: destLon }; },
-    setDestination: function(name, lat, lon) {
+    getDestinationAddress: function() { return destAddress; },
+    setDestination: function(name, lat, lon, address) {
         if (typeof name !== 'string' || !name.trim() || !this.isValidPosition(lat, lon)) return false;
         destName = name.trim();
         destLat = Number(lat);
         destLon = Number(lon);
+        destAddress = typeof address === 'string' ? address.trim() : '';
         return true;
     },
     clearDestination: function() {
         destName = '';
         destLat = null;
         destLon = null;
+        destAddress = '';
     }
 };
 
@@ -78,7 +96,7 @@ window.AppState = {
                 console.error('교내 건물 목록을 읽지 못했습니다:', error);
             }
         }
-        ['search', 'ui', 'map'].forEach(function(name) {
+        ['shell', 'search', 'ui', 'map', 'mapJourney', 'commuteAdvice'].forEach(function(name) {
             const module = window.AppModules[name];
             if (!module || typeof module.init !== 'function') return;
             try {

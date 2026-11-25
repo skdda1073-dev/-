@@ -9,7 +9,7 @@ import unittest
 from services.shuttle_repository import ShuttleDataError, ShuttleRepository
 
 
-DATA_PATH = Path(__file__).resolve().parents[1] / "한림대_셔틀버스.csv"
+DATA_PATH = Path(__file__).resolve().parents[1] / "data" / "raw" / "campus" / "한림대_셔틀버스.csv"
 COLUMNS = ["노선명", "방면", "정류장", "시간"]
 
 

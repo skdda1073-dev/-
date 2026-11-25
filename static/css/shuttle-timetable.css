@@ -1,0 +1,247 @@
+#shuttle-timetable {
+    min-width: 0;
+    margin-top: 16px;
+}
+#shuttle-timetable .shuttle-controls { display: grid; gap: 14px; }
+#shuttle-timetable .shuttle-line-fields,
+#shuttle-timetable .shuttle-date-fields {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+}
+#shuttle-timetable .shuttle-date-fields {
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: end;
+}
+#shuttle-timetable .shuttle-controls label {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    min-width: 0;
+    color: var(--green-deep);
+    font-size: 13px;
+    font-weight: 700;
+}
+#shuttle-timetable .shuttle-timezone {
+    margin-left: 4px;
+    color: #53685a;
+    font-weight: 500;
+}
+#shuttle-timetable .shuttle-stop-fields {
+    position: relative;
+    display: grid;
+    gap: 10px;
+    padding: 12px 12px 12px 31px;
+    border: 1px solid #d8e5dc;
+    border-radius: 12px;
+    background: #f7faf7;
+}
+#shuttle-timetable .shuttle-stop-fields::before {
+    position: absolute;
+    top: 21px;
+    bottom: 64px;
+    left: 16px;
+    width: 1px;
+    background: #83af9d;
+    content: '';
+}
+#shuttle-timetable .shuttle-stop-fields label { position: relative; }
+#shuttle-timetable .shuttle-stop-fields label::before {
+    position: absolute;
+    top: 4px;
+    left: -19px;
+    width: 9px;
+    height: 9px;
+    border: 2px solid var(--green);
+    border-radius: 50%;
+    background: white;
+    content: '';
+}
+#shuttle-timetable .shuttle-stop-fields label+label::before { background: var(--green); }
+#shuttle-timetable select,
+#shuttle-timetable input {
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+    min-height: 44px;
+    padding: 7px 9px;
+    border: 1px solid #b9ccbe;
+    border-radius: 9px;
+    background: white;
+    color: var(--ink);
+    font: inherit;
+    font-size: 16px;
+    font-weight: 500;
+}
+#shuttle-timetable .shuttle-controls button {
+    min-height: 44px;
+    font: inherit;
+    font-size: 13px;
+    font-weight: 700;
+}
+#shuttle-timetable .shuttle-now {
+    padding: 7px 9px;
+    border: 1px solid #bdd6c6;
+    border-radius: 9px;
+    background: var(--green-soft);
+    color: var(--green-deep);
+}
+#shuttle-timetable .shuttle-query {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    padding: 9px 12px;
+    border-radius: 10px;
+    background: var(--green-dark);
+    color: white;
+}
+#shuttle-timetable .shuttle-query:hover:not(:disabled) { background: var(--green-deep); }
+#shuttle-timetable .shuttle-query:disabled { opacity: .6; cursor: default; }
+#shuttle-timetable .shuttle-load-state {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}
+#shuttle-timetable #shuttle-refresh {
+    flex: 0 0 auto;
+    min-height: 44px;
+    padding: 4px;
+    background: transparent;
+    color: var(--green-dark);
+    font-size: 13px;
+    font-weight: 750;
+}
+#shuttle-timetable .shuttle-status,
+#shuttle-timetable .shuttle-query-context,
+#shuttle-timetable .shuttle-note {
+    margin: 0;
+    color: #53685a;
+    font-size: 13px;
+    line-height: 1.5;
+}
+#shuttle-timetable .shuttle-status[data-state="error"] { color: #973a24; }
+#shuttle-timetable .shuttle-status[data-state="notice"] { color: #755117; }
+#shuttle-timetable .shuttle-results { margin: 14px 0 18px; }
+#shuttle-timetable h3 { font-size: 17px; letter-spacing: -.025em; }
+#shuttle-timetable #shuttle-candidates-heading:focus-visible { outline: 2px solid var(--green-dark); outline-offset: 4px; }
+#shuttle-timetable .shuttle-query-context { margin: 4px 0; }
+#shuttle-timetable .shuttle-next-card {
+    display: grid;
+    gap: 10px;
+    margin-top: 10px;
+    padding: 14px;
+    border: 1px solid #c0d9c9;
+    border-radius: 13px;
+    background: #edf7ef;
+}
+#shuttle-timetable .shuttle-next-stops,
+#shuttle-timetable .shuttle-later-row {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+}
+#shuttle-timetable .shuttle-next-stop,
+#shuttle-timetable .shuttle-later-side { min-width: 0; }
+#shuttle-timetable .shuttle-next-stop--arrival,
+#shuttle-timetable .shuttle-later-side + .shuttle-later-side {
+    padding-left: 10px;
+    border-left: 1px solid #c8ded0;
+}
+#shuttle-timetable .shuttle-time-label,
+#shuttle-timetable .shuttle-clock-date {
+    display: block;
+    color: #496256;
+    font-size: 12px;
+    line-height: 1.4;
+}
+#shuttle-timetable .shuttle-clock-date { margin: 3px 0; font-weight: 650; }
+#shuttle-timetable .shuttle-next-route {
+    margin: 3px 0 8px;
+    color: var(--green-deep);
+    font-size: 15px;
+    line-height: 1.4;
+    overflow-wrap: anywhere;
+}
+#shuttle-timetable .shuttle-next-time,
+#shuttle-timetable .shuttle-next-arrival,
+#shuttle-timetable .shuttle-later-time,
+#shuttle-timetable .shuttle-later-arrival {
+    display: block;
+    margin-bottom: 3px;
+    color: var(--green-dark);
+    font-size: 32px;
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -.04em;
+    line-height: 1.1;
+}
+#shuttle-timetable .shuttle-next-arrival:not(time),
+#shuttle-timetable .shuttle-later-arrival:not(time) {
+    color: #53685a;
+    font-size: 16px;
+    letter-spacing: 0;
+    line-height: 1.35;
+}
+#shuttle-timetable .shuttle-condition,
+#shuttle-timetable .shuttle-location-note {
+    margin: 0;
+    color: #68501e;
+    font-size: 12px;
+    line-height: 1.5;
+}
+#shuttle-timetable #shuttle-later > h4 { margin: 16px 0 7px; font-size: 14px; }
+#shuttle-timetable .shuttle-later-row {
+    margin-top: 6px;
+    padding: 9px 12px;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+}
+#shuttle-timetable .shuttle-later-time,
+#shuttle-timetable .shuttle-later-arrival { font-size: 21px; }
+#shuttle-timetable .shuttle-later-row > .shuttle-condition { grid-column: 1 / -1; }
+#shuttle-timetable .shuttle-disclosure {
+    margin-top: 8px;
+    border-top: 1px solid var(--line);
+}
+#shuttle-timetable summary {
+    min-height: 44px;
+    padding: 12px 0;
+    color: var(--green-deep);
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+}
+#shuttle-timetable .shuttle-warnings {
+    padding-left: 18px;
+    margin: 4px 0;
+    color: #68501e;
+    font-size: 12px;
+    line-height: 1.6;
+}
+#shuttle-timetable .shuttle-warnings:empty { display: none; }
+#shuttle-timetable .shuttle-trip {
+    margin-bottom: 8px;
+    padding: 10px 12px;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+}
+#shuttle-timetable .shuttle-trip h4 { margin-bottom: 3px; font-size: 14px; }
+#shuttle-timetable .shuttle-trip ol { list-style: none; margin: 6px 0 0; padding: 0; }
+#shuttle-timetable .shuttle-trip-stop {
+    display: grid;
+    grid-template-columns: 54px minmax(0, 1fr);
+    gap: 10px;
+    padding: 7px 0;
+    border-top: 1px solid var(--line);
+}
+#shuttle-timetable .shuttle-trip-time {
+    color: var(--green-dark);
+    font-size: 15px;
+    font-weight: 750;
+    font-variant-numeric: tabular-nums;
+}
+#shuttle-timetable .shuttle-trip-station strong,
+#shuttle-timetable .shuttle-trip-station small { display: block; font-size: 13px; font-weight: 650; }
+#shuttle-timetable .shuttle-trip-station small { color: #53685a; font-size: 12px; font-weight: 500; }

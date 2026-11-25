@@ -8,36 +8,89 @@
     const originSelect = root.querySelector('#itx-origin');
     const destSelect = root.querySelector('#itx-destination');
     const dateInput = root.querySelector('#itx-date');
+    const timeInput = root.querySelector('#itx-time');
+    const swapButton = root.querySelector('#itx-swap');
     const loadButton = root.querySelector('#itx-load');
     const status = root.querySelector('#itx-status');
     const warning = root.querySelector('#itx-warning');
-    const tableWrap = root.querySelector('#itx-table-wrap');
-    const tableBody = root.querySelector('#itx-table-body');
+    const results = root.querySelector('#itx-results');
+    const resultsHeading = root.querySelector('#itx-results-heading');
+    const resultMeta = root.querySelector('#itx-result-meta');
+    const trainList = root.querySelector('#itx-train-list');
+    const panel = document.getElementById('transport-panel-subway');
 
     let requestVersion = 0;
+    let requestController = null;
+    let queryBusy = false;
+    let stationLoading = false;
+    let stationReady = false;
     let availableStations = [];
     let stationWarning = '';
 
-    const display = (value) => value === null || value === undefined || String(value).trim() === ''
-        ? '—' : String(value);
-
-    function addCell(row, value) {
-        const cell = document.createElement('td');
-        cell.textContent = display(value); // 외부 API 문자열을 HTML로 삽입하지 않음
-        row.appendChild(cell);
+    function node(tag, value, className) {
+        const element = document.createElement(tag);
+        if (value !== undefined) element.textContent = String(value);
+        if (className) element.className = className;
+        return element;
     }
 
-    function addTrainRow(train) {
-        const row = document.createElement('tr');
-        addCell(row, train.train_no);
-        addCell(row, `${train.origin}역`);
-        addCell(row, train.departure_time);
-        addCell(row, `${train.destination}역`);
-        addCell(row, train.arrival_time);
+    function announce(message, state = '') {
+        status.textContent = message;
+        status.setAttribute('data-state', state);
+    }
+
+    function updateButton() {
+        loadButton.disabled = stationLoading || queryBusy;
+        loadButton.textContent = stationLoading ? '역 목록 확인 중…' : queryBusy ? '시간표 조회 중…'
+            : stationReady ? '시간표 조회' : '역 목록 다시 불러오기';
+        swapButton.disabled = !stationReady || originSelect.value === destSelect.value
+            || !availableStations.includes(originSelect.value) || !availableStations.includes(destSelect.value);
+        root.setAttribute('aria-busy', String(stationLoading || queryBusy));
+    }
+
+    function clearResults() {
+        results.hidden = true;
+        resultsHeading.textContent = '';
+        resultMeta.textContent = '';
+        trainList.replaceChildren();
+        warning.hidden = true;
+        warning.textContent = '';
+    }
+
+    function invalidate() {
+        requestVersion += 1;
+        if (requestController) requestController.abort();
+        requestController = null;
+        queryBusy = false;
+        clearResults();
+        updateButton();
+    }
+
+    function selectionChanged() {
+        invalidate();
+        announce('');
+    }
+
+    function addTrain(train) {
+        const item = node('li', undefined, 'itx-train');
+        const article = node('article');
+        article.setAttribute('aria-label', 'ITX-청춘 ' + train.train_no);
+        const times = node('div', undefined, 'itx-train-times');
+        for (const [label, value] of [['출발', train.departure_time], ['도착', train.arrival_time]]) {
+            const group = node('div', undefined, 'itx-time-group');
+            const time = node('time', value, 'itx-time');
+            time.setAttribute('datetime', value);
+            group.append(node('span', label, 'itx-time-label'), time);
+            times.appendChild(group);
+        }
         const fare = Number(train.fare);
-        addCell(row, train.fare !== null && train.fare !== undefined && Number.isFinite(fare)
-            ? `${fare.toLocaleString('ko-KR')}원` : '—');
-        tableBody.appendChild(row);
+        const fareText = train.fare !== null && train.fare !== undefined && String(train.fare).trim() !== ''
+            && Number.isSafeInteger(fare) && fare >= 0 ? `성인 ${fare.toLocaleString('ko-KR')}원` : '요금 미제공';
+        const details = node('div', undefined, 'itx-train-details');
+        details.append(node('span', '열차 ' + train.train_no), node('span', fareText));
+        article.append(times, details);
+        item.appendChild(article);
+        trainList.appendChild(item);
     }
 
     function makeOptions(select, stations, selectedName) {
@@ -45,15 +98,14 @@
         for (const station of stations) {
             const option = document.createElement('option');
             option.value = station;
-            option.textContent = `${station}역`;
+            option.textContent = station;
             select.appendChild(option);
         }
         if (stations.includes(selectedName)) select.value = selectedName;
     }
 
-    function updateDestinationOptions() {
+    function updateDestinationOptions(previous = destSelect.value) {
         const origin = originSelect.value;
-        const previous = destSelect.value;
         const destinations = availableStations.filter(name => name !== origin);
         const preferred = destinations.includes(previous) ? previous
             : destinations.includes('마석') ? '마석'
@@ -61,108 +113,152 @@
         makeOptions(destSelect, destinations, preferred);
     }
 
-    async function loadTimetable() {
-        const currentRequest = ++requestVersion;
-        const origin = originSelect.value;
-        const destination = destSelect.value;
-        const date = dateInput.value.replace(/-/g, '');
+    function validTime(value) {
+        return typeof value === 'string' && /^(?:[01]\d|2[0-3]):[0-5]\d$/.test(value);
+    }
 
-        if (!origin || !destination || !/^\d{8}$/.test(date)) {
-            status.textContent = '출발역, 도착역, 조회 날짜를 확인해 주세요.';
+    async function loadTimetable() {
+        if (loadButton.disabled) return;
+        if (!stationReady) { loadStationOptions(); return; }
+        invalidate();
+        const currentRequest = requestVersion;
+        const selected = {
+            origin: originSelect.value,
+            destination: destSelect.value,
+            date: dateInput.value.replace(/-/g, ''),
+            displayDate: dateInput.value,
+            fromTime: timeInput.value || '00:00',
+        };
+        const { origin, destination, date, fromTime } = selected;
+
+        if (!origin || !destination || !/^\d{8}$/.test(date) || !validTime(fromTime)) {
+            announce('선택한 역과 날짜·시각을 확인해 주세요.', 'error');
             return;
         }
         if (origin === destination) {
-            status.textContent = '출발역과 도착역을 다르게 골라 주세요.';
+            announce('출발역과 도착역을 다르게 골라 주세요.', 'error');
             return;
         }
 
-        loadButton.disabled = true;
-        status.textContent = `${origin}역 → ${destination}역 ITX 시간표를 조회하고 있어요.`;
-        tableWrap.hidden = true;
-        tableBody.replaceChildren();
-        warning.hidden = true;
-        warning.textContent = '';
-
+        queryBusy = true;
+        updateButton();
+        announce('시간표 조회 중…');
+        const controller = new AbortController();
+        requestController = controller;
+        const shell = window.AppModules?.shell;
+        const navigation = shell?.getNavigation();
         const params = new URLSearchParams({origin, destination, date});
         try {
             const response = await fetch(`/api/itx/route?${params}`, {
                 headers: {Accept: 'application/json'},
+                signal: controller.signal,
             });
             const data = await response.json().catch(() => null);
             if (currentRequest !== requestVersion) return;
             if (!response.ok) {
-                if (response.status === 404) {
-                    throw new Error('ITX 구간조회 API가 없어요. app.py에 Blueprint를 등록했는지 확인해 주세요.');
-                }
-                throw new Error(data?.error || `열차 시간표 조회에 실패했어요. (HTTP ${response.status})`);
+                throw new Error(response.status >= 500 || response.status === 404 ? '열차 시간표에 연결하지 못했어요. 잠시 후 다시 조회해 주세요.'
+                    : data?.error || '열차 시간표 조회에 실패했어요. 선택한 구간과 날짜를 확인해 주세요.');
             }
-            if (!data || !Array.isArray(data.trains)) {
-                throw new Error('서버가 예상과 다른 시간표 형식을 반환했어요.');
+            if (!data || !Array.isArray(data.trains) || data.date !== date || data.origin !== origin || data.destination !== destination
+                || data.trains.some(train => !train || train.origin !== origin || train.destination !== destination
+                    || typeof train.train_no !== 'string' || !train.train_no.trim()
+                    || !validTime(train.departure_time) || !validTime(train.arrival_time))) {
+                throw new Error('조회 결과의 구간과 시각을 확인할 수 없어요. 다시 조회해 주세요.');
             }
 
-            const count = data.trains.length;
-            status.textContent = `${dateInput.value} · ${origin}역 → ${destination}역 · 직통 ITX-청춘 ${count}건`;
+            const trains = data.trains.filter(train => train.departure_time >= fromTime);
+            const count = trains.length;
+            const timeLabel = fromTime === '00:00' ? '' : ` · ${fromTime} 이후`;
+            resultsHeading.textContent = `${origin}역 → ${destination}역`;
+            resultMeta.textContent = `${selected.displayDate}${timeLabel} · 직통 ITX-청춘 ${count}편 · 계획 시간표`;
             if (count) {
-                data.trains.forEach(addTrainRow);
-                tableWrap.hidden = false;
+                trains.forEach(addTrain);
+                announce('', 'ok');
             } else {
-                status.textContent += ' · 조회된 열차가 없어요. 해당 날짜에 미운행·미정차 또는 데이터 미제공일 수 있어요.';
+                const message = data.trains.length ? `${fromTime} 이후 출발하는 열차가 없어요.`
+                    : '조회된 열차가 없어요. 해당 날짜에 미운행·미정차 또는 데이터 미제공일 수 있어요.';
+                trainList.appendChild(node('li', message, 'itx-empty'));
+                announce(message, 'empty');
             }
-            const notices = [stationWarning, data.scope_warning].filter(Boolean);
+            results.hidden = false;
+            const notices = [stationWarning, data.scope_warning].filter(value => typeof value === 'string' && value.trim());
             if (notices.length) {
                 warning.textContent = notices.join(' ');
                 warning.hidden = false;
             }
+            if ((!panel || !panel.hidden) && (!shell || shell.getNavigation() === navigation)) {
+                resultsHeading.focus({ preventScroll: true });
+                resultsHeading.scrollIntoView({ block: 'start', inline: 'nearest', behavior: 'auto' });
+            }
         } catch (error) {
-            if (currentRequest !== requestVersion) return;
-            status.textContent = error instanceof Error ? error.message : '시간표 조회 중 오류가 발생했어요.';
+            if (currentRequest !== requestVersion || error?.name === 'AbortError') return;
+            announce(error instanceof Error ? error.message : '시간표 조회 중 오류가 발생했어요. 다시 조회해 주세요.', 'error');
         } finally {
-            if (currentRequest === requestVersion) loadButton.disabled = false;
+            if (currentRequest === requestVersion) {
+                queryBusy = false;
+                requestController = null;
+                updateButton();
+            }
         }
     }
 
     async function loadStationOptions() {
-        status.textContent = 'TAGO에서 역 코드를 확인하고 있어요.';
+        if (stationLoading) return;
+        stationLoading = true;
+        stationReady = false;
+        updateButton();
+        announce('역 목록 확인 중…');
         try {
             const response = await fetch('/api/itx/stations', {headers: {Accept: 'application/json'}});
             const data = await response.json().catch(() => null);
             if (!response.ok || !data || !Array.isArray(data.stations)) {
-                throw new Error(data?.error || '역 목록을 불러오지 못했어요.');
+                throw new Error('역 목록을 불러오지 못했어요. 역 목록 다시 불러오기를 눌러 주세요.');
             }
-            availableStations = data.stations.map(item => item.name);
-            stationWarning = data.warning || '';
+            availableStations = [...new Set(data.stations.filter(item => item && typeof item.name === 'string' && item.name.trim()).map(item => item.name))];
+            stationWarning = typeof data.warning === 'string' ? data.warning : '';
             if (!availableStations.includes('마석')) {
-                stationWarning += ' 마석역의 TAGO 역 코드를 아직 찾지 못했습니다. TAGO 역 목록 조회 결과를 확인해 주세요.';
+                stationWarning += ' 마석역 시간표는 현재 조회할 수 없어요.';
             }
             if (availableStations.length < 2) {
-                throw new Error('조회 가능한 역이 2곳 미만입니다. TAGO 역 목록 API를 확인해 주세요.');
+                throw new Error('조회 가능한 역이 충분하지 않아요. 잠시 후 역 목록을 다시 불러와 주세요.');
             }
             makeOptions(originSelect, availableStations, '춘천');
             updateDestinationOptions();
             originSelect.disabled = false;
             destSelect.disabled = false;
-            loadButton.disabled = false;
-            if (data.date) dateInput.value = data.date;
+            stationReady = true;
+            if (!dateInput.value && /^\d{4}-\d{2}-\d{2}$/.test(data.date || '')) dateInput.value = data.date;
             if (stationWarning) {
                 warning.textContent = stationWarning.trim();
                 warning.hidden = false;
             }
-            status.textContent = "출발역·도착역·날짜를 확인하고 시간표 조회를 눌러 주세요.";
+            announce('');
         } catch (error) {
-            status.textContent = error instanceof Error ? error.message : '역 목록 조회 실패';
+            announce(error instanceof Error ? error.message : '역 목록을 불러오지 못했어요. 다시 불러오기를 눌러 주세요.', 'error');
+        } finally {
+            stationLoading = false;
+            updateButton();
         }
     }
 
     loadButton.addEventListener('click', loadTimetable);
+    swapButton.addEventListener('click', () => {
+        if (swapButton.disabled) return;
+        const previousOrigin = originSelect.value;
+        originSelect.value = destSelect.value;
+        updateDestinationOptions(previousOrigin);
+        selectionChanged();
+    });
     originSelect.addEventListener('change', () => {
         updateDestinationOptions();
-        status.textContent = "시간표 조회 버튼을 눌러 주세요.";
-        tableWrap.hidden = true;
+        selectionChanged();
     });
-    destSelect.addEventListener('change', () => { status.textContent = "시간표 조회 버튼을 눌러 주세요."; tableWrap.hidden = true; });
-    dateInput.addEventListener('change', () => { status.textContent = "시간표 조회 버튼을 눌러 주세요."; tableWrap.hidden = true; });
+    destSelect.addEventListener('change', selectionChanged);
+    dateInput.addEventListener('input', selectionChanged);
+    dateInput.addEventListener('change', selectionChanged);
+    timeInput.addEventListener('input', selectionChanged);
+    timeInput.addEventListener('change', selectionChanged);
     // 역 목록 API는 ITX 탭을 열었을 때만 호출합니다.
-    const panel = document.getElementById('transport-panel-subway');
     let started = false;
     function startIfVisible() {
         if (started || (panel && panel.hidden)) return;

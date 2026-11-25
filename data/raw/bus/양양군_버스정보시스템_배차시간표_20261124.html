@@ -1,0 +1,2464 @@
+
+
+
+
+
+
+
+
+<!DOCTYPE html>
+<html lang="ko">
+<meta content="text/html;charset=utf-8" http-equiv="Content-Type">
+<meta content="IE=edge" http-equiv="X-UA-Compatible">
+<meta content="width=device-width,initial-scale=1.0,minimum-scale=1.0,maximum-scale=1.0,user-scalable=no" name="viewport">
+<meta content="yes" name="apple-mobile-web-app-capable">
+	<head>
+	    <meta charset="UTF-8">
+		<title>양양군 버스정보시스템</title>
+		<meta http-equiv="content-type" content="text/html; charset=utf-8" />
+        <meta http-equiv="Cache-Control" content="No-Cache">
+        <meta http-equiv="Pragma" content="No-Cache">
+		<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/pretendard/dist/web/static/pretendard.css">
+		<meta name="description" content="양양군 버스정보시스템입니다.<br />BIS 소개, 공지사항, 배차시간표, 교통카드 충전소, 이용요금 및 운수사 메뉴가 있습니다.">
+
+        <meta property="og:type" content="website"> 
+        <meta property="og:title" content="양양군 버스정보시스템">
+        <meta property="og:description" content="양양군 버스정보시스템입니다.<br />BIS 소개, 공지사항, 배차시간표, 교통카드 충전소, 이용요금 및 운수사 메뉴가 있습니다.">
+        <meta property="og:url" content="">
+
+		
+		
+			
+			
+			
+			
+			
+			
+			
+			
+				<meta name="google-site-verification" content="LWDfWoSX8Dp5JFs3pZveIJckcG5OEnUkIObkd7T_Lk0" />
+				<meta name="keywords" content="양양 버스,양양군 버스,양양 버스정보,양양군 버스정보,양양 시내버스,양양군 시내버스,양양 시외버스,양양군 시외버스,양양 대중교통,양양군 대중교통,양양 농어촌버스,양양군 농어촌버스,양양 교통,양양군 교통,양양 버스터미널,양양군 버스터미널,양양 시외버스터미널,양양군 시외버스터미널,양양공영버스터미널,양양 관광,양양군 관광">
+			
+
+			
+		
+
+	    <link href="/resources/css/reset.css" rel="stylesheet" type="text/css"/>
+	    <link href="/resources/css/swiper.min.css" rel="stylesheet" type="text/css"/>
+	    <link href="/resources/css/ui.css" rel="stylesheet" type="text/css"/>
+	    <link href="/resources/css/style.css" rel="stylesheet" type="text/css"/>
+	    <link href="/resources/css/aos.css" rel="stylesheet" type="text/css"/>
+	    <link href="/resources/css/loading.css" rel="stylesheet" type="text/css"/>
+		<link href="/resources/css/datepicker.min.css" rel="stylesheet" type="text/css"/>
+		<link href="/resources/css/jquery.fullpage.css" rel="stylesheet" type="text/css"/>
+		<link href="/resources/css/jquery-ui.css" rel="stylesheet" type="text/css"/>
+		
+		<script src="/resources/js/jquery.min.js"></script>
+		<script src="/resources/js/jquery-ui-1.12.1.js"></script>
+		<script src="/resources/js/swiperjs.js"></script>
+		<script src="/resources/js/ui.js"></script>
+		<script src="/resources/js/jquery.loading.min.js"></script>
+		<script src="/resources/js/jquery.ui.touch-punch.min.js"></script>
+	</head>
+	<body tabindex="-1" class="city-yangyang">
+	    
+
+
+
+
+
+
+
+
+
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=GT-NSKC663B"></script>
+<script>
+	window.dataLayer = window.dataLayer || [];
+	function gtag(){dataLayer.push(arguments);}
+	gtag('js', new Date());
+
+	gtag('config', 'GT-NSKC663B');
+</script>
+
+<header class="">
+	<div class="inner wrap">
+		<h1 class="logo-box">
+			
+				
+				
+					<a href="/" style="background: url('/resources/img/yangyang/ic_logo.webp') no-repeat center /contain;"></a>
+				
+			
+		</h1>
+		<nav>
+			<a class="nav-close-btn mobile" href="javascript:mobileMenuClose();"></a>
+			<ul class="menu-list">
+				
+					
+					
+						<li class="menu-box"><a class="menu-btn" href="/introduction">BIS 소개</a></li>
+						<li class="menu-box"><a class="menu-btn" href="/board/notice/list">공지사항</a></li>
+						<li class="menu-box"><a class="menu-btn" href="/qna/list">QnA</a></li>
+						
+							
+							
+							
+							
+							
+								<li class="menu-box" style="position: relative;">
+									<a class="menu-btn" id="nav-schedule">배차시간표</a>
+									<ul class="header-depth1">
+										<li style="letter-spacing: -1px;">
+											<a href="/schedule">양양군 배차시간표</a>
+										</li>
+										<li style="letter-spacing: -1px;">
+											<a href="/schedule/terminalSchedule?cType=sokcho">속초시 배차시간표</a>
+										</li>
+									</ul>
+								</li>
+							
+							
+                            
+							
+						
+						<li class="menu-box">
+						    <a class="menu-btn" href="/search">실시간 검색</a>
+						</li>
+						
+						    
+                            
+                                <li class="menu-box">
+                                    <a class="menu-btn" href="/info">이용요금 및 운수사</a>
+                                </li>
+                            
+						
+
+
+					
+				
+				
+				
+			</ul>
+			<div class="nav-info-box mobile">
+				<div class="nav-logo-box">
+					<img alt="로고" src="/resources/img/yangyang/ic_logo.webp">
+				</div>
+			</div>
+		</nav>
+		<div class="option-box">
+			<div class="lang-box">
+				<div id="lang-select-box">
+					<div id="lang-select">
+						
+							
+							KR
+						
+					</div>
+				</div>
+				<div id="lang-box" class="hidden">
+					<div class="lang-option" data-lang="KR">KR</div>
+					<div class="lang-option" data-lang="EN">EN</div>
+				</div>
+			</div>
+			<div class="nav-box mobile">
+				<a class="nav-btn" href="javascript:mobileMenuOpen();"></a>
+			</div>
+
+		</div>
+	</div>
+
+	
+</header>
+
+<script>
+	var isEn = 'kr' === 'en';
+	var isMobile = window.innerWidth < 1024;
+
+	if (isEn && !isMobile) {
+		$('.logo-box').css("left", "-20px");
+	}
+
+	$("#nav-schedule").click(function () {
+		$(".header-depth1").toggle()
+		$(".header-depth2").hide()
+	})
+
+	$("#nav-info-jeongseon").click(function () {
+        $(".header-depth1-info").toggle()
+    })
+
+	$("#nav-admin-menu").click(function () {
+		$(".header-depth1-admin").toggle()
+	})
+
+	$("#nav-schedule-js").click(function () {
+		$(".header-depth3").toggle()
+	})
+
+	$("#nav-schedule2").click(function (e) {
+		
+		$(".header-depth2").toggle()
+	})
+
+	var isAdminMenuMobile = window.innerWidth < 1024;
+	if (!isAdminMenuMobile) {
+		$(".admin-menu-box").hover(
+				function () {
+					$(".header-depth1-admin").show();
+				},
+				function () {
+					$(".header-depth1-admin").hide();
+				}
+		);
+	}
+
+	
+	
+	
+	
+    
+	
+	
+        var isMobile = window.innerWidth < 1024;
+        if (!isMobile) {
+            $("body > header > div > nav > ul > li:nth-child(4)").hover(
+                    function () { // 마우스 오버 시
+                        $(".header-depth1").show();
+                    },
+                    function () { // 마우스 아웃 시
+                        $(".header-depth1").hide();
+                    }
+            );
+        }
+	
+	
+
+	// 평창 배너 닫기 기능
+	
+
+</script>
+
+	    
+
+
+
+
+
+
+
+<section class="page-visual">
+	<div class="visual-box visual-1" style="background: url(/resources/img/yangyang/img_main_visual.webp) no-repeat 30% 62%/cover;">
+		<div class="visual-txt-box">
+			<div class="main-box">배차시간표</div>
+		</div>
+	</div>
+
+
+</section>
+<section>
+
+</section>
+<section class="page-contents">
+
+	<section class="board">
+
+		
+
+		<div class="inner wrap">
+
+			
+
+			<article class="schedule-filter-form">
+
+				<div class="filter-list">
+
+					
+					
+						
+						
+							<div class="filter-box">
+								<label> <input checked name="filter" type="radio" value="week" onclick="scheduleType = this.value; schedule_type(scheduleType, orgCd);"><i></i> <span class="txt">평일</span>
+								</label>
+							</div>
+
+							<div class="filter-box">
+								<label> <input name="filter" type="radio" value="vacation" onclick="scheduleType = this.value; schedule_type(scheduleType, orgCd);"><i></i> <span class="txt">평일(방학)</span>
+								</label>
+							</div>
+
+							<div class="filter-box">
+								<label> <input name="filter" type="radio" value="sat" onclick="scheduleType = this.value; schedule_type(scheduleType, orgCd);"><i></i> <span class="txt type-1">토요일</span>
+								</label>
+							</div>
+
+							<div class="filter-box">
+								<label> <input name="filter" type="radio" value="sun" onclick="scheduleType = this.value; schedule_type(scheduleType, orgCd);"><i></i> <span class="txt type-2">일,공휴일</span>
+								</label>
+							</div>
+						
+					
+				</div>
+
+                
+				
+
+			</article>
+
+			
+	
+			<article class="table-layout-form2">
+
+				<div class="table-box m-table">
+					<table>
+						<thead class="m-thead">
+							<tr>
+								<th style="padding: 10px">번호</th>
+								<th>운수사</th>
+								<th class="wPop">기점</th>
+								<th class="wPop">종점</th>
+								<th class="wPop">첫차</th>
+								<th class="wPop">막차</th>
+								<th>시간표</th>
+								<th style="padding: 10px;">시간표 다운</th>
+								
+							</tr>
+						</thead>
+						<tbody>
+							
+								
+								
+									
+										
+											
+												<tr class="schedule-tr">
+													<td>1</td>
+													<td>
+														
+															
+															
+																강원여객
+															
+														
+													</td>
+													<td class="wPop">양양종합여객터미널</td>
+													<td class="wPop">오색</td>
+													<td class="wPop">07:20</td>
+													<td class="wPop">20:00</td>
+													<td><a class="popup-btn" href="javascript:openTimeTable('4310400','yangyang','43104008', '1', scheduleType)"></a></td>
+													
+														
+														
+															<td><a class="file-down-btn" href="javascript:download('/schedule/download?routeId=43104008&routeNm=1&compId=4310400');"></a></td>
+														
+													
+
+													
+												</tr>
+											
+												<tr class="schedule-tr">
+													<td>2</td>
+													<td>
+														
+															
+															
+																강원여객
+															
+														
+													</td>
+													<td class="wPop">양양종합여객터미널</td>
+													<td class="wPop">물갑리</td>
+													<td class="wPop">10:10</td>
+													<td class="wPop">17:15</td>
+													<td><a class="popup-btn" href="javascript:openTimeTable('4310400','yangyang','43104011', '2', scheduleType)"></a></td>
+													
+														
+														
+															<td><a class="file-down-btn" href="javascript:download('/schedule/download?routeId=43104011&routeNm=2&compId=4310400');"></a></td>
+														
+													
+
+													
+												</tr>
+											
+												<tr class="schedule-tr">
+													<td>3</td>
+													<td>
+														
+															
+															
+																강원여객
+															
+														
+													</td>
+													<td class="wPop">양양종합여객터미널</td>
+													<td class="wPop">수산리</td>
+													<td class="wPop">12:20</td>
+													<td class="wPop">17:45</td>
+													<td><a class="popup-btn" href="javascript:openTimeTable('4310400','yangyang','43104017', '3', scheduleType)"></a></td>
+													
+														
+														
+															<td><a class="file-down-btn" href="javascript:download('/schedule/download?routeId=43104017&routeNm=3&compId=4310400');"></a></td>
+														
+													
+
+													
+												</tr>
+											
+												<tr class="schedule-tr">
+													<td>5</td>
+													<td>
+														
+															
+															
+																강원여객
+															
+														
+													</td>
+													<td class="wPop">양양종합여객터미널</td>
+													<td class="wPop">장승리(종점)</td>
+													<td class="wPop">10:10</td>
+													<td class="wPop">15:45</td>
+													<td><a class="popup-btn" href="javascript:openTimeTable('4310400','yangyang','43104013', '5', scheduleType)"></a></td>
+													
+														
+														
+															<td><a class="file-down-btn" href="javascript:download('/schedule/download?routeId=43104013&routeNm=5&compId=4310400');"></a></td>
+														
+													
+
+													
+												</tr>
+											
+												<tr class="schedule-tr">
+													<td>6</td>
+													<td>
+														
+															
+															
+																강원여객
+															
+														
+													</td>
+													<td class="wPop">양양종합여객터미널</td>
+													<td class="wPop">남양리마을회관</td>
+													<td class="wPop">10:30</td>
+													<td class="wPop">18:30</td>
+													<td><a class="popup-btn" href="javascript:openTimeTable('4310400','yangyang','43104012', '6', scheduleType)"></a></td>
+													
+														
+														
+															<td><a class="file-down-btn" href="javascript:download('/schedule/download?routeId=43104012&routeNm=6&compId=4310400');"></a></td>
+														
+													
+
+													
+												</tr>
+											
+												<tr class="schedule-tr">
+													<td>7</td>
+													<td>
+														
+															
+															
+																강원여객
+															
+														
+													</td>
+													<td class="wPop">양양종합여객터미널</td>
+													<td class="wPop">어성전1리</td>
+													<td class="wPop">07:00</td>
+													<td class="wPop">19:30</td>
+													<td><a class="popup-btn" href="javascript:openTimeTable('4310400','yangyang','43104019', '7', scheduleType)"></a></td>
+													
+														
+														
+															<td><a class="file-down-btn" href="javascript:download('/schedule/download?routeId=43104019&routeNm=7&compId=4310400');"></a></td>
+														
+													
+
+													
+												</tr>
+											
+												<tr class="schedule-tr">
+													<td>7-1</td>
+													<td>
+														
+															
+															
+																강원여객
+															
+														
+													</td>
+													<td class="wPop">양양종합여객터미널</td>
+													<td class="wPop">어성전2리</td>
+													<td class="wPop">10:10</td>
+													<td class="wPop">16:45</td>
+													<td><a class="popup-btn" href="javascript:openTimeTable('4310400','yangyang','43104022', '7-1', scheduleType)"></a></td>
+													
+														
+														
+															<td><a class="file-down-btn" href="javascript:download('/schedule/download?routeId=43104022&routeNm=7-1&compId=4310400');"></a></td>
+														
+													
+
+													
+												</tr>
+											
+												<tr class="schedule-tr">
+													<td>8</td>
+													<td>
+														
+															
+															
+																강원여객
+															
+														
+													</td>
+													<td class="wPop">양양종합여객터미널</td>
+													<td class="wPop">적은리</td>
+													<td class="wPop">08:10</td>
+													<td class="wPop">13:55</td>
+													<td><a class="popup-btn" href="javascript:openTimeTable('4310400','yangyang','43104007', '8', scheduleType)"></a></td>
+													
+														
+														
+															<td><a class="file-down-btn" href="javascript:download('/schedule/download?routeId=43104007&routeNm=8&compId=4310400');"></a></td>
+														
+													
+
+													
+												</tr>
+											
+												<tr class="schedule-tr">
+													<td>9(속초)</td>
+													<td>
+														
+															
+															
+																강원여객
+															
+														
+													</td>
+													<td class="wPop">임천리</td>
+													<td class="wPop">강원여객속초영업소(미정차)</td>
+													<td class="wPop">07:02</td>
+													<td class="wPop">17:48</td>
+													<td><a class="popup-btn" href="javascript:openTimeTable('4310400','yangyang','43104014', '9(속초)', scheduleType)"></a></td>
+													
+														
+														
+															<td><a class="file-down-btn" href="javascript:download('/schedule/download?routeId=43104014&routeNm=9(속초)&compId=4310400');"></a></td>
+														
+													
+
+													
+												</tr>
+											
+												<tr class="schedule-tr">
+													<td>10</td>
+													<td>
+														
+															
+															
+																강원여객마을
+															
+														
+													</td>
+													<td class="wPop">양양종합여객터미널</td>
+													<td class="wPop">갈천리</td>
+													<td class="wPop">11:00</td>
+													<td class="wPop">19:30</td>
+													<td><a class="popup-btn" href="javascript:openTimeTable('4310600','yangyang','43106001', '10', scheduleType)"></a></td>
+													
+														
+														
+															<td><a class="file-down-btn" href="javascript:download('/schedule/download?routeId=43106001&routeNm=10&compId=4310600');"></a></td>
+														
+													
+
+													
+												</tr>
+											
+												<tr class="schedule-tr">
+													<td>10-1</td>
+													<td>
+														
+															
+															
+																강원여객마을
+															
+														
+													</td>
+													<td class="wPop">양양종합여객터미널</td>
+													<td class="wPop">갈천리</td>
+													<td class="wPop">07:00</td>
+													<td class="wPop">07:50</td>
+													<td><a class="popup-btn" href="javascript:openTimeTable('4310600','yangyang','43106004', '10-1', scheduleType)"></a></td>
+													
+														
+														
+															<td><a class="file-down-btn" href="javascript:download('/schedule/download?routeId=43106004&routeNm=10-1&compId=4310600');"></a></td>
+														
+													
+
+													
+												</tr>
+											
+												<tr class="schedule-tr">
+													<td>11</td>
+													<td>
+														
+															
+															
+																강원여객
+															
+														
+													</td>
+													<td class="wPop">양양종합여객터미널</td>
+													<td class="wPop">대치리</td>
+													<td class="wPop">08:30</td>
+													<td class="wPop">18:00</td>
+													<td><a class="popup-btn" href="javascript:openTimeTable('4310400','yangyang','43104020', '11', scheduleType)"></a></td>
+													
+														
+														
+															<td><a class="file-down-btn" href="javascript:download('/schedule/download?routeId=43104020&routeNm=11&compId=4310400');"></a></td>
+														
+													
+
+													
+												</tr>
+											
+												<tr class="schedule-tr">
+													<td>12</td>
+													<td>
+														
+															
+															
+																강원여객
+															
+														
+													</td>
+													<td class="wPop">양양종합여객터미널</td>
+													<td class="wPop">향호리</td>
+													<td class="wPop">07:00</td>
+													<td class="wPop">19:00</td>
+													<td><a class="popup-btn" href="javascript:openTimeTable('4310400','yangyang','43104005', '12', scheduleType)"></a></td>
+													
+														
+														
+															<td><a class="file-down-btn" href="javascript:download('/schedule/download?routeId=43104005&routeNm=12&compId=4310400');"></a></td>
+														
+													
+
+													
+												</tr>
+											
+												<tr class="schedule-tr">
+													<td>21</td>
+													<td>
+														
+															
+															
+																강원여객
+															
+														
+													</td>
+													<td class="wPop">양양종합여객터미널</td>
+													<td class="wPop">상복리</td>
+													<td class="wPop">14:20</td>
+													<td class="wPop">15:15</td>
+													<td><a class="popup-btn" href="javascript:openTimeTable('4310400','yangyang','43104024', '21', scheduleType)"></a></td>
+													
+														
+														
+															<td><a class="file-down-btn" href="javascript:download('/schedule/download?routeId=43104024&routeNm=21&compId=4310400');"></a></td>
+														
+													
+
+													
+												</tr>
+											
+												<tr class="schedule-tr">
+													<td>22</td>
+													<td>
+														
+															
+															
+																강원여객
+															
+														
+													</td>
+													<td class="wPop">양양종합여객터미널</td>
+													<td class="wPop">상복리</td>
+													<td class="wPop">07:10</td>
+													<td class="wPop">07:40</td>
+													<td><a class="popup-btn" href="javascript:openTimeTable('4310400','yangyang','43104002', '22', scheduleType)"></a></td>
+													
+														
+														
+															<td><a class="file-down-btn" href="javascript:download('/schedule/download?routeId=43104002&routeNm=22&compId=4310400');"></a></td>
+														
+													
+
+													
+												</tr>
+											
+												<tr class="schedule-tr">
+													<td>31</td>
+													<td>
+														
+															
+															
+																강원여객
+															
+														
+													</td>
+													<td class="wPop">양양종합여객터미널</td>
+													<td class="wPop">상운리</td>
+													<td class="wPop">07:20</td>
+													<td class="wPop">18:45</td>
+													<td><a class="popup-btn" href="javascript:openTimeTable('4310400','yangyang','43104016', '31', scheduleType)"></a></td>
+													
+														
+														
+															<td><a class="file-down-btn" href="javascript:download('/schedule/download?routeId=43104016&routeNm=31&compId=4310400');"></a></td>
+														
+													
+
+													
+												</tr>
+											
+												<tr class="schedule-tr">
+													<td>32</td>
+													<td>
+														
+															
+															
+																강원여객
+															
+														
+													</td>
+													<td class="wPop">양양종합여객터미널</td>
+													<td class="wPop">상운리</td>
+													<td class="wPop">09:30</td>
+													<td class="wPop">16:25</td>
+													<td><a class="popup-btn" href="javascript:openTimeTable('4310400','yangyang','43104015', '32', scheduleType)"></a></td>
+													
+														
+														
+															<td><a class="file-down-btn" href="javascript:download('/schedule/download?routeId=43104015&routeNm=32&compId=4310400');"></a></td>
+														
+													
+
+													
+												</tr>
+											
+												<tr class="schedule-tr">
+													<td>33</td>
+													<td>
+														
+															
+															
+																강원여객
+															
+														
+													</td>
+													<td class="wPop">양양종합여객터미널</td>
+													<td class="wPop">상운리</td>
+													<td class="wPop">10:50</td>
+													<td class="wPop">14:25</td>
+													<td><a class="popup-btn" href="javascript:openTimeTable('4310400','yangyang','43104001', '33', scheduleType)"></a></td>
+													
+														
+														
+															<td><a class="file-down-btn" href="javascript:download('/schedule/download?routeId=43104001&routeNm=33&compId=4310400');"></a></td>
+														
+													
+
+													
+												</tr>
+											
+												<tr class="schedule-tr">
+													<td>51</td>
+													<td>
+														
+															
+															
+																강원여객
+															
+														
+													</td>
+													<td class="wPop">양양종합여객터미널</td>
+													<td class="wPop">장승리(종점)</td>
+													<td class="wPop">08:20</td>
+													<td class="wPop">09:00</td>
+													<td><a class="popup-btn" href="javascript:openTimeTable('4310400','yangyang','43104023', '51', scheduleType)"></a></td>
+													
+														
+														
+															<td><a class="file-down-btn" href="javascript:download('/schedule/download?routeId=43104023&routeNm=51&compId=4310400');"></a></td>
+														
+													
+
+													
+												</tr>
+											
+												<tr class="schedule-tr">
+													<td>51-1</td>
+													<td>
+														
+															
+															
+																강원여객
+															
+														
+													</td>
+													<td class="wPop">양양종합여객터미널</td>
+													<td class="wPop">장승리(종점)</td>
+													<td class="wPop">13:30</td>
+													<td class="wPop">18:25</td>
+													<td><a class="popup-btn" href="javascript:openTimeTable('4310400','yangyang','43104026', '51-1', scheduleType)"></a></td>
+													
+														
+														
+															<td><a class="file-down-btn" href="javascript:download('/schedule/download?routeId=43104026&routeNm=51-1&compId=4310400');"></a></td>
+														
+													
+
+													
+												</tr>
+											
+												<tr class="schedule-tr">
+													<td>77</td>
+													<td>
+														
+															
+															
+																강원여객
+															
+														
+													</td>
+													<td class="wPop">양양종합여객터미널</td>
+													<td class="wPop">어성전1리</td>
+													<td class="wPop">07:10</td>
+													<td class="wPop">17:30</td>
+													<td><a class="popup-btn" href="javascript:openTimeTable('4310400','yangyang','43104006', '77', scheduleType)"></a></td>
+													
+														
+														
+															<td><a class="file-down-btn" href="javascript:download('/schedule/download?routeId=43104006&routeNm=77&compId=4310400');"></a></td>
+														
+													
+
+													
+												</tr>
+											
+												<tr class="schedule-tr">
+													<td>81</td>
+													<td>
+														
+															
+															
+																강원여객
+															
+														
+													</td>
+													<td class="wPop">양양종합여객터미널</td>
+													<td class="wPop">적은리</td>
+													<td class="wPop">10:00</td>
+													<td class="wPop">18:50</td>
+													<td><a class="popup-btn" href="javascript:openTimeTable('4310400','yangyang','43104021', '81', scheduleType)"></a></td>
+													
+														
+														
+															<td><a class="file-down-btn" href="javascript:download('/schedule/download?routeId=43104021&routeNm=81&compId=4310400');"></a></td>
+														
+													
+
+													
+												</tr>
+											
+												<tr class="schedule-tr">
+													<td>88</td>
+													<td>
+														
+															
+															
+																강원여객마을
+															
+														
+													</td>
+													<td class="wPop">양양종합여객터미널</td>
+													<td class="wPop">e편한세상아파트</td>
+													<td class="wPop">07:40</td>
+													<td class="wPop">18:50</td>
+													<td><a class="popup-btn" href="javascript:openTimeTable('4310600','yangyang','43106002', '88', scheduleType)"></a></td>
+													
+														
+														
+															<td><a class="file-down-btn" href="javascript:download('/schedule/download?routeId=43106002&routeNm=88&compId=4310600');"></a></td>
+														
+													
+
+													
+												</tr>
+											
+												<tr class="schedule-tr">
+													<td>93</td>
+													<td>
+														
+															
+															
+																강원여객
+															
+														
+													</td>
+													<td class="wPop">강원여객속초영업소(미정차)</td>
+													<td class="wPop">상복리</td>
+													<td class="wPop">18:10</td>
+													<td class="wPop">18:45</td>
+													<td><a class="popup-btn" href="javascript:openTimeTable('4310400','yangyang','43104004', '93', scheduleType)"></a></td>
+													
+														
+														
+															<td><a class="file-down-btn" href="javascript:download('/schedule/download?routeId=43104004&routeNm=93&compId=4310400');"></a></td>
+														
+													
+
+													
+												</tr>
+											
+												<tr class="schedule-tr">
+													<td>94</td>
+													<td>
+														
+															
+															
+																강원여객
+															
+														
+													</td>
+													<td class="wPop">양양종합여객터미널</td>
+													<td class="wPop">상복리</td>
+													<td class="wPop">08:00</td>
+													<td class="wPop">08:25</td>
+													<td><a class="popup-btn" href="javascript:openTimeTable('4310400','yangyang','43104018', '94', scheduleType)"></a></td>
+													
+														
+														
+															<td><a class="file-down-btn" href="javascript:download('/schedule/download?routeId=43104018&routeNm=94&compId=4310400');"></a></td>
+														
+													
+
+													
+												</tr>
+											
+												<tr class="schedule-tr">
+													<td>95</td>
+													<td>
+														
+															
+															
+																강원여객
+															
+														
+													</td>
+													<td class="wPop">양양종합여객터미널</td>
+													<td class="wPop">상복리</td>
+													<td class="wPop">11:50</td>
+													<td class="wPop">12:15</td>
+													<td><a class="popup-btn" href="javascript:openTimeTable('4310400','yangyang','43104003', '95', scheduleType)"></a></td>
+													
+														
+														
+															<td><a class="file-down-btn" href="javascript:download('/schedule/download?routeId=43104003&routeNm=95&compId=4310400');"></a></td>
+														
+													
+
+													
+												</tr>
+											
+												<tr class="schedule-tr">
+													<td>100</td>
+													<td>
+														
+															
+															
+																강원여객마을
+															
+														
+													</td>
+													<td class="wPop">양양종합여객터미널</td>
+													<td class="wPop">양양국제공항</td>
+													<td class="wPop">08:10</td>
+													<td class="wPop">18:20</td>
+													<td><a class="popup-btn" href="javascript:openTimeTable('4310600','yangyang','43106003', '100', scheduleType)"></a></td>
+													
+														
+														
+															<td><a class="file-down-btn" href="javascript:download('/schedule/download?routeId=43106003&routeNm=100&compId=4310600');"></a></td>
+														
+													
+
+													
+												</tr>
+											
+												<tr class="schedule-tr">
+													<td>322(평일)</td>
+													<td>
+														
+															
+															
+																동진버스마을
+															
+														
+													</td>
+													<td class="wPop">향호리</td>
+													<td class="wPop">하광정리</td>
+													<td class="wPop">08:15</td>
+													<td class="wPop">16:30</td>
+													<td><a class="popup-btn" href="javascript:openTimeTable('4310700','yangyang','43107003', '322(평일)', scheduleType)"></a></td>
+													
+														
+														
+															<td><a class="file-down-btn" href="javascript:download('/schedule/download?routeId=43107003&routeNm=322(평일)&compId=4310700');"></a></td>
+														
+													
+
+													
+												</tr>
+											
+												<tr class="schedule-tr">
+													<td>322-1(평일)</td>
+													<td>
+														
+															
+															
+																동진버스마을
+															
+														
+													</td>
+													<td class="wPop">주문진시외버스터미널</td>
+													<td class="wPop">하광정리</td>
+													<td class="wPop">07:30</td>
+													<td class="wPop">19:05</td>
+													<td><a class="popup-btn" href="javascript:openTimeTable('4310700','yangyang','43107004', '322-1(평일)', scheduleType)"></a></td>
+													
+														
+														
+															<td><a class="file-down-btn" href="javascript:download('/schedule/download?routeId=43107004&routeNm=322-1(평일)&compId=4310700');"></a></td>
+														
+													
+
+													
+												</tr>
+											
+												<tr class="schedule-tr">
+													<td>325</td>
+													<td>
+														
+															
+															
+																동진버스마을
+															
+														
+													</td>
+													<td class="wPop">향호리</td>
+													<td class="wPop">상월천리</td>
+													<td class="wPop">06:50</td>
+													<td class="wPop">18:40</td>
+													<td><a class="popup-btn" href="javascript:openTimeTable('4310700','yangyang','43107001', '325', scheduleType)"></a></td>
+													
+														
+														
+															<td><a class="file-down-btn" href="javascript:download('/schedule/download?routeId=43107001&routeNm=325&compId=4310700');"></a></td>
+														
+													
+
+													
+												</tr>
+											
+												<tr class="schedule-tr">
+													<td>325-1</td>
+													<td>
+														
+															
+															
+																동진버스마을
+															
+														
+													</td>
+													<td class="wPop">주문진시외버스터미널</td>
+													<td class="wPop">상월천리</td>
+													<td class="wPop">08:50</td>
+													<td class="wPop">13:55</td>
+													<td><a class="popup-btn" href="javascript:openTimeTable('4310700','yangyang','43107005', '325-1', scheduleType)"></a></td>
+													
+														
+														
+															<td><a class="file-down-btn" href="javascript:download('/schedule/download?routeId=43107005&routeNm=325-1&compId=4310700');"></a></td>
+														
+													
+
+													
+												</tr>
+											
+												<tr class="schedule-tr">
+													<td>326</td>
+													<td>
+														
+															
+															
+																동진버스마을
+															
+														
+													</td>
+													<td class="wPop">향호리</td>
+													<td class="wPop">정자리</td>
+													<td class="wPop">10:30</td>
+													<td class="wPop">18:40</td>
+													<td><a class="popup-btn" href="javascript:openTimeTable('4310700','yangyang','43107002', '326', scheduleType)"></a></td>
+													
+														
+														
+															<td><a class="file-down-btn" href="javascript:download('/schedule/download?routeId=43107002&routeNm=326&compId=4310700');"></a></td>
+														
+													
+
+													
+												</tr>
+											
+												<tr class="schedule-tr">
+													<td>326-1</td>
+													<td>
+														
+															
+															
+																동진버스마을
+															
+														
+													</td>
+													<td class="wPop">주문진시외버스터미널</td>
+													<td class="wPop">정자리</td>
+													<td class="wPop">06:50</td>
+													<td class="wPop">14:10</td>
+													<td><a class="popup-btn" href="javascript:openTimeTable('4310700','yangyang','43107006', '326-1', scheduleType)"></a></td>
+													
+														
+														
+															<td><a class="file-down-btn" href="javascript:download('/schedule/download?routeId=43107006&routeNm=326-1&compId=4310700');"></a></td>
+														
+													
+
+													
+												</tr>
+											
+										
+										
+									
+								
+							
+						</tbody>
+					</table>
+				</div>
+
+			</article>
+
+
+		</div>
+
+	</section>
+
+</section>
+
+
+
+
+<section class="main-help" style="background: url(/resources/img/yangyang/img_main_help_bg.webp) no-repeat center bottom/cover;">
+	<div class="inner wrap">
+		<article class="section-tit-box">
+			<div class="tit-box">
+				<i class="ic ic-help"></i>
+				<div class="tit-txt" style="color: #fff;">무엇을 도와드릴까요?</div>
+			</div>
+		</article>
+		<div class="list-box">
+			<div class="list-wrap">
+				<ul>
+					<li>
+						<a class="item-box" href="/search">
+							<div class="ic-box" style="height: 80px;">
+								<img src="/resources/img/ic_help0.webp" style="height: 100%; padding: 10px;">
+							</div>
+							<div class="txt-box">
+								<div class="subject-box">실시간 검색</div>
+								<div class="con-box">
+									실시간 교통 정보를<br /> 확인해보세요
+								</div>
+							</div>
+						</a>
+					</li>
+
+					<li>
+						<a class="item-box" href="
+							
+							
+								/navi
+							
+						">
+							<div class="ic-box">
+								
+									
+									
+										<img src="/resources/img/ic_help1.webp">
+									
+								
+							</div>
+							<div class="txt-box">
+								<div class="subject-box">길찾기</div>
+								<div class="con-box">
+									처음가는 길이라도<br /> 검색 한 번으로 손쉽게
+								</div>
+							</div>
+						</a>
+					</li>
+
+					
+						
+						
+							<li><a class="item-box" href="/info">
+								<div class="ic-box">
+									<img src="/resources/img/ic_help2.webp">
+								</div>
+								<div class="txt-box">
+									<div class="subject-box">이용요금 및 운수사</div>
+									<div class="con-box">
+										양양군 대중교통<br /> 요금은 얼마일까요?
+									</div>
+								</div>
+							</a></li>
+						
+					
+
+					
+						<li><a class="item-box" href="/info?type=transfer">
+							<div class="ic-box">
+								<img src="/resources/img/ic_help3.webp">
+							</div>
+							<div class="txt-box">
+								<div class="subject-box">무료환승 안내</div>
+								<div class="con-box">
+									환승에 대한 궁금증을<br /> 모두 해결해드립니다.
+								</div>
+							</div>
+						</a></li>
+					
+
+					<li><a class="item-box" href="https://txbus.t-money.co.kr/main.do " target="_blank">
+						<div class="ic-box" style="height: 80px;">
+							<img src="/resources/img/ic_help4.webp" style="height: 100%; padding: 10px;">
+						</div>
+						<div class="txt-box">
+							<div class="subject-box">시외버스</div>
+							<div class="con-box">
+								시외버스 운행정보를 확인해보세요.
+							</div>
+						</div>
+					</a></li>
+
+					<li><a class="item-box" href="https://www.letskorail.com" target="_blank">
+						<div class="ic-box" style="height: 80px;">
+							<img src="/resources/img/ic_help5.webp" style="height: 100%;">
+						</div>
+						<div class="txt-box">
+							<div class="subject-box">철도교통</div>
+							<div class="con-box">
+								양양군의 철도정보를 안내합니다.
+							</div>
+						</div>
+					</a></li>
+
+					<li>
+						
+							
+							
+							
+							
+							
+							
+							
+							
+							
+							
+								<a class="item-box" href="https://tour.yangyang.go.kr/" target="_blank">
+							
+						
+						<div class="ic-box" style="height: 80px;">
+							<img src="/resources/img/ic_help6.webp" style="height: 100%;">
+						</div>
+						<div class="txt-box">
+							<div class="subject-box">관광</div>
+							<div class="con-box">
+								양양군의 관광정보를 안내합니다.
+							</div>
+						</div>
+					</a></li>
+				</ul>
+			</div>
+		</div>
+	</div>
+</section>
+
+<style>
+	/* 웹 버전에서 한 줄로 배치 */
+@media (min-width: 1025px) {
+	section.main-help .list-box .list-wrap ul {
+		flex-wrap: nowrap !important;
+		position: relative;
+	}
+	
+	section.main-help .list-box .list-wrap ul li {
+		width: auto !important;
+		flex: 1;
+		min-width: 0;
+	}
+	
+	section.main-help .list-box .list-wrap ul li + li {
+		margin-left: 24px;
+	}
+	
+	section.main-help .list-box .list-wrap ul li .item-box {
+		width: 100%;
+	}
+	
+	/* 배차시간표 메뉴 아이템에 position relative */
+	section.main-help .list-box .list-wrap ul li.schedule-menu-item {
+		position: relative;
+	}
+	
+	/* 배차시간표 하위 메뉴 패널 숨김 */
+	section.main-help .list-box .list-wrap ul li.schedule-menu-item .schedule-submenu-panel {
+		position: absolute;
+		top: 0;
+		left: calc(100% - 24px);
+		width: 300px;
+		z-index: 1000;
+		opacity: 0;
+		visibility: hidden;
+		transform: translateX(-20px);
+		transition: opacity 0.3s ease, transform 0.3s ease, visibility 0.3s ease;
+		pointer-events: none;
+	}
+	
+	/* 활성화 시 표시 */
+	section.main-help .list-box .list-wrap ul li.schedule-menu-item .schedule-submenu-panel.active {
+		opacity: 1;
+		visibility: visible;
+		transform: translateX(0);
+		pointer-events: auto;
+	}
+	
+	section.main-help .list-box .list-wrap ul li.schedule-menu-item .schedule-submenu-panel .submenu-container {
+		width: 100%;
+		min-height: 300px;
+		background-color: #e4e4e4;
+		border-radius: 0 24px 24px 0;
+		padding: 16px;
+		display: flex;
+		flex-direction: column;
+		gap: 8px;
+		box-shadow: 4px 4px 12px rgba(0, 0, 0, 0.15);
+	}
+	
+	section.main-help .list-box .list-wrap ul li.schedule-menu-item .schedule-submenu-panel .submenu-item {
+		width: 100%;
+	}
+	
+	section.main-help .list-box .list-wrap ul li.schedule-menu-item .schedule-submenu-panel .submenu-button {
+		width: 100%;
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		padding: 16px 20px;
+		background: white;
+		border: none;
+		border-radius: 12px;
+		text-decoration: none;
+		color: #333;
+		font-size: 15px;
+		font-weight: 500;
+		cursor: pointer;
+		transition: all 0.2s ease;
+		box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+	}
+	
+	section.main-help .list-box .list-wrap ul li.schedule-menu-item .schedule-submenu-panel .submenu-button:hover {
+		background: #f8f8f8;
+		box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+	}
+	
+	section.main-help .list-box .list-wrap ul li.schedule-menu-item .schedule-submenu-panel .submenu-button .btn-arrow {
+		font-size: 20px;
+		color: #0CA678;
+		font-weight: bold;
+		transition: transform 0.2s ease;
+	}
+	
+	section.main-help .list-box .list-wrap ul li.schedule-menu-item .schedule-submenu-panel .village-bus-btn.active .btn-arrow {
+		transform: rotate(90deg);
+	}
+	
+	/* 마을버스 하위 메뉴 패널 */
+	section.main-help .list-box .list-wrap ul li.schedule-menu-item .schedule-submenu-panel .village-submenu-panel {
+		max-height: 0;
+		overflow: hidden;
+		margin-top: 0;
+		padding: 0 8px;
+		background: transparent;
+		gap: 6px;
+		flex-direction: column;
+		opacity: 0;
+		transition: max-height 0.3s ease, opacity 0.3s ease, margin-top 0.3s ease, padding 0.3s ease;
+	}
+	
+	section.main-help .list-box .list-wrap ul li.schedule-menu-item .schedule-submenu-panel .village-submenu-panel.active {
+		max-height: 200px;
+		margin-top: 8px;
+		padding: 8px;
+		opacity: 1;
+		display: flex;
+	}
+	
+	section.main-help .list-box .list-wrap ul li.schedule-menu-item .schedule-submenu-panel .village-submenu-link {
+		padding: 12px 20px 12px 32px;
+		background: white;
+		border-radius: 8px;
+		text-decoration: none;
+		color: #555;
+		font-size: 14px;
+		transition: all 0.2s ease;
+		display: block;
+		box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+		position: relative;
+	}
+	
+	section.main-help .list-box .list-wrap ul li.schedule-menu-item .schedule-submenu-panel .village-submenu-link:before {
+		content: '•';
+		position: absolute;
+		left: 16px;
+		color: #0CA678;
+	}
+	
+	section.main-help .list-box .list-wrap ul li.schedule-menu-item .schedule-submenu-panel .village-submenu-link:hover {
+		background: #e8f5f1;
+		color: #0CA678;
+		transform: translateX(2px);
+	}
+}
+
+/* 모바일 버전 */
+@media (max-width: 1024px) {
+	section.main-help .list-box .list-wrap ul {
+		flex-direction: column !important;
+	}
+	
+	section.main-help .list-box .list-wrap ul li {
+		width: 100% !important;
+	}
+	
+	section.main-help .list-box .list-wrap ul li + li {
+		margin: 16px 0 0 !important;
+	}
+	
+	/* 모바일에서는 하위 메뉴를 카드 아래에 표시 */
+	section.main-help .list-box .list-wrap ul li.schedule-menu-item .schedule-submenu-panel {
+		position: relative !important;
+		left: 0 !important;
+		width: 100% !important;
+		margin-top: 10px !important;
+		max-height: 0;
+		overflow: hidden;
+		opacity: 0;
+		transform: translateY(-10px);
+		transition: max-height 0.4s ease, opacity 0.4s ease, transform 0.4s ease, margin-top 0.4s ease;
+	}
+	
+	section.main-help .list-box .list-wrap ul li.schedule-menu-item .schedule-submenu-panel.active {
+		max-height: 500px;
+		opacity: 1;
+		transform: translateY(0);
+	}
+	
+	section.main-help .list-box .list-wrap ul li.schedule-menu-item .schedule-submenu-panel .submenu-container {
+		background-color: rgba(255, 255, 255, 0.98);
+		border-radius: 24px !important;
+		padding: 15px;
+		display: flex;
+		flex-direction: column;
+		gap: 10px;
+		box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1) !important;
+		min-height: auto !important;
+	}
+	
+	section.main-help .list-box .list-wrap ul li.schedule-menu-item .schedule-submenu-panel .submenu-item {
+		width: 100%;
+	}
+	
+	section.main-help .list-box .list-wrap ul li.schedule-menu-item .schedule-submenu-panel .submenu-button {
+		width: 100%;
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		padding: 16px 20px;
+		background: white;
+		border: none;
+		border-radius: 12px;
+		text-decoration: none;
+		color: #333;
+		font-size: 15px;
+		font-weight: 500;
+		cursor: pointer;
+		box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+	}
+	
+	section.main-help .list-box .list-wrap ul li.schedule-menu-item .schedule-submenu-panel .submenu-button .btn-arrow {
+		font-size: 20px;
+		color: #0CA678;
+		font-weight: bold;
+		transition: transform 0.2s ease;
+	}
+	
+	section.main-help .list-box .list-wrap ul li.schedule-menu-item .schedule-submenu-panel .village-bus-btn.active .btn-arrow {
+		transform: rotate(90deg);
+	}
+	
+	section.main-help .list-box .list-wrap ul li.schedule-menu-item .schedule-submenu-panel .village-submenu-panel {
+		max-height: 0;
+		overflow: hidden;
+		margin-top: 0;
+		padding: 0 8px;
+		background: transparent;
+		border-radius: 10px;
+		gap: 6px;
+		flex-direction: column;
+		opacity: 0;
+		transition: max-height 0.3s ease, opacity 0.3s ease, margin-top 0.3s ease, padding 0.3s ease;
+	}
+	
+	section.main-help .list-box .list-wrap ul li.schedule-menu-item .schedule-submenu-panel .village-submenu-panel.active {
+		max-height: 200px;
+		margin-top: 8px;
+		padding: 8px;
+		opacity: 1;
+		display: flex;
+	}
+	
+	section.main-help .list-box .list-wrap ul li.schedule-menu-item .schedule-submenu-panel .village-submenu-link {
+		padding: 12px 16px 12px 32px;
+		background: white;
+		border-radius: 8px;
+		text-decoration: none;
+		color: #555;
+		font-size: 14px;
+		display: block;
+		box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+		position: relative;
+	}
+	
+	section.main-help .list-box .list-wrap ul li.schedule-menu-item .schedule-submenu-panel .village-submenu-link:before {
+		content: '•';
+		position: absolute;
+		left: 16px;
+		color: #0CA678;
+	}
+	
+	section.main-help .list-box .list-wrap ul li.schedule-menu-item .schedule-submenu-panel .village-submenu-link:hover {
+		background: #e8f5f1;
+		color: #0CA678;
+	}
+}
+</style>
+
+<script>
+$(document).ready(function() {
+	// 배차시간표 메인 메뉴 토글
+	$('.schedule-toggle').on('click', function(e) {
+		e.preventDefault();
+		var $panel = $(this).closest('.schedule-menu-item').find('.schedule-submenu-panel');
+		$panel.toggleClass('active');
+	});
+
+	// 마을버스 버튼 클릭 시 하위 메뉴 토글
+	$('.village-bus-btn').on('click', function(e) {
+		e.preventDefault();
+		var $button = $(this);
+		var $submenu = $button.siblings('.village-submenu-panel');
+		
+		$button.toggleClass('active');
+		$submenu.toggleClass('active');
+	});
+});
+</script>
+
+<!-- <section class="main-help" style="background: url(/resources/img/yangyang/img_main_help_bg.webp) no-repeat center bottom/cover;">
+	<div class="inner wrap">
+		<article class="section-tit-box">
+			<div class="tit-box">
+				<i class="ic ic-help"></i>
+				<div class="tit-txt" style="color: #fff;">무엇을 도와드릴까요?</div>
+			</div>
+		</article>
+		<div class="list-box">
+			<div class="list-wrap">
+				<ul>
+					<li>
+						<a class="item-box" href="/search">
+							<div class="ic-box" style="height: 80px;">
+								<img src="/resources/img/ic_help0.webp" style="height: 100%; padding: 10px;">
+							</div>
+							<div class="txt-box">
+								<div class="subject-box">실시간 검색</div>
+								<div class="con-box">
+									실시간 교통 정보를<br /> 확인해보세요
+								</div>
+							</div>
+
+						</a>
+					</li>
+
+					<li>
+						<a class="item-box" href="
+							
+							
+									/navi
+							
+					">
+							<div class="ic-box">
+                                 
+                                    
+                                    
+                                        <img src="/resources/img/ic_help1.webp">
+                                    
+                                
+							</div>
+							<div class="txt-box">
+								<div class="subject-box">길찾기</div>
+								<div class="con-box">
+									처음가는 길이라도<br /> 검색 한 번으로 손쉽게
+								</div>
+							</div>
+
+						</a>
+					</li>
+
+					
+						
+						
+							<li><a class="item-box" href="/info">
+								<div class="ic-box">
+									<img src="/resources/img/ic_help2.webp">
+								</div>
+								<div class="txt-box">
+									<div class="subject-box">이용요금 및 운수사</div>
+									<div class="con-box">
+										양양군 대중교통<br /> 요금은 얼마일까요?
+									</div>
+								</div>
+
+							</a></li>
+						
+					
+
+					
+						<li><a class="item-box" href="/info?type=transfer">
+							<div class="ic-box">
+								<img src="/resources/img/ic_help3.webp">
+							</div>
+							<div class="txt-box">
+								<div class="subject-box">무료환승 안내</div>
+								<div class="con-box">
+									환승에 대한 궁금증을<br /> 모두 해결해드립니다.
+								</div>
+							</div>
+						</a></li>
+					
+
+					<li><a class="item-box" href="https://txbus.t-money.co.kr/main.do " target="_blank">
+						<div class="ic-box" style="height: 80px;">
+							<img src="/resources/img/ic_help4.webp" style="height: 100%; padding: 10px;">
+						</div>
+						<div class="txt-box">
+							<div class="subject-box">시외버스</div>
+							<div class="con-box">
+								시외버스 운행정보를 확인해보세요.
+							</div>
+						</div>
+					</a></li>
+
+					<li><a class="item-box" href="https://www.letskorail.com" target="_blank">
+						<div class="ic-box" style="height: 80px;">
+							<img src="/resources/img/ic_help5.webp" style="height: 100%;">
+						</div>
+						<div class="txt-box">
+							<div class="subject-box">철도교통</div>
+							<div class="con-box">
+								양양군의 철도정보를 안내합니다.
+							</div>
+						</div>
+					</a></li>
+
+					<li>
+						
+						
+							
+								
+									
+										
+											
+											
+											
+											<div class="ic-box" style="height: 80px;">
+												<img src="/resources/img/ic_help6.webp" style="height: 100%;">
+											</div>
+											<div class="txt-box">
+												<div class="subject-box">관광</div>
+												<div class="con-box">
+													양양군의 관광정보를 안내합니다.
+												</div>
+											</div>
+										</a>
+					</li>
+
+				</ul>
+			</div>
+		</div>
+	</div>
+</section> -->
+
+<script>
+	$(document).ready(function() {
+		$(document).on('click', '.file-upload-btn', function() {
+			$(this).closest('tr').find('.input-file').click();
+		})
+
+		$(document).on('change', '.input-file',function() {
+			var cityName = 'yangyang';
+			var routeNm = $(this).closest('tr').find('td').eq(0).text();
+			var form = $(this).closest('form')[0];
+			var formData = new FormData(form);
+
+			if (this.files && this.files.length > 0) {
+				var fullFileName = this.files[0].name
+				var fileName = fullFileName.split('.').slice(0, -1).join('.');
+				var idx = fileName.indexOf('번');
+				var fileRouteNm = fileName.substring(0, idx);
+
+
+				if(routeNm !== fileRouteNm) {
+					alert('변경하실 노선의 노선명과 일치하는 파일을 선택해주세요.')
+					return false;
+				}
+
+				var url
+				if(cityName === "bis") {
+					url = "/bis/schedule/upload";
+				} else {
+					url = "/schedule/upload";
+				}
+
+				var confirmUpload = confirm(routeNm + "번 배차시간표를 수정하시겠습니까?");
+				if (confirmUpload) {
+					$.ajax({
+						url : url,
+						data: formData,
+						type: 'POST',
+						processData: false, // FormData를 사용할 때 필수
+						contentType: false, // FormData를 사용할 때 필수
+						dataType: 'json',
+						beforeSend : function (xhr){
+							loading();
+							xhr.setRequestHeader("X-CSRF-TOKEN", "8bfcb73c-9329-4280-9ba4-44656f049e02");
+						},
+						success : function(data) {
+							alert(data.message);
+							location.reload();
+						},
+						error : function(data) {
+							alert(data.message)
+						},
+						complete: function() {
+							loading('stop')
+						}
+					});
+				}
+			}
+		});
+
+		// 양구 지역이고 테이블에 데이터가 있을 경우에만 적용
+		if('yangyang' === "yanggu" && $('.schedule-tr').length > 0) {
+			// 페이지의 모든 시작-종료 정류장 텍스트 변환
+			$('.schedule-tr').each(function() {
+				// 노선번호 가져오기
+				const routeNm = $(this).find('td:first').text().trim();
+				
+				// 시작, 종료 정류장 셀 가져오기
+				const startStationCell = $(this).find('td').eq(2);
+				const endStationCell = $(this).find('td').eq(3);
+				
+				// 원래 값 가져오기
+				const startStation = startStationCell.text().trim();
+				const endStation = endStationCell.text().trim();
+				
+				// 변환된 값으로 설정
+				startStationCell.text(convertStationNameYanggu(routeNm, startStation));
+				endStationCell.text(convertStationNameYanggu(routeNm, endStation));
+			});
+		}
+
+        // 강릉 배차시간표 노선 검색
+		if ('yangyang' === 'gangneung') {
+			refreshGangneungScheduleRows();
+			$('#gangneungScheduleKeyword').on('keydown', function(event) {
+				if (event.key === 'Enter') {
+					event.preventDefault();
+					applyGangneungScheduleSearch();
+				}
+			});
+		}
+	})
+
+	var orgCd;
+	var scheduleType = 'week';
+
+    // 강릉 배차시간표 노선 검색
+	function getGangneungScheduleTableBody() {
+		return $('body > section.page-contents > section > div > article.table-layout-form2 > div > table > tbody');
+	}
+
+	function getGangneungScheduleRows() {
+		return getGangneungScheduleTableBody().children('tr').not('.gangneung-schedule-search-empty').filter(function() {
+			return $(this).children('td').length > 1;
+		});
+	}
+
+	function refreshGangneungScheduleRows() {
+		if ('yangyang' !== 'gangneung') {
+			return;
+		}
+
+		getGangneungScheduleTableBody().find('.gangneung-schedule-search-empty').remove();
+		getGangneungScheduleRows().each(function(index) {
+			$(this).attr('data-schedule-order', index).show();
+		});
+		applyGangneungScheduleSearch();
+	}
+
+	function applyGangneungScheduleSearch() {
+		if ('yangyang' !== 'gangneung') {
+			return;
+		}
+
+		var $tbody = getGangneungScheduleTableBody();
+		var $rows = getGangneungScheduleRows();
+		var keyword = $.trim($('#gangneungScheduleKeyword').val()).toLowerCase();
+
+		$tbody.find('.gangneung-schedule-search-empty').remove();
+
+		var rows = $rows.get().sort(function(first, second) {
+			return Number($(first).attr('data-schedule-order')) - Number($(second).attr('data-schedule-order'));
+		});
+
+		if (keyword === '') {
+			$.each(rows, function(_, row) {
+				$tbody.append(row);
+				$(row).show();
+			});
+			return;
+		}
+
+		var matchedRows = [];
+		var unmatchedRows = [];
+		$.each(rows, function(_, row) {
+			var routeName = $.trim($(row).children('td').first().text()).toLowerCase();
+			var priority = -1;
+
+			if (routeName === keyword) {
+				priority = 0;
+			} else if (routeName.indexOf(keyword) === 0) {
+				priority = 1;
+			} else if (routeName.indexOf(keyword) > -1) {
+				priority = 2;
+			}
+
+			if (priority > -1) {
+				matchedRows.push({ row: row, priority: priority });
+			} else {
+				unmatchedRows.push(row);
+			}
+		});
+
+		matchedRows.sort(function(first, second) {
+			if (first.priority !== second.priority) {
+				return first.priority - second.priority;
+			}
+			return Number($(first.row).attr('data-schedule-order')) - Number($(second.row).attr('data-schedule-order'));
+		});
+
+		$.each(matchedRows, function(_, item) {
+			$tbody.append(item.row);
+			$(item.row).show();
+		});
+		$.each(unmatchedRows, function(_, row) {
+			$tbody.append(row);
+			$(row).hide();
+		});
+
+		if (matchedRows.length === 0) {
+			$tbody.append('<tr class="gangneung-schedule-search-empty"><td colspan="8">검색된 데이터가 없습니다.</td></tr>');
+		}
+	}
+
+	// 배차시간표의 타입 클릭시 타입을 받고, 다시 화면에 출력해줍니다.
+	function schedule_type(scheduleType, orgCd) {
+		$.ajax({
+			url : "/schedule/request",
+			type : "GET",
+			data : {
+				scheduleType : scheduleType,
+				orgCd : orgCd
+			},
+			dataType: 'json',
+            beforeSend: function( xhr ) {
+                loading();
+            },
+            complete: function () {
+                loading('stop');
+            },
+			success : function(data) {
+				$('body > section.page-contents > section > div > article.table-layout-form2 > div > table > tbody > tr').remove()
+
+				// 타입별 배차시간표 정보를 다시 화면에 뿌려줍니다. 데이터가 없다면 검색된 데이터가 없다고 표시합니다.
+				if(data.list.length == 0) {
+						$('body > section.page-contents > section > div > article.table-layout-form2 > div > table > tbody').append('<tr><td colspan="7">검색된 데이터가 없습니다.</td></tr>')
+				} else {
+					if('kr' == 'kr'){
+						for(var i=0; i<data.list.length; i++) {
+							// let firstTime = data.list[i].firstTime.spli
+							$('body > section.page-contents > section > div > article.table-layout-form2 > div > table > tbody').append('<tr class="schedule-tr">'
+									+ '<td>' + data.list[i].routeNm + '</td>'
+									+ '<td>' + data.list[i].companyNm.slice(3) + '</td>'
+									+ '<td class="wPop">' + convertStationNameYanggu(data.list[i].routeNm, data.list[i].stStaNm) + '</td>'
+									+ '<td class="wPop">' + convertStationNameYanggu(data.list[i].routeNm, data.list[i].edStaNm) + '</td>'
+									+ '<td class="wPop">' + (data.list[i].firstTime) + '</td>'
+									+ '<td class="wPop">' + data.list[i].lastTime + '</td>'
+									+ '<td><a class="popup-btn" href="javascript:openTimeTable(\''+data.list[i].companyId+'\',\''+'yangyang'+'\','+data.list[i].routeId+',\'' + data.list[i].routeNm + '\', \'' + scheduleType + '\');"></a></td>'
+									+ '<td><a class="file-down-btn" href="javascript:download(\'/schedule/download?routeId='+ data.list[i].routeId + '&routeNm=' + data.list[i].routeNm + '&compId=' + data.list[i].companyId + '\');"></a></td>'
+									
+								+ '</tr>')
+						}
+					} else {
+						for(var i=0; i<data.list.length; i++) {
+							$('body > section.page-contents > section > div > article.table-layout-form2 > div > table > tbody').append('<tr>'
+									+ '<td>' + data.list[i].routeNm + '</td>'
+									+ '<td>' + data.list[i].companyNmEn + '</td>'
+									+ '<td>' + data.list[i].stStaNmEn + '</td>'
+									+ '<td>' + data.list[i].edStaNmEn + '</td>'
+									+ '<td>' + data.list[i].firstTime + '</td>'
+									+ '<td>' + data.list[i].lastTime + '</td>'
+									+ '<td><a class="popup-btn" href="javascript:openTimeTable(\''+data.list[i].companyId+'\',\''+'yangyang'+'\','+data.list[i].routeId+',\'' + data.list[i].routeNm + '\', \'' + scheduleType + '\');"></a></td>'
+									+ '<td><a class="file-down-btn" href="javascript:download(\'/schedule/download?routeId='+ data.list[i].routeId + '&routeNm=' + data.list[i].routeNm + '&compId=' + data.list[i].companyId + '\');"></a></td>'
+								+ '</tr>')
+						}
+					}
+				}
+
+                // 강릉 배차시간표 노선 검색
+				if ('yangyang' === 'gangneung') {
+					refreshGangneungScheduleRows();
+				}
+			},
+	        error: function() {
+	            alert("error");
+	        }
+		});
+	}
+
+	function schedule_type_bis(scheduleType, orgCd) {
+		$.ajax({
+			url : "/bis/schedule/request",
+			type : "GET",
+			data : {
+				scheduleType : scheduleType,
+				orgCd : orgCd
+			},
+			dataType: 'json',
+			beforeSend: function( xhr ) {
+				loading();
+			},
+			complete: function () {
+				loading('stop');
+			},
+			success : function(data) {
+				$('body > section.page-contents > section > div > article.table-layout-form2 > div > table > tbody > tr').remove()
+
+				// 타입별 배차시간표 정보를 다시 화면에 뿌려줍니다. 데이터가 없다면 검색된 데이터가 없다고 표시합니다.
+				if(data.list.length == 0) {
+					$('body > section.page-contents > section > div > article.table-layout-form2 > div > table > tbody').append('<tr><td colspan="7">검색된 데이터가 없습니다.</td></tr>')
+				} else {
+					if('kr' == 'kr'){
+						for(var i=0; i<data.list.length; i++) {
+							// let firstTime = data.list[i].firstTime.spli
+							$('body > section.page-contents > section > div > article.table-layout-form2 > div > table > tbody').append('<tr class="schedule-tr">'
+									+ '<td>' + data.list[i].routeNm + '</td>'
+									+ '<td>' + data.list[i].companyNm.slice(3) + '</td>'
+									+ '<td class="wPop">' + convertStationNameYanggu(data.list[i].routeNm, data.list[i].stStaNm) + '</td>'
+									+ '<td class="wPop">' + convertStationNameYanggu(data.list[i].routeNm, data.list[i].edStaNm) + '</td>'
+									+ '<td class="wPop">' + (data.list[i].firstTime) + '</td>'
+									+ '<td class="wPop">' + data.list[i].lastTime + '</td>'
+									+ '<td><a class="popup-btn" href="javascript:openTimeTable(\''+data.list[i].companyId+'\',\'bis\','+data.list[i].routeId+',\'' + data.list[i].routeNm + '\', \'' + scheduleType + '\');"></a></td>'
+									+ '<td><a class="file-down-btn" href="javascript:download(\'/bis/schedule/download/bis?routeId='+ data.list[i].routeId + '&routeNm=' + data.list[i].routeNm + '&compId=' + data.list[i].companyId + '\');"></a></td>'
+									
+									+ '</tr>')
+						}
+					} else {
+						for(var i=0; i<data.list.length; i++) {
+							$('body > section.page-contents > section > div > article.table-layout-form2 > div > table > tbody').append('<tr>'
+									+ '<td>' + data.list[i].routeNm + '</td>'
+									+ '<td>' + data.list[i].companyNmEn + '</td>'
+									+ '<td>' + data.list[i].stStaNmEn + '</td>'
+									+ '<td>' + data.list[i].edStaNmEn + '</td>'
+									+ '<td>' + data.list[i].firstTime + '</td>'
+									+ '<td>' + data.list[i].lastTime + '</td>'
+									+ '<td><a class="popup-btn" href="javascript:openTimeTable(\''+data.list[i].companyId+'\',\'bis\', '+data.list[i].routeId+',\'' + data.list[i].routeNm + '\', \'' + scheduleType + '\');"></a></td>'
+									+ '<td><a class="file-down-btn" href="javascript:download(\'/bis/schedule/download/bis?routeId='+ data.list[i].routeId + '&routeNm=' + data.list[i].routeNm + '&compId=' + data.list[i].companyId + '\');"></a></td>'
+									+ '</tr>')
+						}
+					}
+				}
+			},
+			error: function() {
+				alert("error");
+			}
+		});
+	}
+
+	function openFileUpload() {
+		$(this).closest('tr').find('.input-file').click();
+	}
+
+	function openTimeTable(compId, cityName, routeId, routeNm, scheduleType) {
+		let url;
+
+		if (cityName === "bis") {
+			url = '/bis/search/route/timeTable'
+		} else {
+			url = '/search/route/timeTable'
+		}
+
+		let popupBtn;
+
+		closeTimeTable();
+		$.ajax({
+			url : url,
+			type : "GET",
+			data : {
+				cityName : cityName,
+				compId : compId,
+				routeId : routeId,
+				routeNm : routeNm,
+				scheduleType : scheduleType
+			},
+			async : false ,
+			dataType : "json",
+			success : function (data) {
+				if (cityName === "bis") {
+					popupBtn = '<button id="downBtn" type="button" onclick="event.preventDefault(); download(\'/bis/schedule/download/bis?routeId='+ routeId + '&routeNm=' + routeNm + '&compId='+compId+');" class="fr" style="padding: 5px;">배차시간표 다운로드</button>'
+				} else {
+					popupBtn =  '<button id="downBtn" type="button" onclick="event.preventDefault(); download(\'/schedule/download?routeId='+ routeId + '&routeNm=' + routeNm + '&compId='+compId+ '\');" class="fr" style="padding: 5px;">배차시간표 다운로드</button>'
+				}
+
+				$('.table-layout-form2').after(
+						'<div class="lypop ui-draggable" id="timeTable">'
+						+ 	'<h3>'
+						+		'<span id="busTimeTable">'+ routeNm +'번 배차시간표</span>'
+						+ 		'<a href="#" onclick="event.preventDefault(); closeTimeTable();" class="close">×</a>'
+						+	'</h3>'
+						+	'<div class="lybox">'
+						+		'<fieldset id="selectFieldset">'
+						+			'<select name="dayCondition" id="dayCondition" onclick="event.preventDefault();" onchange="openTimeTable(\''+compId+'\',\''+cityName+'\','+routeId+',\''+routeNm+'\',(event.target.value));" style="height:26px;">'
+						+				'<option value="week">평일</option>'
+						+				'<option value="sat">토요일</option>'
+						+				'<option value="sun">일,공휴일</option>'
+						+				'<option value="vacation">평일(방학)</option>'
+						+			'</select>'
+						+			popupBtn
+                        +           '<span id="publicDate" class="fr"></span>'
+						+		'</fieldset>'
+						+		'<div class="tbl timetbl" style="height:150px; margin-top: 10px;">'
+						+			'<table>'
+						+				'<thead>'
+						+					'<tr>'
+						+						'<th style="width:10%">순번</th>'
+						+						'<th style="width:19%">기점발</th>'
+						+						'<th style="width:19%">종점발</th>'
+						+						'<th style="width:11%">순번</th>'
+						+						'<th style="width:19%">기점발</th>'
+						+						'<th style="width:19%">종점발</th>'
+						+					'</tr>'
+						+				'</thead>'
+						+				'<tbody id="timeTableTBody">'
+						+				'</tbody>'
+						+			'</table>'
+						+		'</div>'
+						+		'<hr>'
+						+		'<h4>버스정보</h4>'
+						+		'<div class="tbl gry">'
+						+			'<table>'
+						+				'<thead>'
+						+					'<tr>'
+						+						'<th style="width:13%">구분</th>'
+						+						'<th style="width:18%">정류장명</th>'
+						+						'<th style="width:14%">첫차</th>'
+						+						'<th style="width:13%">막차</th>'
+						+						'<th style="width:14%">배차횟수</th>'
+						+						'<th style="width:18%">버스회사</th>'
+						+					'</tr>'
+						+				'</thead>'
+						+				'<tbody id="busInfoTBody">'
+						+					'<tr>'
+						+					'</tr>'
+						+				'</tbody>'
+						+			'</table>'
+						+		'</div>'
+						+'</div>'
+				);
+
+                // $(function() {
+                // 	$(".ui-draggable").draggable({cancel : "#dayCondition"});
+                // });
+
+				$('#dayCondition').val(scheduleType);
+
+				var size = data.timeTable.length - Math.floor(data.timeTable.length/2)
+
+				if(data.timeTable.length > 0) {
+				    $("#publicDate").text('시행일 : ' + (data.timeTable[0].plbDate.split(' ')[0]));
+					for(var i=0; i<size; i++) {
+						let html = ''
+						html += '<tr>'
+						html += '<td style="width:10%">'+ data.timeTable[i].rowNum +'</td>'
+						if (data.timeTable[i].startTime.length > 6) {
+							html += '<td style="width:20%"><mark><b>'+data.timeTable[i].startTime.slice(0,5)+'</b><br>'+data.timeTable[i].startTime.slice(5)+'</mark></td>'
+						} else {
+							html += '<td style="width:20%"><mark>'+data.timeTable[i].startTime+'</mark></td>'
+						}
+						if (data.timeTable[i].startTime2.length > 6) {
+							html += '<td><mark><b>'+data.timeTable[i].startTime2.slice(0,5)+'</b><br>'+data.timeTable[i].startTime2.slice(5)+'</mark></td>'
+						} else {
+							html += '<td><mark>'+data.timeTable[i].startTime2+'</mark></td>'
+						}
+						$('#timeTableTBody').append(html);
+					}
+
+					for(var i=0; i<size; i++) {
+						try {
+							let html = ''
+							html += '<td style="width:10%">'+ data.timeTable[i+size].rowNum +'</td>'
+							if (data.timeTable[i+size].startTime.length > 6) {
+								html += '<td style="width:20%"><mark><b>'+data.timeTable[i+size].startTime.slice(0,5)+'</b><br>'+data.timeTable[i+size].startTime.slice(5)+'</mark></td>'
+							} else {
+								html += '<td style="width:20%"><mark>'+data.timeTable[i+size].startTime+'</mark></td>'
+							}
+							if (data.timeTable[i+size].startTime2.length > 6) {
+								html += '<td><mark><b>'+data.timeTable[i+size].startTime2.slice(0,5)+'</b><br>'+data.timeTable[i+size].startTime2.slice(5)+'</mark></td>'
+							} else {
+								html += '<td><mark>'+data.timeTable[i+size].startTime2+'</mark></td>'
+							}
+							$('#timeTableTBody > tr:nth-child('+ (i+1) +')').append(html);
+						} catch(e) {
+							$('#timeTableTBody > tr:nth-child('+ (i+1) +')').append(
+									'<td style="width:10%"></td>'
+									+ '<td style="width:20%"><mark></mark></td>'
+									+ '<td style="width:20%"><mark></mark></td>'
+							);
+						}
+
+					}
+				} else {
+					$('#timeTableTBody').append('<td colspan="6">운행 버스가 없습니다.</td>');
+				}
+
+				if(('kr' == 'kr')) {
+					for(var i=0; i<data.firstLast.length; i++) {
+						let html = ''
+						html = '<tr>'
+						html += '<td>'+data.firstLast[i].directionNm+'</td>'
+						html += '<td>'+data.firstLast[i].stationNm+'</td>'
+						if (data.firstLast[i].firstTime == null) {
+                            html += '<td><mark><b>-</b></mark></td>'
+                        } else if (data.firstLast[i].firstTime.length > 6) {
+							html += '<td><mark><b>'+data.firstLast[i].firstTime.slice(0,5)+'</b><br>'+data.firstLast[i].firstTime.slice(5)+'</mark></td>'
+						} else {
+							html += '<td><mark>'+data.firstLast[i].firstTime+'</mark></td>'
+						}
+						if (data.firstLast[i].lastTime.length > 6) {
+							html += '<td><mark><b>'+data.firstLast[i].lastTime.slice(0,5)+'</b><br>'+data.firstLast[i].lastTime.slice(5)+'</mark></td>'
+						} else {
+							html += '<td><mark>'+data.firstLast[i].lastTime+'</mark></td>'
+						}
+						html += '<td class="fcr">'+data.firstLast[i].workFrequency+'회</td>'
+						html += '<td>' + (
+                          (data.firstLast[i].companyNm).indexOf("현대운수양구") > 0
+                            ? "양구군 공영버스"
+                            : data.firstLast[i].companyNm.slice(3)
+                        ) + '</td>';
+						+'</tr>'
+						$('#busInfoTBody').append(html);
+					}
+				} else {
+					for(var i=0; i<data.firstLast.length; i++) {
+						$('#busInfoTBody').append(
+								'<tr>'
+								+	'<td>'+data.firstLast[i].directionNmEn+'</td>'
+								+	'<td>'+data.firstLast[i].stationNmEn+'</td>'
+								+	'<td><mark>'+data.firstLast[i].firstTime+'</mark></td>'
+								+	'<td><mark>'+data.firstLast[i].lastTime+'</mark></td>'
+								+	'<td class="fcr">'+data.firstLast[i].workFrequency+'회</td>'
+								+	'<td>'+data.firstLast[i].companyNmEn+'</td>'
+								+'</tr>'
+						);
+					}
+				}
+
+			},
+
+			error : function() {
+				alert('error');
+			}
+		});
+	}
+
+	function closeTimeTable() {
+		$('#timeTable').remove();
+	}
+
+	function convertStationNameYanggu(routeNm, stationNm) {
+		if('yangyang' === "yanggu") {
+			// 정류소 수정 매핑 테이블
+			const stationMapping = {
+				"10": { "구통일광장": "석현리(구통일광장)" },
+				"20-1": { "팔랑종점": "팔랑리종점(춘천상회)" },
+				"21": { "목장": "팔랑리(목장)" },
+				"10-1": { "구통일광장": "석현리(구통일광장)" },
+				"20": { "팔랑종점": "팔랑리종점(춘천상회)" },
+				"20-2": { "팔랑종점": "팔랑리종점(춘천상회)" },
+				"21-1": { "목장": "팔랑리(목장)" },
+				"21-3": { "목장": "팔랑리(목장)" },
+				"21-4": { "목장": "팔랑리(목장)" },
+				"30": { "동막동": "해안면(동막동)" },
+				"41": { "남밭치": "방산면(남밭)" },
+				"41-1": { "남밭치": "방산면(남밭)" },
+				"41-2": { "남밭치": "방산면(남밭)" }
+			};
+
+			// 양구 지역 노선인지 확인
+			const isYangguRoute = routeNm === "10" || routeNm === "20-1" || routeNm === "21" || 
+													routeNm === "10-1" || routeNm === "20" || routeNm === "20-2" ||
+													routeNm === "21-1" || routeNm === "21-3" || routeNm === "21-4" ||
+													routeNm === "30" || routeNm === "41" || routeNm === "41-1" || 
+													routeNm === "41-2";
+
+			// 양구 노선이고, 해당 노선에 매핑된 정류소가 있는 경우 변환
+			if (isYangguRoute && stationMapping[routeNm] && stationMapping[routeNm][stationNm]) {
+				return stationMapping[routeNm][stationNm];
+			}
+
+			// 매핑이 없는 경우 원래 이름 반환
+			return stationNm;
+		} else {
+			return stationNm;
+		}
+	}
+</script>
+<script src="/resources/js/ui.js"></script>
+<style>
+	.filter-box {
+		padding: 10px;
+	}
+	#sido {
+		padding: 10px;
+	} @media(max-width: 1024px) {
+		#sido {
+			padding: 0;
+		}
+	}
+
+	.schedule-image-box {
+		margin-bottom: 24px;
+		text-align: center;
+	}
+
+	.schedule-image-box img {
+		max-width: 100%;
+		height: auto;
+	}
+
+	.lypop {
+		position: fixed !important;
+	}
+</style>
+
+	    
+
+
+
+
+
+
+<footer>
+	<div class="inner wrap">
+
+		<div class="footer-info-box">[25023] 강원특별자치도 양양군 양양읍 군청길 1</div>
+
+		
+		
+		
+
+		
+			<div class="footer-info-box">
+				
+					
+					
+					
+					
+					
+					
+					
+				
+				
+			</div>
+		
+
+		
+	</div>
+</footer>
+
+		<script>
+			// lang-box를 클릭하면 lang-select-box의 표시 상태를 토글
+			document.querySelector('.lang-box').addEventListener('click', function() {
+				const langSelect = document.querySelector('#lang-box');
+				langSelect.classList.toggle('hidden'); // 클래스 숨김/표시
+			});
+
+			// 언어 옵션 선택 시 이벤트 처리
+			document.querySelectorAll('#lang-box .lang-option').forEach(option => {
+				option.addEventListener('click', function() {
+					// 모든 옵션에서 'selected' 클래스를 제거하고 클릭한 요소에만 추가
+					document.querySelectorAll('#lang-box .lang-option').forEach(opt => opt.classList.remove('selected'));
+					this.classList.add('selected');
+
+					// 선택된 언어 값을 가져와서 #lang-select 텍스트와 URL 변경
+					const selectedLang = this.getAttribute('data-lang');
+					document.getElementById('lang-select').textContent = selectedLang; // #lang-select 텍스트 변경
+					window.location.href = window.location.pathname + "?lang=" + selectedLang;
+				});
+			});
+
+
+		    function loading(type) {
+		        if(type == 'stop') {
+		            $('body').loading('stop');
+		        } else {
+		            $('body').loading({theme: 'dark'});
+		        }
+		    }
+
+		    function download(url) {
+                $.ajax({
+                    url : url,
+                    type : "GET",
+                    cache: false,
+                    xhrFields: {
+                        responseType: "blob",
+                    },
+                    beforeSend: function( xhr ) {
+                        loading();
+                    },
+                    complete: function () {
+                        loading('stop');
+                    },
+                    success : function(blob, status, xhr) {
+                        if (blob.type !== undefined) {
+							if(blob.type.indexOf('application/octet-stream') >= 0) {
+								var fileName = "";
+								var disposition = xhr.getResponseHeader("Content-Disposition");
+
+								if (disposition && disposition.indexOf("attachment") !== -1) {
+									var filenameRegex = /filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/;
+									var matches = filenameRegex.exec(disposition);
+
+									if (matches != null && matches[1]) {
+										fileName = decodeURI(matches[1].replace(/['"]/g, ""));
+									}
+								}
+
+								// for IE
+								if (window.navigator && window.navigator.msSaveOrOpenBlob) {
+									window.navigator.msSaveOrOpenBlob(blob, fileName);
+								} else {
+									var URL = window.URL || window.webkitURL;
+									var downloadUrl = URL.createObjectURL(blob);
+
+									if (fileName) {
+										var a = document.createElement("a");
+
+										// for safari
+										if (a.download === undefined) {
+											window.location.href = downloadUrl;
+										} else {
+											a.href = downloadUrl;
+											a.download = fileName;
+											document.body.appendChild(a);
+											a.click();
+										}
+									} else {
+										window.location.href = downloadUrl;
+									}
+								}
+							} else {
+								alert("파일을 찾을 수 없습니다.");
+							}
+						} else {
+							alert("등록된 배차 시간표가 없습니다.");
+						}
+                    },
+                    error: function() {
+                        alert("error");
+                    }
+                });
+		    }
+		</script>
+	</body>
+<style>
+	@media (max-width: 1024px) {
+		section.page-visual .visual-box.visual-1 {
+			background: url("../resources/yangyang/img/img_main_visual_m.webp") no-repeat center/cover;
+		}
+	}
+
+	@media (max-width: 1024px) {
+		section.page-visual .visual-box {
+			background: url("../resources/yangyang/img/img_main_visual_m.webp") no-repeat center/cover;
+		}
+	}
+
+	@media (max-width: 1024px) {
+		section.foot-service {
+			background: url("../resources/img/yangyang/img_main_service_bg_m.webp") no-repeat center/100% 100%;
+		}
+	}
+</style>
+</html>

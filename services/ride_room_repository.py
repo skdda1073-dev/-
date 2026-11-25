@@ -2,11 +2,16 @@
 
 from contextlib import contextmanager
 from datetime import datetime, timezone
+from hashlib import sha256
 from math import isfinite
 from pathlib import Path
 import sqlite3
 import threading
 import uuid
+
+
+ROOM_RETENTION_SECONDS = 24 * 60 * 60
+PURGE_BATCH_SIZE = 200
 
 
 class RoomError(RuntimeError):
@@ -32,14 +37,15 @@ class RideRoomRepository:
         self._initialized = False
         self._init_lock = threading.Lock()
 
-    def _connect(self, read_only=False):
+    def _connect(self, read_only=False, *, busy_timeout_ms=None):
+        timeout_ms = self.busy_timeout_ms if busy_timeout_ms is None else busy_timeout_ms
         location = Path(self.db_path).resolve().as_uri() + "?mode=ro" if read_only else self.db_path
-        connection = sqlite3.connect(location, timeout=self.busy_timeout_ms / 1000,
+        connection = sqlite3.connect(location, timeout=timeout_ms / 1000,
                                      isolation_level=None, uri=read_only)
         try:
             connection.row_factory = sqlite3.Row
             connection.execute("PRAGMA foreign_keys=ON")
-            connection.execute("PRAGMA busy_timeout=%d" % self.busy_timeout_ms)
+            connection.execute("PRAGMA busy_timeout=%d" % timeout_ms)
             return connection
         except Exception:
             connection.close()
@@ -87,23 +93,27 @@ class RideRoomRepository:
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     actor_hash TEXT NOT NULL, action TEXT NOT NULL, created_at REAL NOT NULL
                 );
+                CREATE TABLE IF NOT EXISTS deleted_room_creations (
+                    creation_key TEXT PRIMARY KEY, expires_at REAL NOT NULL
+                );
                 CREATE INDEX IF NOT EXISTS rooms_departure ON rooms(departure_at,id);
                 CREATE INDEX IF NOT EXISTS participants_active ON participants(room_id,active,id);
                 CREATE INDEX IF NOT EXISTS messages_room ON messages(room_id,id);
                 CREATE INDEX IF NOT EXISTS rate_limit_window ON rate_limit_events(actor_hash,action,created_at);
                 CREATE INDEX IF NOT EXISTS rate_limit_cleanup ON rate_limit_events(created_at);
+                CREATE INDEX IF NOT EXISTS deleted_room_creations_expiry ON deleted_room_creations(expires_at);
                 """)
                 self._initialized = True
             finally:
                 connection.close()
 
     @contextmanager
-    def transaction(self, write=False, initialize=True):
+    def transaction(self, write=False, initialize=True, *, busy_timeout_ms=None):
         connection = None
         try:
             if initialize:
                 self._initialize()
-            connection = self._connect(read_only=not initialize and not write)
+            connection = self._connect(read_only=not initialize and not write, busy_timeout_ms=busy_timeout_ms)
             connection.execute("BEGIN IMMEDIATE" if write else "BEGIN")
             yield connection
             connection.commit()
@@ -136,8 +146,10 @@ class RideRoomRepository:
 
     def _writable(self, snapshot, now, joining=False):
         state = room_status(snapshot["room"], len(snapshot["members"]), now)
-        if state in {"closed", "expired"}:
-            raise RoomError("ROOM_" + state.upper(), "종료되었거나 출발 시각이 지난 모집방입니다.", 409)
+        if state == "closed":
+            raise RoomError("ROOM_CLOSED", "방장이 종료한 모집방이에요.", 409)
+        if state == "expired":
+            raise RoomError("ROOM_EXPIRED", "출발 시각이 지난 모집방이에요.", 409)
         if joining and state == "full":
             raise RoomError("ROOM_FULL", "모집 정원이 찼습니다.", 409)
 
@@ -152,6 +164,10 @@ class RideRoomRepository:
         connection.execute("INSERT INTO rate_limit_events(actor_hash,action,created_at) VALUES(?,?,?)",
                            (actor_hash, action, now))
 
+    @staticmethod
+    def _creation_key(actor_hash, client_room_id):
+        return sha256(f"{actor_hash}:{client_room_id}".encode()).hexdigest()
+
     def create(self, actor_hash, data, now, create_limit):
         with self.transaction(write=True) as connection:
             now = now() if callable(now) else now
@@ -164,6 +180,11 @@ class RideRoomRepository:
                 return self._snapshot(connection, previous["id"], actor_hash), False
             if not now < data["departure_at"] <= now + 86400:
                 raise RoomError("INVALID_DEPARTURE_AT", "출발 시각은 현재 이후 24시간 이내여야 합니다.")
+            deleted = connection.execute(
+                "SELECT 1 FROM deleted_room_creations WHERE creation_key=? AND expires_at>?",
+                (self._creation_key(actor_hash, data["client_room_id"]), now)).fetchone()
+            if deleted:
+                raise RoomError("ROOM_DELETED", "이미 삭제된 모집방의 생성 요청이에요.", 409)
             self._rate_limit(connection, actor_hash, "create", now, create_limit, 3600)
             room_id = str(uuid.uuid4())
             meeting, destination = data["meeting"], data["destination"]
@@ -221,6 +242,22 @@ class RideRoomRepository:
                                    (now, room_id))
             return self._snapshot(connection, room_id, actor_hash)
 
+    def delete(self, room_id, actor_hash, now):
+        with self.transaction(write=True) as connection:
+            now = now() if callable(now) else now
+            room = connection.execute(
+                "SELECT host_actor_hash,client_room_id,departure_at FROM rooms WHERE id=?", (room_id,)).fetchone()
+            if room is None:
+                raise RoomError("ROOM_NOT_FOUND", "모집방을 찾을 수 없습니다.", 404)
+            if room["host_actor_hash"] != actor_hash:
+                raise RoomError("ROOM_FORBIDDEN", "방장만 모집방을 삭제할 수 있습니다.", 403)
+            if room["departure_at"] > now:
+                # Keep only a retry marker until the original departure passes.
+                connection.execute(
+                    "INSERT OR REPLACE INTO deleted_room_creations(creation_key,expires_at) VALUES(?,?)",
+                    (self._creation_key(actor_hash, room["client_room_id"]), room["departure_at"]))
+            connection.execute("DELETE FROM rooms WHERE id=?", (room_id,))
+
     def messages(self, room_id, actor_hash, after_id, limit):
         with self.transaction() as connection:
             snapshot = self._snapshot(connection, room_id, actor_hash, True)
@@ -263,6 +300,8 @@ class RideRoomRepository:
 
     def list_snapshots(self, actor_hash, now, query):
         conditions, parameters = [], []
+        newest = query.get("sort") == "newest"
+        timestamp, direction, comparison = ("created_at", "DESC", "<") if newest else ("departure_at", "ASC", ">")
         if query.get("q"):
             conditions.append("instr(destination_name,?)>0")
             parameters.append(query["q"])
@@ -273,7 +312,7 @@ class RideRoomRepository:
             conditions.append("departure_at<=?")
             parameters.append(query["to"])
         if query.get("cursor"):
-            conditions.append("(departure_at,id)>(?,?)")
+            conditions.append(f"({timestamp},id){comparison}(?,?)")
             parameters.extend(query["cursor"])
         status = query.get("status")
         active_count = "(SELECT COUNT(*) FROM participants p WHERE p.room_id=rooms.id AND p.active=1)"
@@ -282,16 +321,38 @@ class RideRoomRepository:
         elif status == "expired":
             conditions.append("closed_at IS NULL AND departure_at<=?")
             parameters.append(now)
-        elif status in {"open", "full"}:
+        elif status in {"open", "full", "active"}:
             conditions.append("closed_at IS NULL AND departure_at>?")
-            conditions.append(active_count + ("<capacity" if status == "open" else ">=capacity"))
             parameters.append(now)
+            if status != "active":
+                conditions.append(active_count + ("<capacity" if status == "open" else ">=capacity"))
         where = " WHERE " + " AND ".join(conditions) if conditions else ""
         with self.transaction() as connection:
-            rows = list(connection.execute("SELECT id FROM rooms" + where + " ORDER BY departure_at,id LIMIT ?",
+            order = f" ORDER BY {timestamp} {direction}, id {direction} LIMIT ?"
+            rows = list(connection.execute("SELECT id FROM rooms" + where + order,
                                            (*parameters, query["limit"] + 1)))
             snapshots = [self._snapshot(connection, row["id"], actor_hash) for row in rows[:query["limit"]]]
             return snapshots, len(rows) > query["limit"]
+
+    def purge_expired(self, now):
+        if not Path(self.db_path).is_file():
+            return
+        cutoff = now - ROOM_RETENTION_SECONDS
+        # Polling requests should not reserve a write lock when there is nothing to purge.
+        with self.transaction(busy_timeout_ms=0) as connection:
+            due = connection.execute(
+                "SELECT EXISTS(SELECT 1 FROM rooms WHERE departure_at<=?) "
+                "OR EXISTS(SELECT 1 FROM deleted_room_creations WHERE expires_at<=?)", (cutoff, now)).fetchone()[0]
+        if not due:
+            return
+        with self.transaction(write=True, busy_timeout_ms=0) as connection:
+            connection.execute(
+                "DELETE FROM rooms WHERE id IN (SELECT id FROM rooms WHERE departure_at<=? "
+                "ORDER BY departure_at,id LIMIT ?)", (cutoff, PURGE_BATCH_SIZE))
+            connection.execute(
+                "DELETE FROM deleted_room_creations WHERE creation_key IN "
+                "(SELECT creation_key FROM deleted_room_creations WHERE expires_at<=? "
+                "ORDER BY expires_at LIMIT ?)", (now, PURGE_BATCH_SIZE))
 
     def cleanup(self, cutoff, limit=200, apply=False):
         if isinstance(cutoff, datetime):

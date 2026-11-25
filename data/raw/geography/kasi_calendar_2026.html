@@ -1,0 +1,3216 @@
+﻿
+
+
+
+
+
+
+
+
+
+
+
+
+
+<!DOCTYPE html>
+<!--[if gt ie 8]>-->
+	<html lang="ko" class="no-js">
+<!--<![endif]-->
+<!--[if lte IE 8]> 
+	<html lang="ko" id="ie8" class="no-js">
+<![endif]-->
+ <!-- 태그 라이브러리 설정 -->
+ <!-- 태그 라이브러리 설정 --> 
+<head>
+<meta charset="utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<meta name="description" content="">
+<meta name="author" content="">
+<meta name="keyword" content="">
+<link rel="shortcut icon" href="/resources/images/favicon.ico">
+
+
+
+<title>
+	
+		
+		
+		
+			
+				
+				
+				
+					
+					
+						
+						
+						달력자료 | 달력자료(월력요항) | 천문우주정보 | 코스모스 허브
+					
+					
+				
+			
+			
+		
+	
+	
+	
+</title>
+
+<link href="/resources/css/bootstrap.css?Ver=test1" rel="stylesheet">
+<link href="/resources/css/datepicker.css?Ver=test1" rel="stylesheet">
+<link href="/resources/css/common.css?Ver=test1" rel="stylesheet">
+
+<!-- 뉴버전 추가 및 수정 -->
+<link href="/resources/css/font-awesome.min.css?Ver=test1" rel="stylesheet">
+<link href="/resources/css/fontawesome.min.css" rel="stylesheet">
+
+<!-- 새로추가 -->
+<link href="/resources/css/bootstrap-icons.css" rel="stylesheet">
+<link href="/resources/css/theme-setting.css" rel="stylesheet">
+
+<link href="/resources/css/gray.css?Ver=test1" rel="stylesheet">
+<link href="/resources/css/print.css?Ver=test1" rel="stylesheet">
+
+<script type="text/javascript" src="/resources/js/jquery.min.js"></script>
+<script type="text/javascript" src="/resources/js/jquery.easing.js"></script>
+<script type="text/javascript" src="/resources/js/common.js"></script>
+<script type="text/javascript" src="/resources/js/nav.js"></script>
+<script type="text/javascript" src="/resources/js/content.js"></script>
+<script type="text/javascript" src="/resources/js/jquery.matchHeight-min.js"></script>
+
+<script type="text/javascript" src="/resources/js/mask.js"></script>
+<script type="text/javascript" src="/resources/js/bootstrap-datepicker.js"></script>
+<script type="text/javascript" src="/resources/js/jquery.validate.min.js"></script> 
+<script type="text/javascript" src="/resources/js/jquery.validate.bootstrap.popover.min.js"></script> 
+<script type="text/javascript" src="/resources/js/recruitCommon.js"></script>
+<script type="text/javascript" src="/resources/js/validateCommon.js"></script>
+
+<script type="text/javascript" src="/resources/sns/kasiSns.js"></script>
+
+<!--[if IE 7]>
+	<link href="/resources/css/font-awesome-ie7.min.css" rel="stylesheet">
+	<link href="/resources/css/bootstrap-ie7.css" rel="stylesheet">
+<![endif]-->
+<!--[if lt IE 9]>
+	<script src="/resources/js/html5shiv.js"></script>
+	<script src="/resources/js/respond.min.js"></script>
+<![endif]-->
+
+<!--[if gt ie 8]><!-->
+	<link href="/resources/css/kr_layout.css?Ver=test1" rel="stylesheet">
+	<link href="/resources/css/kr_layout-responsive.css?Ver=test1" rel="stylesheet">
+	<link href="/resources/css/kr_content-type.css" rel="stylesheet">
+	<link href="/resources/css/kr_content-type-responsive.css?Ver=test1" rel="stylesheet">
+	<link href="/resources/css/contents-board.css?Ver=test1" rel="stylesheet">
+	<link href="/resources/css/contents-board-responsive.css?Ver=test1" rel="stylesheet">
+<!--<![endif]-->
+<!--[if lte IE 8]> 
+	<link href="/resources/css/kr_layout-ie8.css" rel="stylesheet">
+	<link href="/resources/css/kr_content-type-ie8.css" rel="stylesheet">
+	<link href="/resources/css/contents-board-ie8.css" rel="stylesheet">
+<![endif]-->
+
+<link href="/resources/css/kr_access.css?Ver=test1" rel="stylesheet">
+
+<script type="text/javascript">
+	(function(H){H.className=H.className.replace(/\bno-js\b/,'js')})(document.documentElement)
+	
+	document.addEventListener("DOMContentLoaded", function () {
+	    const tab = document.getElementById("depth4Tab");
+	
+	    if (tab && tab.querySelectorAll("li").length === 0) {
+	        tab.style.display = "none";
+	    }
+	});
+</script>
+
+
+
+
+
+
+
+
+<script type="text/javascript" src="/resources/js/common.js"></script>
+	<script type="text/javascript" src="/resources/js/bbsCommon.js"></script>
+	<script>
+		$(function(){
+			var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
+			var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+			  return new bootstrap.Tooltip(tooltipTriggerEl)
+			});
+		});
+		
+		
+		// 연도검색
+		function search(){
+			var selected = $('#search_year').val();
+			var almanacForm = $('#almanacBoard');
+			almanacForm.submit();
+			
+		}
+		
+		// 연도검색2
+		function search2(){
+			var selected = $('#dropdownMenuYear').val();
+			
+			$.ajax({
+				url : "/kor/life/post/calendarData",
+				data: {
+					search_year : selected,
+					bbs_uniq_id	 : "calendarData"
+				},
+				type : "GET",
+				success : function(res){
+					var html = $(res).find('#almanacContent').html();
+					
+					$('#almanacContent').empty();
+					$('#almanacContent').html(html);
+				},
+				error : function(request, status, error){
+					alert("code = "+request.status+" message = "+request.responseText+" error = "+error);
+				}
+			})
+		}
+		
+		// 버튼 연도 설정	
+		function fn_setSearchYear ( year ) {
+			$('#dropdownMenuYear').html(year+'년<span class="arr"></span>');
+			$("#search_year").val(year);
+		}
+
+		$(function(){
+
+			var crudModal = "";
+
+			if (crudModal == "C") {
+				$("#confirm_modal").modal("show");
+				
+			}else if(crudModal == "U"){
+				$('#modalTitle').text("수정에 성공하였습니다.");
+				$('#modalContent').text("");
+				$("#confirm_modal").modal("show");
+				
+			}else if(crudModal == "D"){
+				$('#modalTitle').text("삭제에 성공하였습니다.");
+				$('#modalContent').text("");
+				$("#confirm_modal").modal("show");
+				
+			}else if(crudModal == "E"){
+				$('#modalTitle').text("요청 처리중 문제가 발생했습니다.");
+				$('#modalContent').text("같은 현상이 반복된다면 관리자에게 문의해주세요");
+				$("#confirm_modal").modal("show");
+				
+
+			}
+			
+
+		});
+		
+		// 메뉴 숨김
+		$(document).ready(function () {
+		    $('.tab_accordion_wr').hide();
+		});
+	</script>
+</head>
+<body>
+<!-- accessibility -->
+<div id="accessibility">
+	<a href="#sub_container">본문 바로가기</a>
+	<a href="#gnb">대메뉴 바로가기</a>
+</div>
+<!-- //accessibility -->
+
+<!-- wrap -->
+<div id="sub_wrap" role="main">
+    
+	<!-- header -->
+	
+		
+		
+		
+			
+
+
+<script type="text/javascript" src="/resources/js/search/search.js"></script>
+<script type="text/javascript">
+	$(function(){
+		if($(".depth_3").length || $(".tab").length || $(".step").length){
+			$(".depth_3 li a, .tab li a, .step li .cont").matchHeight({
+	    	    byRow: true,
+	    	    property: 'height',
+	    	    target: null,
+	    	    remove: false
+	    	});
+		}
+	
+		// 전체메뉴
+		$('.header_btn_menu').on('click', function (e) {
+	        e.stopPropagation();
+	        $('.all_menu_wr').toggleClass('active');
+	    });
+	    $('#header_wrap').on('mouseleave', function () {
+	        $('.all_menu_wr').removeClass('active');
+	    });
+	    $('.nav-menu > a').on('mouseenter focus', function () {
+	        $('.all_menu_wr').removeClass('active');
+	    });
+
+    });
+	
+	$(window).on('scroll', function () {
+	    if ($(window).scrollTop() > 200) {
+	        $('#header_wrap').addClass('active');
+	    } else {
+	        $('#header_wrap').removeClass('active');
+	    }
+	});
+</script>
+
+
+    
+    
+    
+
+    
+    
+    
+
+    
+    
+    
+
+    
+    
+    
+
+
+<!-- header start -->
+<header id="header_wrap">
+    <div class="header grab">
+        <h1>
+        	<a class="navbar-brand" href="/index">
+        		<img class="header_logo_b" src="/resources/images/kas_astro_logo_new.png?ver=261012" alt="KASI 한국천문연구원 코스모스 허브" />
+        		<img class="header_logo_w" src="/resources/images/kas_astro_logo_new_w.png?ver=261012" alt="KASI 한국천문연구원 코스모스 허브" />
+       		</a>
+      	</h1>
+
+        <nav id="gnb">
+            <h2 class="sr-only">주메뉴</h2> 
+            <!-- nav -->
+            <div id="nav" class="nav">
+				
+					
+					<div class="nav-menu" >
+						<a class="active" href="/kor/life/pageView/9" onfocus="menuMouseOver(this, 1)" onmouseover="menuMouseOver(this, 1)" >
+							천문우주정보
+							<span class="line"></span>
+						</a>
+						<div class="nav_depth">
+							<div class="nav_depth_wr">
+								<div class="nav_depth_con_tit">천문우주정보</div>
+								<div class="nav_depth_con">
+								
+									
+										
+										
+											
+												<div class="nav_depth_con_txt"><a href="/kor/life/pageView/9">일출일몰시각계산</a></div>
+											
+										
+									
+								
+									
+										
+										
+											
+												<div class="nav_depth_con_txt"><a href="/kor/life/pageView/6">월별 해/달 출몰시각</a></div>
+											
+										
+									
+								
+									
+										
+										
+											
+												<div class="nav_depth_con_txt"><a href="/kor/life/pageView/8">음양력변환계산</a></div>
+											
+										
+									
+								
+									
+										
+										
+											
+												<div class="nav_depth_con_txt"><a href="/kor/life/pageView/5">월별음양력</a></div>
+											
+										
+									
+								
+									
+										
+										
+											
+												<div class="nav_depth_con_txt"><a href="/kor/life/post/calendarData">달력자료(월력요항)</a></div>
+											
+										
+									
+								
+									
+										
+										
+											
+												<div class="nav_depth_con_txt"><a href="/kor/life/pageView/7">월별천문현상</a></div>
+											
+										
+									
+								
+									
+										
+										
+											
+												<div class="nav_depth_con_txt"><a href="/kor/life/pageView/10">태양고도/방위각계산</a></div>
+											
+										
+									
+								
+									
+										
+										
+											
+												<div class="nav_depth_con_txt"><a href="/kor/almanac/pageView/26">역서</a></div>
+											
+										
+									
+								
+									
+										
+										
+											
+												<div class="nav_depth_con_txt"><a href="/kor/almanac/pageView/6472">고천문기록 검색</a></div>
+											
+										
+									
+								
+								</div>
+							</div>
+						</div>
+					</div>
+                
+					
+					<div class="nav-menu" >
+						<a  href="/kor/pageView/6453" onfocus="menuMouseOver(this, 2)" onmouseover="menuMouseOver(this, 2)" >
+							천문우주지식
+							<span class="line"></span>
+						</a>
+						<div class="nav_depth">
+							<div class="nav_depth_wr">
+								<div class="nav_depth_con_tit">천문우주지식</div>
+								<div class="nav_depth_con">
+								
+									
+										
+										
+											
+												<div class="nav_depth_con_txt"><a href="/kor/pageView/6453">별자리</a></div>
+											
+										
+									
+								
+									
+										
+											
+											
+												
+													
+													
+													
+												 
+											
+												
+													
+													
+													
+												 
+											
+												
+													
+													
+													
+												 
+											
+												
+													
+													
+													
+												
+							               			
+							               			<div class="nav_depth_con_txt"><a href="/kor/post/se2021_2030">일식</a></div>
+							               		 
+											
+												
+													
+													
+													
+												 
+											
+												
+													
+													
+													
+												 
+											
+										
+										
+									
+								
+									
+										
+											
+											
+												
+													
+													
+													
+												 
+											
+												
+													
+													
+													
+												 
+											
+												
+													
+													
+													
+												 
+											
+												
+													
+													
+													
+												
+							               			
+							               			<div class="nav_depth_con_txt"><a href="/kor/post/le2021_2030">월식</a></div>
+							               		 
+											
+												
+													
+													
+													
+												 
+											
+												
+													
+													
+													
+												 
+											
+										
+										
+									
+								
+									
+										
+										
+											
+												<div class="nav_depth_con_txt"><a href="/kor/post/solarSystemOverview">천문우주과학</a></div>
+											
+										
+									
+								
+									
+										
+										
+											
+												<div class="nav_depth_con_txt"><a href="/kor/pageView/6460">천문우주 뉴스</a></div>
+											
+										
+									
+								
+									
+										
+										
+											
+												<div class="nav_depth_con_txt"><a href="/kor/pageView/6461">천문 갤러리</a></div>
+											
+										
+									
+								
+									
+										
+										
+											
+												<div class="nav_depth_con_txt"><a href="/kor/pageView/6462">천문우주 영상</a></div>
+											
+										
+									
+								
+									
+										
+										
+											
+												<div class="nav_depth_con_txt"><a href="/kor/pageView/6463">천문용어 검색</a></div>
+											
+										
+									
+								
+								</div>
+							</div>
+						</div>
+					</div>
+                
+					
+					<div class="nav-menu" >
+						<a  href="/kor/post/eventCalender" onfocus="menuMouseOver(this, 3)" onmouseover="menuMouseOver(this, 3)" >
+							시민천문학
+							<span class="line"></span>
+						</a>
+						<div class="nav_depth">
+							<div class="nav_depth_wr">
+								<div class="nav_depth_con_tit">시민천문학</div>
+								<div class="nav_depth_con">
+								
+									
+										
+										
+											
+												<div class="nav_depth_con_txt"><a href="/kor/post/eventCalender">천문이벤트캘린더</a></div>
+											
+										
+									
+								
+									
+										
+										
+											
+												<div class="nav_depth_con_txt"><a href="/kor/pageView/6464">우리나라 천문대</a></div>
+											
+										
+									
+								
+									
+										
+										
+											
+												<div class="nav_depth_con_txt"><a href="/kor/pageView/6471">은하분류 프로젝트</a></div>
+											
+										
+									
+								
+									
+										
+										
+											
+												<div class="nav_depth_con_txt"><a href="/kor/post/suggestions">천문현상 제보</a></div>
+											
+										
+									
+								
+									
+										
+										
+											
+												<div class="nav_depth_con_txt"><a href="/kor/post/amateur_guide">아마추어 천문학 가이드</a></div>
+											
+										
+									
+								
+									
+										
+										
+											
+												<div class="nav_depth_con_txt"><a href="/kor/pageView/6465">천문커리어 가이드</a></div>
+											
+										
+									
+								
+								</div>
+							</div>
+						</div>
+					</div>
+                
+					
+					<div class="nav-menu" >
+						<a  href="/kor/pageView/6467" onfocus="menuMouseOver(this, 4)" onmouseover="menuMouseOver(this, 4)" >
+							모두의 우주
+							<span class="line"></span>
+						</a>
+						<div class="nav_depth">
+							<div class="nav_depth_wr">
+								<div class="nav_depth_con_tit">모두의 우주</div>
+								<div class="nav_depth_con">
+								
+									
+										
+										
+											
+												<div class="nav_depth_con_txt"><a href="/kor/pageView/6467">지금, 하늘</a></div>
+											
+										
+									
+								
+									
+										
+										
+											
+												<div class="nav_depth_con_txt"><a href="/kor/post/researchData">연구 데이터</a></div>
+											
+										
+									
+								
+								</div>
+							</div>
+						</div>
+					</div>
+                
+            </div>
+        </nav>
+        <div class="header_btn_wr">
+        	
+            <!-- 통합검색 
+            <form name="searchForm_main" id="searchForm_main" class="form-horizontal" method="post">
+				<div class="head-search">
+					<label for="head-search-input" class="sr-only">통합검색</label>
+					<input class="form-control" type="text" name="keyword" id="search_txt" placeholder="검색어를 입력하세요">
+					<a tabindex="0" id="head-search-i" onclick="allSearch('main','header');" onkeypress="this.onclick;" class="head-search-btn"><i class="bi bi-search"></i><span class="sr-only">검색</span></a>
+				</div>
+				<input type="hidden" id="searchTerm_main" name="searchTerm_main" value=""/>
+			</form>
+			 //통합검색 -->
+			
+			<!-- 전체 메뉴 -->
+			<button type="button" class="header_btn header_btn_menu">
+                <span class="sr-only">Toggle navigation</span>
+                <i class="bi bi-list"></i>
+            </button>
+            
+			<!-- 소셜미디어 -->
+			<span class="header_btn_list">
+		    	<a class="header_btn youtube" href="https://youtube.com/@kasi9184?si=X-jL7l3K9FNZb0OC" target="_blank" title="천문연 유튜브로 이동(새창)"><img src="/resources/images/sns_youtube.png" alt="유튜브"></a>
+		    	<a class="header_btn twit" href="https://www.instagram.com/kasi__star" target="_blank" title="천문연 인스타그램으로 이동(새창)"><img src="/resources/images/sns_insta.png" alt="인스타그램"></a>
+		    	<a class="header_btn face" href="https://www.facebook.com/kasipr" target="_blank" title="천문연 페이스북으로 이동(새창)"><img src="/resources/images/sns_facebook.png" alt="페이스북"></a>
+	    	</span>
+	    	
+	    	<!-- 관련사이트 -->
+	    	<div class="header_btn_dropdown dropdown">
+        		<button class="dropdown-toggle" type="button" id="dropdownMenuButton1" data-bs-toggle="dropdown" aria-expanded="false">관련 사이트</button>
+        		<ul class="dropdown-menu" aria-labelledby="dropdownMenuButton1">
+	        		 
+				        <li>
+				            <a class="dropdown-item"
+				               href="http://www.moi.go.kr"
+				               target="_blank">
+				               
+				               행정자치부 <i class="bi bi-box-arrow-up-right"></i>
+				            </a>
+				        </li>
+				    
+				        <li>
+				            <a class="dropdown-item"
+				               href="http://www.nia.or.kr"
+				               target="_blank">
+				               
+				               NIA 한국정보문화진흥원 <i class="bi bi-box-arrow-up-right"></i>
+				            </a>
+				        </li>
+				    
+				        <li>
+				            <a class="dropdown-item"
+				               href="https://www.kasi.re.kr"
+				               target="_blank">
+				               
+				               KASI 한국천문연구원 <i class="bi bi-box-arrow-up-right"></i>
+				            </a>
+				        </li>
+				    
+				        <li>
+				            <a class="dropdown-item"
+				               href="http://www.data.go.kr"
+				               target="_blank">
+				               
+				               DATE.GO.KR 공공데이터포털 <i class="bi bi-box-arrow-up-right"></i>
+				            </a>
+				        </li>
+				    
+				        <li>
+				            <a class="dropdown-item"
+				               href="http://www.ntis.go.kr"
+				               target="_blank">
+				               
+				               ntis 국가과학기술지식정보서비스 <i class="bi bi-box-arrow-up-right"></i>
+				            </a>
+				        </li>
+				    
+				        <li>
+				            <a class="dropdown-item"
+				               href="http://www.moe.go.kr"
+				               target="_blank">
+				               
+				               교육과학기술부 <i class="bi bi-box-arrow-up-right"></i>
+				            </a>
+				        </li>
+				    
+				        <li>
+				            <a class="dropdown-item"
+				               href="http://www.nst.re.kr"
+				               target="_blank">
+				               
+				               nst 국가과학기술연구회 <i class="bi bi-box-arrow-up-right"></i>
+				            </a>
+				        </li>
+				    
+				        <li>
+				            <a class="dropdown-item"
+				               href="http://www.zeus.go.kr/cloud?organCd=200702080212"
+				               target="_blank">
+				               
+				               ZEUS 장비활용서비스 <i class="bi bi-box-arrow-up-right"></i>
+				            </a>
+				        </li>
+				    
+			    </ul>
+        		<!-- <ul class="dropdown-menu" aria-labelledby="dropdownMenuButton1">
+        			<li><a class="dropdown-item" href="#">관련 사이트명 01</a></li>
+       				<li><a class="dropdown-item" href="#">관련 사이트명 02</a></li>
+       				<li><a class="dropdown-item" href="#">관련 사이트명 03</a></li>
+     			</ul> -->
+    		</div>
+    		
+    		
+			<button type="button" class="header_btn header_btn_mobile" data-bs-toggle="modal" data-bs-target="#mobileMenu">
+                <span class="sr-only">Toggle navigation</span>
+                <i class="bi bi-list"></i>
+            </button>
+        </div>
+    </div>
+
+    
+    
+        
+            
+                
+                
+                
+            
+            
+            
+            
+        
+    
+        
+    
+        
+    
+        
+    
+	
+    
+    
+    <!-- 전체메뉴 -->
+    <div class="all_menu_wr">
+    	<div class="all_menu_con">
+    		
+	    	<div class="all_menu_nav">
+	    		<div class="all_menu_tit">천문우주정보</div>
+	    		<div class="all_menu_dept">
+	    		
+	    			
+						
+						
+							
+								<div class="all_menu_dept_txt"><a href="/kor/life/pageView/9">일출일몰시각계산</a></div>
+							
+						
+					
+				
+	    			
+						
+						
+							
+								<div class="all_menu_dept_txt"><a href="/kor/life/pageView/6">월별 해/달 출몰시각</a></div>
+							
+						
+					
+				
+	    			
+						
+						
+							
+								<div class="all_menu_dept_txt"><a href="/kor/life/pageView/8">음양력변환계산</a></div>
+							
+						
+					
+				
+	    			
+						
+						
+							
+								<div class="all_menu_dept_txt"><a href="/kor/life/pageView/5">월별음양력</a></div>
+							
+						
+					
+				
+	    			
+						
+						
+							
+								<div class="all_menu_dept_txt"><a href="/kor/life/post/calendarData">달력자료(월력요항)</a></div>
+							
+						
+					
+				
+	    			
+						
+						
+							
+								<div class="all_menu_dept_txt"><a href="/kor/life/pageView/7">월별천문현상</a></div>
+							
+						
+					
+				
+	    			
+						
+						
+							
+								<div class="all_menu_dept_txt"><a href="/kor/life/pageView/10">태양고도/방위각계산</a></div>
+							
+						
+					
+				
+	    			
+						
+						
+							
+								<div class="all_menu_dept_txt"><a href="/kor/almanac/pageView/26">역서</a></div>
+							
+						
+					
+				
+	    			
+						
+						
+							
+								<div class="all_menu_dept_txt"><a href="/kor/almanac/pageView/6472">고천문기록 검색</a></div>
+							
+						
+					
+				
+	    		</div>
+    		</div>
+			
+	    	<div class="all_menu_nav">
+	    		<div class="all_menu_tit">천문우주지식</div>
+	    		<div class="all_menu_dept">
+	    		
+	    			
+						
+						
+							
+								<div class="all_menu_dept_txt"><a href="/kor/pageView/6453">별자리</a></div>
+							
+						
+					
+				
+	    			
+						
+							
+							
+								
+									
+									
+									
+								 
+							
+								
+									
+									
+									
+								 
+							
+								
+									
+									
+									
+								 
+							
+								
+									
+									
+									
+								
+			               			
+			               			<div class="all_menu_dept_txt"><a href="/kor/post/se2021_2030">일식</a></div>
+			               		 
+							
+								
+									
+									
+									
+								 
+							
+								
+									
+									
+									
+								 
+							
+						
+						
+					
+				
+	    			
+						
+							
+							
+								
+									
+									
+									
+								 
+							
+								
+									
+									
+									
+								 
+							
+								
+									
+									
+									
+								 
+							
+								
+									
+									
+									
+								
+			               			
+			               			<div class="all_menu_dept_txt"><a href="/kor/post/le2021_2030">월식</a></div>
+			               		 
+							
+								
+									
+									
+									
+								 
+							
+								
+									
+									
+									
+								 
+							
+						
+						
+					
+				
+	    			
+						
+						
+							
+								<div class="all_menu_dept_txt"><a href="/kor/post/solarSystemOverview">천문우주과학</a></div>
+							
+						
+					
+				
+	    			
+						
+						
+							
+								<div class="all_menu_dept_txt"><a href="/kor/pageView/6460">천문우주 뉴스</a></div>
+							
+						
+					
+				
+	    			
+						
+						
+							
+								<div class="all_menu_dept_txt"><a href="/kor/pageView/6461">천문 갤러리</a></div>
+							
+						
+					
+				
+	    			
+						
+						
+							
+								<div class="all_menu_dept_txt"><a href="/kor/pageView/6462">천문우주 영상</a></div>
+							
+						
+					
+				
+	    			
+						
+						
+							
+								<div class="all_menu_dept_txt"><a href="/kor/pageView/6463">천문용어 검색</a></div>
+							
+						
+					
+				
+	    		</div>
+    		</div>
+			
+	    	<div class="all_menu_nav">
+	    		<div class="all_menu_tit">시민천문학</div>
+	    		<div class="all_menu_dept">
+	    		
+	    			
+						
+						
+							
+								<div class="all_menu_dept_txt"><a href="/kor/post/eventCalender">천문이벤트캘린더</a></div>
+							
+						
+					
+				
+	    			
+						
+						
+							
+								<div class="all_menu_dept_txt"><a href="/kor/pageView/6464">우리나라 천문대</a></div>
+							
+						
+					
+				
+	    			
+						
+						
+							
+								<div class="all_menu_dept_txt"><a href="/kor/pageView/6471">은하분류 프로젝트</a></div>
+							
+						
+					
+				
+	    			
+						
+						
+							
+								<div class="all_menu_dept_txt"><a href="/kor/post/suggestions">천문현상 제보</a></div>
+							
+						
+					
+				
+	    			
+						
+						
+							
+								<div class="all_menu_dept_txt"><a href="/kor/post/amateur_guide">아마추어 천문학 가이드</a></div>
+							
+						
+					
+				
+	    			
+						
+						
+							
+								<div class="all_menu_dept_txt"><a href="/kor/pageView/6465">천문커리어 가이드</a></div>
+							
+						
+					
+				
+	    		</div>
+    		</div>
+			
+	    	<div class="all_menu_nav">
+	    		<div class="all_menu_tit">모두의 우주</div>
+	    		<div class="all_menu_dept">
+	    		
+	    			
+						
+						
+							
+								<div class="all_menu_dept_txt"><a href="/kor/pageView/6467">지금, 하늘</a></div>
+							
+						
+					
+				
+	    			
+						
+						
+							
+								<div class="all_menu_dept_txt"><a href="/kor/post/researchData">연구 데이터</a></div>
+							
+						
+					
+				
+	    		</div>
+    		</div>
+			
+		</div>
+    </div>
+    <!-- //전체메뉴 -->
+
+</header>
+<!-- header end -->
+
+
+<!-- Phones&Tablets menu -->
+<div class="modal fade mobile-menu-modal" id="mobileMenu" tabindex="-1" aria-hidden="true">
+	<div class="modal-dialog modal-dialog-slide">
+		<div class="modal-content">
+      		<div class="modal-header">
+      			<h2><a class="navbar-brand" href="/index"><img src="/resources/images/kas_astro_logo_new.png" alt="KASI 한국천문연구원 코스모스 허브"></a></h2>
+        		<!-- <div class="head-search">
+	            	<label for="head-search-input" class="sr-only">통합검색</label>
+	            	<input class="form-control" type="text" name="keyword" id="head-search-input" placeholder="검색어를 입력하세요">
+	            	<a tabindex="0" id="head-search-i" onclick="javascript:fnSearch();" onkeypress="this.onclick;" class="head-search-btn"><i class="bi bi-search"></i><span class="sr-only">검색</span></a>
+	            </div> -->
+        		<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="닫기"></button>
+      		</div>
+      		<div class="modal-body">
+      			<div class="accordion">
+	      			
+	      			<div class="mobile-menu-list accordion-item">
+	      				<h2 class="accordion-header"><button class="mobile-menu-tit accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#mobile-menu-0">천문우주정보</button></h2>
+		    			<div class="mobile-menu-dept accordion-collapse collapse" id="mobile-menu-0">
+	    				
+							
+								<div class="accordion-body mobile-menu-dept-txt"><a href="/kor/life/pageView/9">일출일몰시각계산</a></div>
+							
+						
+							
+								<div class="accordion-body mobile-menu-dept-txt"><a href="/kor/life/pageView/6">월별 해/달 출몰시각</a></div>
+							
+						
+							
+								<div class="accordion-body mobile-menu-dept-txt"><a href="/kor/life/pageView/8">음양력변환계산</a></div>
+							
+						
+							
+								<div class="accordion-body mobile-menu-dept-txt"><a href="/kor/life/pageView/5">월별음양력</a></div>
+							
+						
+							
+								<div class="accordion-body mobile-menu-dept-txt"><a href="/kor/life/post/calendarData">달력자료(월력요항)</a></div>
+							
+						
+							
+								<div class="accordion-body mobile-menu-dept-txt"><a href="/kor/life/pageView/7">월별천문현상</a></div>
+							
+						
+							
+								<div class="accordion-body mobile-menu-dept-txt"><a href="/kor/life/pageView/10">태양고도/방위각계산</a></div>
+							
+						
+							
+								<div class="accordion-body mobile-menu-dept-txt"><a href="/kor/almanac/pageView/26">역서</a></div>
+							
+						
+							
+								<div class="accordion-body mobile-menu-dept-txt"><a href="/kor/almanac/pageView/6472">고천문기록 검색</a></div>
+							
+						
+		    			</div>
+	      			</div>
+	      			
+	      			<div class="mobile-menu-list accordion-item">
+	      				<h2 class="accordion-header"><button class="mobile-menu-tit accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#mobile-menu-1">천문우주지식</button></h2>
+		    			<div class="mobile-menu-dept accordion-collapse collapse" id="mobile-menu-1">
+	    				
+							
+								<div class="accordion-body mobile-menu-dept-txt"><a href="/kor/pageView/6453">별자리</a></div>
+							
+						
+							
+								<div class="accordion-body mobile-menu-dept-txt"><a href="/kor/post/se1991_2000">일식</a></div>
+							
+						
+							
+								<div class="accordion-body mobile-menu-dept-txt"><a href="/kor/post/le1991_2000">월식</a></div>
+							
+						
+							
+								<div class="accordion-body mobile-menu-dept-txt"><a href="/kor/post/solarSystemOverview">천문우주과학</a></div>
+							
+						
+							
+								<div class="accordion-body mobile-menu-dept-txt"><a href="/kor/pageView/6460">천문우주 뉴스</a></div>
+							
+						
+							
+								<div class="accordion-body mobile-menu-dept-txt"><a href="/kor/pageView/6461">천문 갤러리</a></div>
+							
+						
+							
+								<div class="accordion-body mobile-menu-dept-txt"><a href="/kor/pageView/6462">천문우주 영상</a></div>
+							
+						
+							
+								<div class="accordion-body mobile-menu-dept-txt"><a href="/kor/pageView/6463">천문용어 검색</a></div>
+							
+						
+		    			</div>
+	      			</div>
+	      			
+	      			<div class="mobile-menu-list accordion-item">
+	      				<h2 class="accordion-header"><button class="mobile-menu-tit accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#mobile-menu-2">시민천문학</button></h2>
+		    			<div class="mobile-menu-dept accordion-collapse collapse" id="mobile-menu-2">
+	    				
+							
+								<div class="accordion-body mobile-menu-dept-txt"><a href="/kor/post/eventCalender">천문이벤트캘린더</a></div>
+							
+						
+							
+								<div class="accordion-body mobile-menu-dept-txt"><a href="/kor/pageView/6464">우리나라 천문대</a></div>
+							
+						
+							
+								<div class="accordion-body mobile-menu-dept-txt"><a href="/kor/pageView/6471">은하분류 프로젝트</a></div>
+							
+						
+							
+								<div class="accordion-body mobile-menu-dept-txt"><a href="/kor/post/suggestions">천문현상 제보</a></div>
+							
+						
+							
+								<div class="accordion-body mobile-menu-dept-txt"><a href="/kor/post/amateur_guide">아마추어 천문학 가이드</a></div>
+							
+						
+							
+								<div class="accordion-body mobile-menu-dept-txt"><a href="/kor/pageView/6465">천문커리어 가이드</a></div>
+							
+						
+		    			</div>
+	      			</div>
+	      			
+	      			<div class="mobile-menu-list accordion-item">
+	      				<h2 class="accordion-header"><button class="mobile-menu-tit accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#mobile-menu-3">모두의 우주</button></h2>
+		    			<div class="mobile-menu-dept accordion-collapse collapse" id="mobile-menu-3">
+	    				
+							
+								<div class="accordion-body mobile-menu-dept-txt"><a href="/kor/pageView/6467">지금, 하늘</a></div>
+							
+						
+							
+								<div class="accordion-body mobile-menu-dept-txt"><a href="/kor/post/researchData">연구 데이터</a></div>
+							
+						
+		    			</div>
+	      			</div>
+	      			
+      			</div>
+      		</div>
+      		<div class="modal-footer">
+      			<!-- 관련사이트 -->
+      			<div class="header_btn_dropdown dropdown">
+	        		<button class="dropdown-toggle" type="button" id="dropdownMenuButton1" data-bs-toggle="dropdown" aria-expanded="false">관련 사이트</button>
+	        		<ul class="dropdown-menu" aria-labelledby="dropdownMenuButton1">
+		        		 
+					        <li>
+					            <a class="dropdown-item"
+					               href="http://www.moi.go.kr"
+					               target="_blank">
+					               
+					               행정자치부 <i class="bi bi-box-arrow-up-right"></i>
+					            </a>
+					        </li>
+					    
+					        <li>
+					            <a class="dropdown-item"
+					               href="http://www.nia.or.kr"
+					               target="_blank">
+					               
+					               NIA 한국정보문화진흥원 <i class="bi bi-box-arrow-up-right"></i>
+					            </a>
+					        </li>
+					    
+					        <li>
+					            <a class="dropdown-item"
+					               href="https://www.kasi.re.kr"
+					               target="_blank">
+					               
+					               KASI 한국천문연구원 <i class="bi bi-box-arrow-up-right"></i>
+					            </a>
+					        </li>
+					    
+					        <li>
+					            <a class="dropdown-item"
+					               href="http://www.data.go.kr"
+					               target="_blank">
+					               
+					               DATE.GO.KR 공공데이터포털 <i class="bi bi-box-arrow-up-right"></i>
+					            </a>
+					        </li>
+					    
+					        <li>
+					            <a class="dropdown-item"
+					               href="http://www.ntis.go.kr"
+					               target="_blank">
+					               
+					               ntis 국가과학기술지식정보서비스 <i class="bi bi-box-arrow-up-right"></i>
+					            </a>
+					        </li>
+					    
+					        <li>
+					            <a class="dropdown-item"
+					               href="http://www.moe.go.kr"
+					               target="_blank">
+					               
+					               교육과학기술부 <i class="bi bi-box-arrow-up-right"></i>
+					            </a>
+					        </li>
+					    
+					        <li>
+					            <a class="dropdown-item"
+					               href="http://www.nst.re.kr"
+					               target="_blank">
+					               
+					               nst 국가과학기술연구회 <i class="bi bi-box-arrow-up-right"></i>
+					            </a>
+					        </li>
+					    
+					        <li>
+					            <a class="dropdown-item"
+					               href="http://www.zeus.go.kr/cloud?organCd=200702080212"
+					               target="_blank">
+					               
+					               ZEUS 장비활용서비스 <i class="bi bi-box-arrow-up-right"></i>
+					            </a>
+					        </li>
+					    
+				    </ul>
+	    		</div>
+      			<!-- //관련사이트 -->
+	    		<!-- 소셜미디어 -->
+	    		<div class="header_btn_list">
+			    	<a class="header_btn youtube" href="https://youtube.com/@kasi9184?si=X-jL7l3K9FNZb0OC" target="_blank" title="천문연 유튜브로 이동(새창)"><img src="/resources/images/sns_youtube.png" alt="유튜브"></a>
+			    	<a class="header_btn twit" href="https://www.instagram.com/kasi__star" target="_blank" title="천문연 인스타그램으로 이동(새창)"><img src="/resources/images/sns_insta.png" alt="인스타그램"></a>
+			    	<a class="header_btn face" href="https://www.facebook.com/kasipr" target="_blank" title="천문연 페이스북으로 이동(새창)"><img src="/resources/images/sns_facebook.png" alt="페이스북"></a>
+		    	</div>
+		    	<!-- //소셜미디어 -->
+      		</div>
+    	</div>
+	</div>
+</div>
+<!-- //Phones&Tablets menu -->
+		
+	
+
+	<!-- //header -->
+	
+	
+		
+			
+
+
+<section class="sub_top">
+
+
+
+
+<!-- menu bar -->
+ 
+<div id="location_wrap">
+   	<div class="grab">
+        <div class="location">
+            <div class="home">
+                <a href="/index"><i class="bi bi-house-fill"></i><span class="sr-only">홈으로 이동</span></a>
+            </div>
+            
+
+
+
+
+    
+        
+    
+
+    
+
+    
+
+    
+
+
+
+<div class="dropdown" onfocusin="showNavMenu(this);">
+    
+        
+            <button class="dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false"><span>천문우주정보</span></button>
+            
+            
+            
+            
+        
+    
+        
+    
+        
+    
+        
+    
+    <ul class="dropdown-menu">
+        
+            
+                <li><a class="dropdown-item" href="/kor/life/pageView/9">천문우주정보</a></li>
+            
+        
+            
+                <li><a class="dropdown-item" href="/kor/pageView/6453">천문우주지식</a></li>
+            
+        
+            
+                <li><a class="dropdown-item" href="/kor/post/eventCalender">시민천문학</a></li>
+            
+        
+            
+                <li><a class="dropdown-item" href="/kor/pageView/6467">모두의 우주</a></li>
+            
+        
+    </ul>
+</div>
+
+
+
+    
+        
+        
+
+
+
+
+    
+
+    
+
+    
+
+    
+
+    
+        
+    
+
+    
+
+    
+
+    
+
+    
+
+
+
+<div class="dropdown" onfocusin="showNavMenu(this);">
+    
+        
+    
+        
+    
+        
+    
+        
+    
+        
+            <button class="dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false"><span>달력자료(월력요항)</span></button>
+            
+                
+                <script type="text/javascript">
+                    $(function(){
+                        $("#container").addClass("h4wrap");
+                    });
+                </script>
+            
+            
+            
+            
+        
+    
+        
+    
+        
+    
+        
+    
+        
+    
+    <ul class="dropdown-menu">
+        
+            
+                <li><a class="dropdown-item" href="/kor/life/pageView/9">일출일몰시각계산</a></li>
+            
+        
+            
+                <li><a class="dropdown-item" href="/kor/life/pageView/6">월별 해/달 출몰시각</a></li>
+            
+        
+            
+                <li><a class="dropdown-item" href="/kor/life/pageView/8">음양력변환계산</a></li>
+            
+        
+            
+                <li><a class="dropdown-item" href="/kor/life/pageView/5">월별음양력</a></li>
+            
+        
+            
+                <li><a class="dropdown-item" href="/kor/life/post/calendarData">달력자료(월력요항)</a></li>
+            
+        
+            
+                <li><a class="dropdown-item" href="/kor/life/pageView/7">월별천문현상</a></li>
+            
+        
+            
+                <li><a class="dropdown-item" href="/kor/life/pageView/10">태양고도/방위각계산</a></li>
+            
+        
+            
+                <li><a class="dropdown-item" href="/kor/almanac/pageView/26">역서</a></li>
+            
+        
+            
+                <li><a class="dropdown-item" href="/kor/almanac/pageView/6472">고천문기록 검색</a></li>
+            
+        
+    </ul>
+</div>
+
+
+
+    
+
+    
+
+    
+
+    
+
+    
+        
+        
+
+
+
+
+    
+        
+    
+
+    
+
+
+
+<div class="dropdown" onfocusin="showNavMenu(this);">
+    
+        
+            <button class="dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false"><span>달력자료</span></button>
+            
+            
+            
+                <script type="text/javascript">
+                </script>
+            
+            
+                
+            
+        
+    
+        
+    
+    <ul class="dropdown-menu">
+        
+            
+                <li><a class="dropdown-item" href="/kor/life/post/calendarData">달력자료</a></li>
+            
+        
+            
+                <li><a class="dropdown-item" href="/kor/life/post/almanac">월력요항</a></li>
+            
+        
+    </ul>
+</div>
+
+
+
+    
+        
+        
+
+
+
+
+
+
+
+
+        
+        
+            
+        
+    
+
+    
+
+        
+            
+        
+        
+    
+
+    
+
+    
+
+    
+
+    
+
+        
+        
+    
+
+    
+
+    
+
+    
+
+        </div>
+       </div>
+</div>
+
+
+
+
+
+
+</section>
+		
+		
+		
+		
+	 
+	
+	
+	
+
+    <section id="container" class="container">
+		
+		<div class="sub_container " id="sub_container">
+			<!-- 페이지 타이틀 -->
+			<div id="printtitle" class="">
+				<div class="container_tit_wr">
+				
+					<div class="tit_nav">
+						
+							
+							
+								<h3>달력자료</h3>
+							
+						
+					</div>
+				
+				<div class="sns_box">
+
+
+					<div class="dropdown">
+		        		<button class="dropdown-toggle" type="button" id="dropdownMenuButton1" data-bs-toggle="dropdown" aria-expanded="false"><i class="bi bi-share"></i></button>
+		        		<ul class="dropdown-menu" aria-labelledby="dropdownMenuButton1">
+<!-- 	                		<li> -->
+
+<!-- 			                </li> -->
+		        			<li>
+		        				<a class="dropdown-item facebook" href="javascript:sendFaceBook('','/kor/life/post/calendarData')" title="페이스북으로 퍼가기(새창열림)">
+		        					<i class="bi bi-facebook"></i> Facebook
+		        				</a>
+			                </li>
+		       				<li>
+			       				<a class="dropdown-item twitter" href="javascript:sendTwitter('','/kor/life/post/calendarData')" title="X(구 트위터)로 퍼가기(새창열림)">
+		       						<i class="bi bi-twitter-x"></i> X(구 트위터)
+	       						</a>
+	                		</li>
+	                		<li>
+	                			<a class="dropdown-item blog" href="javascript:sendNaverBlog('','/kor/life/post/calendarData')" title="네이버 블로그로 퍼가기(새창열림)">
+	                				<img class="no" src="/resources/images/sns_share_blog.png" alt="네이버 블로그">
+	                				<img class="on" src="/resources/images/sns_share_blog-on.png" alt="네이버 블로그"> 네이버
+                				</a>
+	                		</li>
+		     			</ul>
+		    		</div>
+	                <a class="print" href="javascript:void(0);" onclick="javascript:printContents();" title="프린트하기(새창열림)"><i class="bi bi-printer"></i><span class="sr-only">Print</span></a>
+
+		        </div>
+		        
+		        </div>
+   			</div> 	
+			
+			<!-- 천문우주과학 탭메뉴 -->
+			<div class="tab_accordion_wr accordion">
+				
+				
+					
+						
+							
+						
+							
+						
+							
+						
+							
+						
+							
+								
+									
+									
+										
+										<div class="tab_accordion_list accordion-item">
+											<h2 class="accordion-header">
+												
+													
+													
+														<a class="accordion-button active"
+														   href="/kor/life/post/calendarData"
+														   style="background-image:none!important;"
+														   aria-current="page">
+															달력자료
+														   
+														</a>
+													
+												
+											</h2>
+											
+										</div>
+									
+								
+									
+									
+										
+										<div class="tab_accordion_list accordion-item">
+											<h2 class="accordion-header">
+												
+													
+													
+														<a class="accordion-button"
+														   href="/kor/life/post/almanac"
+														   style="background-image:none!important;"
+														   >
+															월력요항
+														   
+														</a>
+													
+												
+											</h2>
+											
+										</div>
+									
+								
+							
+						
+							
+						
+							
+						
+							
+						
+							
+						
+					
+				
+					
+				
+					
+				
+					
+				
+			</div>
+			<!-- //천문우주과학 탭메뉴 -->
+			
+			
+		    <div id="printbody">
+				
+		        <div class="content_body">
+					<div class="modal fade bs-example-modal-sm" tabindex="-1" role="dialog" aria-labelledby="mySmallModalLabel" aria-hidden="true">
+	<div class="modal-dialog modal-sm">
+		<div class="modal-content">
+			<div class="modal-header">
+				<h4 class="modal-title">Permission denied!</h4>
+			<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+			</div>
+			<div class="modal-body">
+				<p>이용이 거부 되었습니다.</p>
+				<p>Permission denied please try again</p>
+				<p><a href="/" class="alert-link">Start Page</a></p>
+			</div>
+			<div class="modal-footer">
+				<button type="button" class="btn btn-default" data-bs-dismiss="modal">Close</button>
+			</div>
+		</div>
+	</div>
+</div>
+
+<div class="modal fade bs-delete-modal-sm-" tabindex="-1" role="dialog" aria-labelledby="mySmallModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-sm">
+    <div class="modal-content">
+		<div class="modal-header">
+			<h4 class="modal-title">Delete Article!</h4>
+			<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+		</div>
+		<div class="modal-body">
+			
+			<p>정말로 삭제 하시겠습니까?</p>
+			<p>Do you really want to delete?</p>
+		</div>
+		<div class="modal-footer">
+			<button type="button" class="btn btn-default" onclick="javascript:$('#deleteForm').submit();" data-bs-dismiss="modal">OK</button>
+			<button type="button" class="btn btn-default" data-bs-dismiss="modal" onclick="$('.bs-delete-modal-sm-').modal('hide');">Cancel</button>
+		</div>
+    </div>
+  </div>
+</div>
+
+
+
+	
+	
+		
+<!-- 버튼링크 설정 -->
+
+	<!-- 이전글버튼 -->
+	
+	
+	<!-- 다음글버튼 -->
+	
+
+	<!-- 취소버튼 -->
+	
+	
+	<!-- 등록버튼 -->
+	
+    
+	<!-- 추천하기버튼 -->
+	
+	
+	<!-- 승인하기버튼 -->
+	
+	
+	<!-- 수정버튼 -->
+	
+	
+	<!-- 삭제버튼 -->
+	
+	
+	<!-- 답변버튼 -->
+	
+	
+	<!-- 비밀번호체크 -->
+	
+	
+	
+	
+	
+<!-- 버튼링크 설정 -->
+	
+
+
+    
+    
+    
+    <div class="contents_tab_wr">
+    
+    	<!-- 달력자료/월력요항 -->
+ 	    <ul class="depth_3 convert_tab_wr convert_tab_wr02">
+        	<li class="active"><a href="/kor/life/post/calendarData">달력자료</a></li>
+	        <li ><a href="/kor/life/post/almanac">월력요항</a></li>
+	    </ul> 
+		
+		
+		<div class="contents_wr contents_wr02">
+	        <div class="contents_left border-gray border-radius-20">
+		        
+		        
+		        
+		        <!-- 검색키워드 저장 -->
+				
+		            
+		            
+		            
+		                
+		                    
+		                    
+		                
+		            
+		        
+				
+				<div class="con-text">
+<!-- 					<p class="con-h3">■ 자료 정보</p> -->
+					
+						<p class="con-sub">음력, 24기, 기타 명절, 국경일과 공휴일, 기념일 등의 달력 제작의 기준이 되는 정보를 확인하세요.</p>
+					
+				</div>
+				
+				<div class="con-text">
+					<!-- 연도 입력 폼 -->
+					<form id="almanacBoard" name="almanacBoard" method="get" action="/kor/life/post/calendarData">
+						<input id="search_year" name="search_year" type="hidden" value="2026">
+					</form>
+					<!-- 연도검색 -->
+					<p class="con-h4">연도 선택</p>
+					<div class="form-group">
+					    <select class="form-contrtol form-select" id="dropdownMenuYear">
+					        
+					        
+								<option value="2028"
+								    >
+								    2028년
+								</option>
+					        
+								<option value="2027"
+								    >
+								    2027년
+								</option>
+					        
+								<option value="2026"
+								    selected>
+								    2026년
+								</option>
+					        
+								<option value="2025"
+								    >
+								    2025년
+								</option>
+					        
+								<option value="2024"
+								    >
+								    2024년
+								</option>
+					        
+								<option value="2023"
+								    >
+								    2023년
+								</option>
+					        
+								<option value="2022"
+								    >
+								    2022년
+								</option>
+					        
+								<option value="2021"
+								    >
+								    2021년
+								</option>
+					        
+					    </select>
+					</div>
+					<div class="search_btn pt-2">
+						<button onclick="javascript:search2()" id="search" class="btn btn-blue">검색</button>
+					</div>
+				</div>
+				<!-- 연도검색 END -->
+				
+				<!-- 게시글소개부분 -->
+		        
+		        <div class="con-text mb-0">
+			        <p class="con-h4">안내 정보</p>
+			        <div class="con-box-wr">
+						<div class="con-box"><p>※ 2년 후의 달력자료로 우주항공청을 통해 월력요항이 공식발표되기 전의 자료입니다.</p>
+<p>※ 2021년 이후 발표된 달력자료를 제공합니다. 이전 자료는 월력요항에서 확인할 수 있습니다.</p></div>
+						<a href="#" class="con-box-more"><i class="bi bi-chevron-down"></i></a>
+					</div>
+				</div>
+				
+				<script>
+				document.querySelectorAll('.con-box-more').forEach(btn => {
+				  btn.addEventListener('click', function(e) {
+				    e.preventDefault();
+				
+				    const wrapper = this.closest('.con-box-wr');
+				    const box = wrapper.querySelector('.con-box');
+				
+				    if (box.classList.contains('open')) {
+				      box.style.height = '65px';
+				      box.classList.remove('open');
+				    } else {
+				      box.style.height = box.scrollHeight + 'px';
+				      box.classList.add('open');
+				    }
+	
+				    wrapper.classList.toggle('open');
+				  });
+				});
+				</script>
+	        </div>
+	        <div class="contents_right_wr">
+		        <div class="contents_right contents_right_top_tab">
+		        	<!-- 탭인가? -->
+			        
+					<div id="almanacContent">
+				        
+				        	<div class="bbs_almanac" role="tablist" aria-multiselectable="true">
+				      			<div class="panel panel-default">
+				      				
+									<div class="bbs_almanac_con contents-right-box panel-group">
+										<div id="heading_almanac">
+										  	<h2 class="boardlist_tit">
+												
+
+
+
+
+
+
+
+
+
+2026년 달력자료
+												
+							               	</h2>
+										</div>
+					                   	<div id="collapse_almanac">
+					                   		<div class="panel-body">	
+						                   			
+													
+						                   				<div class="bordList_file_wr">
+														
+														
+															
+															
+															<a class="file-dw-btn btn btn-gray-light-line btn-sm btn_dw" href="javascript:downLocation('1785891552343_1.txt','2026_달력자료.txt');">
+																<img src="/resources/images/ico/icon_txt.png" alt="txt파일 다운로드" onerror="this.src='/resources/images/ico/icon_file.png'" /> 
+
+																
+
+
+
+
+
+
+
+
+
+2026년 달력자료 다운로드
+																<i class="bi bi-download"></i>
+															</a>
+														
+														</div>
+													
+												
+												<div class="content-wrapper"> 
+<div class="contents_pg_info mt-0"> 
+<p class="point"><b>*** 주의 사항 ***</b></p> 
+<p>이 자료는 공식 발표 자료가 아닙니다. 자료의 오류에 따른 사용자의 피해에 대하여 한국천문연구원은 재정적, 법적인 책임을 지지 않습니다. 자료에 대해 궁금하신 점이 있으시거나 오류를 발견하신 경우 담당자(hpark@kasi.re.kr)에게 연락 부탁드립니다. 오류로 확인 된 경우 한국천문연구원에서 발행하는 역서를 제보자께 보내드립니다.</p> 
+<p class="con-sub-sm"><strong class="point">※</strong> 공식 발표 자료는 월력요항을 확인해주시기 바랍니다.</p> 
+<p>가. 날짜는 특별한 언급이 없다면 양력(그레고리력) 기준<br>
+ 나. 기념일은 각종 기념일 등에 관한 규정의 기념일과 월력요항에 추가된 기념일을 포함<br> 다. 자료생성(V1.0a): 2024년 7월 25일&nbsp; 16시 57분</p></div> 
+<h2 class="h4_title">음력(2026, 병오년)</h2> 
+<div class="table-responsive tbl_center"> 
+<table class="table tbl_cnt tbl_border"> 
+<thead> 
+<tr> 
+<th colspan="2" class="pe_qB">음력의 월일</th> 
+<th class="pe_qB">대소</th> 
+<th class="pe_qB">월건</th> 
+<th class="pe_qB">일진</th> 
+<th colspan="3" class="pe_qB">양력의 월일</th> 
+</tr> 
+<tr> 
+<th class="pe_qB">월</th> 
+<th class="pe_qB">일</th> 
+<th class="pe_qB"></th> 
+<th class="pe_qB"></th> 
+<th class="pe_qB"></th> 
+<th class="pe_qB">년</th> 
+<th class="pe_qB">월</th> 
+<th class="pe_qB">일</th> 
+</tr> 
+</thead> 
+<tbody> 
+<tr> 
+<td>1</td> 
+<td>1</td> 
+<td>대</td> 
+<td>경인</td> 
+<td>임술</td> 
+<td>2026</td> 
+<td>2</td> 
+<td>17</td> 
+</tr> 
+<tr> 
+<td>2</td> 
+<td>1</td> 
+<td>소</td> 
+<td>신묘</td> 
+<td>임진</td> 
+<td>2026</td> 
+<td>3</td> 
+<td>19</td> 
+</tr> 
+<tr> 
+<td>3</td> 
+<td>1</td> 
+<td>대</td> 
+<td>임진</td> 
+<td>신유</td> 
+<td>2026</td> 
+<td>4</td> 
+<td>17</td> 
+</tr> 
+<tr> 
+<td>4</td> 
+<td>1</td> 
+<td>소</td> 
+<td>계사</td> 
+<td>신묘</td> 
+<td>2026</td> 
+<td>5</td> 
+<td>17</td> 
+</tr> 
+<tr> 
+<td>5</td> 
+<td>1</td> 
+<td>소</td> 
+<td>갑오</td> 
+<td>경신</td> 
+<td>2026</td> 
+<td>6</td> 
+<td>15</td> 
+</tr> 
+<tr> 
+<td>6</td> 
+<td>1</td> 
+<td>대</td> 
+<td>을미</td> 
+<td>기축</td> 
+<td>2026</td> 
+<td>7</td> 
+<td>14</td> 
+</tr> 
+<tr> 
+<td>7</td> 
+<td>1</td> 
+<td>소</td> 
+<td>병신</td> 
+<td>기미</td> 
+<td>2026</td> 
+<td>8</td> 
+<td>13</td> 
+</tr> 
+<tr> 
+<td>8</td> 
+<td>1</td> 
+<td>대</td> 
+<td>정유</td> 
+<td>무자</td> 
+<td>2026</td> 
+<td>9</td> 
+<td>11</td> 
+</tr> 
+<tr> 
+<td>9</td> 
+<td>1</td> 
+<td>소</td> 
+<td>무술</td> 
+<td>무오</td> 
+<td>2026</td> 
+<td>10</td> 
+<td>11</td> 
+</tr> 
+<tr> 
+<td>10</td> 
+<td>1</td> 
+<td>대</td> 
+<td>기해</td> 
+<td>정해</td> 
+<td>2026</td> 
+<td>11</td> 
+<td>9</td> 
+</tr> 
+<tr> 
+<td>11</td> 
+<td>1</td> 
+<td>대</td> 
+<td>경자</td> 
+<td>정사</td> 
+<td>2026</td> 
+<td>12</td> 
+<td>9</td> 
+</tr> 
+<tr> 
+<td>12</td> 
+<td>1</td> 
+<td>대</td> 
+<td>신축</td> 
+<td>정해</td> 
+<td>2027</td> 
+<td>1</td> 
+<td>8</td> 
+</tr> 
+</tbody> 
+</table></div> 
+<p class="con-sub-sm text-right">(음력 : 대 &rarr; 30일, 소 &rarr; 29일)</p> 
+<h2 class="h4_title">24절기</h2> 
+<div class="table-responsive tbl_center"> 
+<table class="table tbl_cnt tbl_border"> 
+<thead> 
+<tr> 
+<th rowspan="2" class="pe_qB">명칭</th> 
+<th colspan="4" class="pe_qB">날짜</th> 
+</tr> 
+<tr> 
+<th class="pe_qB">월</th> 
+<th class="pe_qB">일</th> 
+<th class="pe_qB">시</th> 
+<th class="pe_qB">분</th> 
+</tr> 
+</thead> 
+<tbody> 
+<tr> 
+<td>소한</td> 
+<td>1</td> 
+<td>5</td> 
+<td>17</td> 
+<td>23</td> 
+</tr> 
+<tr> 
+<td>대한</td> 
+<td>1</td> 
+<td>20</td> 
+<td>10</td> 
+<td>45</td> 
+</tr> 
+<tr> 
+<td>입춘</td> 
+<td>2</td> 
+<td>4</td> 
+<td>5</td> 
+<td>2</td> 
+</tr> 
+<tr> 
+<td>우수</td> 
+<td>2</td> 
+<td>19</td> 
+<td>0</td> 
+<td>52</td> 
+</tr> 
+<tr> 
+<td>경칩</td> 
+<td>3</td> 
+<td>5</td> 
+<td>22</td> 
+<td>59</td> 
+</tr> 
+<tr> 
+<td>춘분</td> 
+<td>3</td> 
+<td>20</td> 
+<td>23</td> 
+<td>46</td> 
+</tr> 
+<tr> 
+<td>청명</td> 
+<td>4</td> 
+<td>5</td> 
+<td>3</td> 
+<td>40</td> 
+</tr> 
+<tr> 
+<td>곡우</td> 
+<td>4</td> 
+<td>20</td> 
+<td>10</td> 
+<td>39</td> 
+</tr> 
+<tr> 
+<td>입하</td> 
+<td>5</td> 
+<td>5</td> 
+<td>20</td> 
+<td>49</td> 
+</tr> 
+<tr> 
+<td>소만</td> 
+<td>5</td> 
+<td>21</td> 
+<td>9</td> 
+<td>37</td> 
+</tr> 
+<tr> 
+<td>망종</td> 
+<td>6</td> 
+<td>6</td> 
+<td>0</td> 
+<td>48</td> 
+</tr> 
+<tr> 
+<td>하지</td> 
+<td>6</td> 
+<td>21</td> 
+<td>17</td> 
+<td>25</td> 
+</tr> 
+<tr> 
+<td>소서</td> 
+<td>7</td> 
+<td>7</td> 
+<td>10</td> 
+<td>57</td> 
+</tr> 
+<tr> 
+<td>대서</td> 
+<td>7</td> 
+<td>23</td> 
+<td>4</td> 
+<td>13</td> 
+</tr> 
+<tr> 
+<td>입추</td> 
+<td>8</td> 
+<td>7</td> 
+<td>20</td> 
+<td>43</td> 
+</tr> 
+<tr> 
+<td>처서</td> 
+<td>8</td> 
+<td>23</td> 
+<td>11</td> 
+<td>19</td> 
+</tr> 
+<tr> 
+<td>백로</td> 
+<td>9</td> 
+<td>7</td> 
+<td>23</td> 
+<td>41</td> 
+</tr> 
+<tr> 
+<td>추분</td> 
+<td>9</td> 
+<td>23</td> 
+<td>9</td> 
+<td>5</td> 
+</tr> 
+<tr> 
+<td>한로</td> 
+<td>10</td> 
+<td>8</td> 
+<td>15</td> 
+<td>29</td> 
+</tr> 
+<tr> 
+<td>상강</td> 
+<td>10</td> 
+<td>23</td> 
+<td>18</td> 
+<td>38</td> 
+</tr> 
+<tr> 
+<td>입동</td> 
+<td>11</td> 
+<td>7</td> 
+<td>18</td> 
+<td>52</td> 
+</tr> 
+<tr> 
+<td>소설</td> 
+<td>11</td> 
+<td>22</td> 
+<td>16</td> 
+<td>23</td> 
+</tr> 
+<tr> 
+<td>대설</td> 
+<td>12</td> 
+<td>7</td> 
+<td>11</td> 
+<td>53</td> 
+</tr> 
+<tr> 
+<td>동지</td> 
+<td>12</td> 
+<td>22</td> 
+<td>5</td> 
+<td>50</td> 
+</tr> 
+</tbody> 
+</table></div> 
+<h2 class="h4_title">기타 명절과 잡절(삼복)</h2> 
+<div class="table-responsive tbl_center"> 
+<table class="table tbl_cnt tbl_border"> 
+<thead> 
+<tr> 
+<th class="pe_qB">명칭</th> 
+<th class="pe_qB">월</th> 
+<th class="pe_qB">일</th> 
+</tr> 
+</thead> 
+<tbody> 
+<tr> 
+<td>정월대보름</td> 
+<td>3</td> 
+<td>3</td> 
+</tr> 
+<tr> 
+<td>한식</td> 
+<td>4</td> 
+<td>6</td> 
+</tr> 
+<tr> 
+<td>단오</td> 
+<td>6</td> 
+<td>19</td> 
+</tr> 
+<tr> 
+<td>칠석</td> 
+<td>8</td> 
+<td>19</td> 
+</tr> 
+<tr> 
+<td>초복</td> 
+<td>7</td> 
+<td>15</td> 
+</tr> 
+<tr> 
+<td>중복</td> 
+<td>7</td> 
+<td>25</td> 
+</tr> 
+<tr> 
+<td>말복</td> 
+<td>8</td> 
+<td>14</td> 
+</tr> 
+</tbody> 
+</table></div> 
+<h2 class="h4_title">국경일과 공휴일</h2> 
+<div class="table-responsive tbl_center"> 
+<table class="table tbl_cnt tbl_border"> 
+<thead> 
+<tr> 
+<th class="pe_qB">명칭</th> 
+<th class="pe_qB">날짜(요일)</th> 
+<th class="pe_qB">명칭</th> 
+<th class="pe_qB">날짜(요일)</th> 
+</tr> 
+</thead> 
+<tbody> 
+<tr> 
+<td>1월 1일</td> 
+<td>1월 1일<br> (목)</td> 
+<td>광복절<span class="point">*</span></td> 
+<td>8월 15일<br> (토)</td> 
+</tr> 
+<tr> 
+<td>설날</td> 
+<td>2월16일~ 2월18일<br> (월,화,수)</td> 
+<td>대체공휴일(광복절)</td> 
+<td>8월 17일<br> (월)</td> 
+</tr> 
+<tr> 
+<td>3.1절<span class="point">*</span></td> 
+<td>3월 1일<br> (일)</td> 
+<td>추석</td> 
+<td>9월24일~ 9월26일<br> (목,금,토)</td> 
+</tr> 
+<tr> 
+<td>대체공휴일(3.1절)</td> 
+<td>3월 2일<br> (월)</td> 
+<td>개천절<span class="point">*</span></td> 
+<td>10월 3일<br> (토)</td> 
+</tr> 
+<tr> 
+<td>어린이날</td> 
+<td>5월 5일<br> (화)</td> 
+<td>대체공휴일(개천절)</td> 
+<td>10월 5일<br> (월)</td> 
+</tr> 
+<tr> 
+<td>부처님오신날</td> 
+<td>5월 24일<br> (일)</td> 
+<td>한글날<span class="point">*</span></td> 
+<td>10월 9일<br> (금)</td> 
+</tr> 
+<tr> 
+<td>대체공휴일(부처님오신날)</td> 
+<td>5월 25일<br> (월)</td> 
+<td>기독탄신일</td> 
+<td>12월 25일<br> (금)</td> 
+</tr> 
+<tr> 
+<td>전국동시지방선거</td> 
+<td>6월 3일<br> (수)</td> 
+<td> 
+<p><br></p></td> 
+<td> 
+<p><br></p></td> 
+</tr> 
+<tr> 
+<td>현충일</td> 
+<td>6월 6일<br> (토)</td> 
+<td> 
+<p><br></p></td> 
+<td> 
+<p><br></p></td> 
+</tr> 
+<tr> 
+<td>제헌절<span class="point">*</span></td> 
+<td>* 7월 17일<br> (금)</td> 
+<td> 
+<p><br></p></td> 
+<td> 
+<p><br></p></td> 
+</tr> 
+</tbody> 
+</table></div> 
+<p class="con-sub-sm text-right"><span class="point">*</span> 국경일</p> 
+<p class="con-sub-sm text-right"><span class="point">**</span> 국경일이지만 공휴일 아님</p> 
+<h2 class="h4_title">일요일</h2> 
+<div class="table-responsive tbl_center"> 
+<table class="table tbl_cnt tbl_border"> 
+<thead> 
+<tr> 
+<th class="pe_qB">월</th> 
+<th class="pe_qB">일요일</th> 
+<th class="pe_qB">월</th> 
+<th class="pe_qB">일요일</th> 
+</tr> 
+</thead> 
+<tbody> 
+<tr> 
+<td>1</td> 
+<td>4  11  18  25</td> 
+<td>7</td> 
+<td>5  12  19  26</td> 
+</tr> 
+<tr> 
+<td>2</td> 
+<td>1  8  15  22</td> 
+<td>8</td> 
+<td>2  9  16  23  30</td> 
+</tr> 
+<tr> 
+<td>3</td> 
+<td>1  8  15  22  29</td> 
+<td>9</td> 
+<td>6  13  20  27</td> 
+</tr> 
+<tr> 
+<td>4</td> 
+<td>5  12  19  26</td> 
+<td>10</td> 
+<td>4  11  18  25</td> 
+</tr> 
+<tr> 
+<td>5</td> 
+<td>3  10  17  24  31</td> 
+<td>11</td> 
+<td>1  8  15  22  29</td> 
+</tr> 
+<tr> 
+<td>6</td> 
+<td>7  14  21  28</td> 
+<td>12</td> 
+<td>6  13  20  27</td> 
+</tr> 
+</tbody> 
+</table></div> 
+<h2 class="h4_title">기념일</h2> 
+<div class="table-responsive tbl_center"> 
+<table class="table tbl_cnt tbl_border"> 
+<thead> 
+<tr> 
+<th class="pe_qB">명칭</th> 
+<th class="pe_qB">날짜</th> 
+<th class="pe_qB">요일</th> 
+<th class="pe_qB">명칭</th> 
+<th class="pe_qB">날짜</th> 
+<th class="pe_qB">요일</th> 
+</tr> 
+</thead> 
+<tbody> 
+<tr> 
+<td>2.28민주운동 기념일</td> 
+<td class="date">2월 28일</td> 
+<td>토</td> 
+<td>납세자의 날</td> 
+<td class="date">3월 3일</td> 
+<td>화</td> 
+</tr> 
+<tr> 
+<td>3.8민주의거 기념일</td> 
+<td class="date">3월 8일</td> 
+<td>일</td> 
+<td>3.15의거 기념일</td> 
+<td class="date">3월 15일</td> 
+<td>일</td> 
+</tr> 
+<tr> 
+<td>상공의 날</td> 
+<td class="date">3월 18일</td> 
+<td>수</td> 
+<td>의용소방대의 날</td> 
+<td class="date">3월 19일</td> 
+<td>목</td> 
+</tr> 
+<tr> 
+<td>서해수호의 날</td> 
+<td class="date">3월 27일</td> 
+<td>금</td> 
+<td>4.3희생자 추념일</td> 
+<td class="date">4월 3일</td> 
+<td>금</td> 
+</tr> 
+<tr> 
+<td>예비군의 날</td> 
+<td class="date">4월 3일</td> 
+<td>금</td> 
+<td>식목일</td> 
+<td class="date">4월 5일</td> 
+<td>일</td> 
+</tr> 
+<tr> 
+<td>보건의 날</td> 
+<td class="date">4월 7일</td> 
+<td>화</td> 
+<td>대한민국임시정부 수립기념일</td> 
+<td class="date">4월 11일</td> 
+<td>토</td> 
+</tr> 
+<tr> 
+<td>도시농업의 날</td> 
+<td class="date">4월 11일</td> 
+<td>토</td> 
+<td>4.19혁명 기념일</td> 
+<td class="date">4월 19일</td> 
+<td>일</td> 
+</tr> 
+<tr> 
+<td>장애인의 날</td> 
+<td class="date">4월 20일</td> 
+<td>월</td> 
+<td>과학의 날</td> 
+<td class="date">4월 21일</td> 
+<td>화</td> 
+</tr> 
+<tr> 
+<td>정보통신의 날</td> 
+<td class="date">4월 22일</td> 
+<td>수</td> 
+<td>순직의무군경의 날</td> 
+<td class="date">4월 24일</td> 
+<td>금</td> 
+</tr> 
+<tr> 
+<td>법의 날</td> 
+<td class="date">4월 25일</td> 
+<td>토</td> 
+<td>충무공 이순신 탄신일</td> 
+<td class="date">4월 28일</td> 
+<td>화</td> 
+</tr> 
+<tr> 
+<td>근로자의 날</td> 
+<td class="date">5월 1일</td> 
+<td>금</td> 
+<td>어린이 날</td> 
+<td class="date">5월 5일</td> 
+<td>화</td> 
+</tr> 
+<tr> 
+<td>어버이 날</td> 
+<td class="date">5월 8일</td> 
+<td>금</td> 
+<td>유권자의 날</td> 
+<td class="date">5월 10일</td> 
+<td>일</td> 
+</tr> 
+<tr> 
+<td>동학농민혁명 기념일</td> 
+<td class="date">5월 11일</td> 
+<td>월</td> 
+<td>입양의 날</td> 
+<td class="date">5월 11일</td> 
+<td>월</td> 
+</tr> 
+<tr> 
+<td>식품안전의 날</td> 
+<td class="date">5월 14일</td> 
+<td>목</td> 
+<td>스승의 날</td> 
+<td class="date">5월 15일</td> 
+<td>금</td> 
+</tr> 
+<tr> 
+<td>5.18민주화운동 기념일</td> 
+<td class="date">5월 18일</td> 
+<td>월</td> 
+<td>성년의 날</td> 
+<td class="date">5월 18일</td> 
+<td>월</td> 
+</tr> 
+<tr> 
+<td>발명의 날</td> 
+<td class="date">5월 19일</td> 
+<td>화</td> 
+<td>세계인의 날</td> 
+<td class="date">5월 20일</td> 
+<td>수</td> 
+</tr> 
+<tr> 
+<td>부부의 날</td> 
+<td class="date">5월 21일</td> 
+<td>목</td> 
+<td>해외 파병용사의 날</td> 
+<td class="date">5월 29일</td> 
+<td>금</td> 
+</tr> 
+<tr> 
+<td>바다의 날</td> 
+<td class="date">5월 31일</td> 
+<td>일</td> 
+<td>의병의 날</td> 
+<td class="date">6월 1일</td> 
+<td>월</td> 
+</tr> 
+<tr> 
+<td>환경의 날</td> 
+<td class="date">6월 5일</td> 
+<td>금</td> 
+<td>현충일</td> 
+<td class="date">6월 6일</td> 
+<td>토</td> 
+</tr> 
+<tr> 
+<td>구강보건의 날</td> 
+<td class="date">6월 9일</td> 
+<td>화</td> 
+<td>6.10민주항쟁 기념일</td> 
+<td class="date">6월 10일</td> 
+<td>수</td> 
+</tr> 
+<tr> 
+<td>6.10만세운동 기념일</td> 
+<td class="date">6월 10일</td> 
+<td>수</td> 
+<td>전자정부의 날</td> 
+<td class="date">6월 24일</td> 
+<td>수</td> 
+</tr> 
+<tr> 
+<td>6.25전쟁일</td> 
+<td class="date">6월 25일</td> 
+<td>목</td> 
+<td>마약퇴치의 날</td> 
+<td class="date">6월 26일</td> 
+<td>금</td> 
+</tr> 
+<tr> 
+<td>철도의 날</td> 
+<td class="date">6월 28일</td> 
+<td>일</td> 
+<td>정보보호의 날</td> 
+<td class="date">7월 8일</td> 
+<td>수</td> 
+</tr> 
+<tr> 
+<td>인구의 날</td> 
+<td class="date">7월 11일</td> 
+<td>토</td> 
+<td>북한이탈주민의 날</td> 
+<td class="date">7월 14일</td> 
+<td>화</td> 
+</tr> 
+<tr> 
+<td>유엔군 참전의 날</td> 
+<td class="date">7월 27일</td> 
+<td>월</td> 
+<td>섬의 날</td> 
+<td class="date">8월 8일</td> 
+<td>토</td> 
+</tr> 
+<tr> 
+<td>푸른 하늘의 날</td> 
+<td class="date">9월 7일</td> 
+<td>월</td> 
+<td>사회복지의 날</td> 
+<td class="date">9월 7일</td> 
+<td>월</td> 
+</tr> 
+<tr> 
+<td>곤충의 날</td> 
+<td class="date">9월 7일</td> 
+<td>월</td> 
+<td>해양경찰의 날</td> 
+<td class="date">9월 10일</td> 
+<td>목</td> 
+</tr> 
+<tr> 
+<td>청년의 날</td> 
+<td class="date">9월 19일</td> 
+<td>토</td> 
+<td>조달의 날</td> 
+<td class="date">9월 30일</td> 
+<td>수</td> 
+</tr> 
+<tr> 
+<td>개인정보 보호의 날</td> 
+<td class="date">9월 30일</td> 
+<td>수</td> 
+<td>국군의 날</td> 
+<td class="date">10월 1일</td> 
+<td>목</td> 
+</tr> 
+<tr> 
+<td>노인의 날</td> 
+<td class="date">10월 2일</td> 
+<td>금</td> 
+<td>세계 한인의 날</td> 
+<td class="date">10월 5일</td> 
+<td>월</td> 
+</tr> 
+<tr> 
+<td>재향군인의 날</td> 
+<td class="date">10월 8일</td> 
+<td>목</td> 
+<td>임산부의 날</td> 
+<td class="date">10월 10일</td> 
+<td>토</td> 
+</tr> 
+<tr> 
+<td>정신건강의 날</td> 
+<td class="date">10월 10일</td> 
+<td>토</td> 
+<td>스포츠의 날</td> 
+<td class="date">10월 15일</td> 
+<td>목</td> 
+</tr> 
+<tr> 
+<td>부마민주항쟁 기념일</td> 
+<td class="date">10월 16일</td> 
+<td>금</td> 
+<td>문화의 날</td> 
+<td class="date">10월 17일</td> 
+<td>토</td> 
+</tr> 
+<tr> 
+<td>경찰의 날</td> 
+<td class="date">10월 21일</td> 
+<td>수</td> 
+<td>국제연합일</td> 
+<td class="date">10월 24일</td> 
+<td>토</td> 
+</tr> 
+<tr> 
+<td>금융의 날</td> 
+<td class="date">10월 27일</td> 
+<td>화</td> 
+<td>교정의 날</td> 
+<td class="date">10월 28일</td> 
+<td>수</td> 
+</tr> 
+<tr> 
+<td>지방자치 및 균형발전의 날</td> 
+<td class="date">10월 29일</td> 
+<td>목</td> 
+<td>학생독립운동 기념일</td> 
+<td class="date">11월 3일</td> 
+<td>화</td> 
+</tr> 
+<tr> 
+<td>소방의 날</td> 
+<td class="date">11월 9일</td> 
+<td>월</td> 
+<td>농업인의 날</td> 
+<td class="date">11월 11일</td> 
+<td>수</td> 
+</tr> 
+<tr> 
+<td>유엔참전용사 국제추모의 날</td> 
+<td class="date">11월 11일</td> 
+<td>수</td> 
+<td>순국선열의 날</td> 
+<td class="date">11월 17일</td> 
+<td>화</td> 
+</tr> 
+<tr> 
+<td>아동학대예방의 날</td> 
+<td class="date">11월 19일</td> 
+<td>목</td> 
+<td>김치의 날</td> 
+<td class="date">11월 22일</td> 
+<td>일</td> 
+</tr> 
+<tr> 
+<td>소비자의 날</td> 
+<td class="date">12월 3일</td> 
+<td>목</td> 
+<td>무역의 날</td> 
+<td class="date">12월 5일</td> 
+<td>토</td> 
+</tr> 
+<tr> 
+<td>자원봉사자의 날</td> 
+<td class="date">12월 5일</td> 
+<td>토</td> 
+<td>원자력 안전 및 진흥의 날</td> 
+<td class="date">12월 27일</td> 
+<td>일</td> 
+</tr> 
+</tbody> 
+</table></div> 
+<h2 class="h4_title_noimg">※ 관련 법령</h2> 
+<ul class="con-sub-sm"> 
+<li>가. 천문법[법률 제14906호, 2017.10.24.]</li> 
+<li>나. 국경일에 관한 법률[법률 제12915호, 2014.12.30.]</li> 
+<li>다. 공휴일에 관한 법률[법률 제18291호, 2021.7.7.]</li> 
+<li>라. 관공서의 공휴일에 관한 규정[대통령령 제31930호, 2021.8.4.]</li> 
+<li>마. 각종 기념일 등에 관한 규정[대통령령 제31264호, 2020.12.15.]</li> 
+<li>바. 지방공휴일에 관한 규정[대통령령 제29036호, 2018.7.10.]</li> 
+<li>사. 의용소방대 설치 및 운영에 관한 법률[법률 제17576호, 2020.12.8.]</li> 
+<li>아. 도시농업의 육성 및 지원에 관한 법률[법률 제14650호, 2017.3.21.]</li> 
+<li>자. 공직선거법[법률 제18841호, 2022.4.20.]</li> 
+<li>차. 입양특례법[법률 제17788호, 2020.12.29.]</li> 
+<li>카. 식품안전기본법[법률 제18362호, 2021.7.27.]</li> 
+<li>타. 발명진흥법[법률 제18405호, 2021.8.17.]</li> 
+<li>파. 재한외국인 처우 기본법[법률 제18793호, 2022.1.25.]</li> 
+<li>하. 구강보건법[법률 제17472호, 2020.8.11.]</li> 
+<li>거. 전자정부법[법률 제17799호, 2020.12.29.]</li> 
+<li>너. 마약류 관리에 관한 법률[법률 제18443호, 2021.8.17.]</li> 
+<li>더. 저출산&middot;고령사회기본법[법률 제18580호, 2021.12.14.]</li> 
+<li>러. 유엔참전용사의 명예선양 등에 관한 법률[법률 제17117호, 2020.3.24.]</li> 
+<li>머. 섬 발전 촉진법[법률 제17692호, 2020.12.22.]</li> 
+<li>버. 사회복지사업법[법률 제18618호, 2021.12.21.]</li> 
+<li>서. 곤충산업의 육성 및 지원에 관한 법률[법률 제16116호, 2018.12.31.]</li> 
+<li>어. 해양경찰법[법률 제17904호, 2021.1.13.]</li> 
+<li>저. 청년기본법 시행령[대통령령 제32442호, 2022.2.15.]</li> 
+<li>처. 조달사업에 관한 법률[법률 제17348호, 2020.6.9.]</li> 
+<li>커. 모자보건법[법률 제18612호, 2021.12.21.]</li> 
+<li>터. 정신건강증진 및 정신질환자 복지서비스 지원에 관한 법률[법률 제17217호, 2020.4.7.]</li> 
+<li>퍼. 소방기본법[법률 제18493호, 2021.10.19.]</li> 
+<li>허. 아동복지법[법률 제18425호, 2021.8.17.]</li> 
+<li>고. 김치산업진흥법[법률 제16551호, 2019.8.27.]</li> 
+<li>노. 자원봉사활동 기본법[법률 제14839호, 2017.7.26.]</li> 
+</ul> </div>
+												<br/>
+											</div>
+											
+											
+					                    </div>
+				                    </div>
+				                    
+								</div>
+							</div>
+						
+						<!-- 게시글 없을 경우 -->
+						
+					</div>
+			        
+			        <!-- 게시글 작성 버튼 -->
+			        
+				</div>
+			</div>
+		</div>
+		
+	</div>
+    
+
+<div id="confirm_modal" class="modal fade modal_notice modal_notice4" tabindex="-1" role="dialog" aria-labelledby="mySmallModalLabel" aria-hidden="true" style="display: none;">
+	<div class="modal-dialog">
+		<div class="modal-content type4">
+			<div class="modal-body">
+				<strong id="modalTitle">게시글이 등록되었습니다.</strong>
+				<p id="modalContent"></p>
+				<button type="button" class="btn black" data-dismiss="modal">확 인</button>
+			</div>
+		</div>
+	</div>
+</div>
+				</div>
+			</div>
+	
+
+
+
+
+
+
+
+
+
+
+
+			
+<!-- 			<button type="button" id="cntTop" title="페이지 상단으로 이동"><i class="fa-solid fa-arrow-up"></i></button> -->
+		 </div>
+	</section>
+
+	<!-- footer -->
+	
+
+
+<!-- 
+<div class="quick_wr">
+	<div class="quick_con box-shadow-blue border-gray">
+		<div class="quick_btn_wr"><div class="quick_btn"><i class="bi bi-arrow-right-short"></i></div></div>
+		<div class="quick_tit">Quick Menu</div>
+		<div class="guick_list guick_list_img"><a href="/kor/pageView/6467"><img src="/resources/images/quick_ico.png" alt="">지금, 하늘</a></div>
+	</div>
+	
+	<button class="btn-top" type="button"><i class="bi bi-arrow-up"></i><span>TOP</span></button>
+</div>
+<script>
+	//스크롤 내리면 버튼 보이기
+	$(window).on('scroll', function () {
+	  if ($(this).scrollTop() > 200) {
+	    $('.btn-top').fadeIn();
+	  } else {
+	    $('.btn-top').fadeOut();
+	  }
+	});
+	
+	// 클릭하면 맨 위로 이동
+	$('.btn-top').on('click', function () {
+	  $('html, body').animate({ scrollTop: 0 }, 300);
+	});
+	
+	$(function () {
+	  const QuickMenu = document.querySelector('.quick_wr');
+	  const QuickBtn = document.querySelector('.quick_btn');
+
+	  // 버튼 클릭 (토글)
+	  QuickBtn.addEventListener('click', () => {
+		  QuickMenu.classList.toggle('active');
+	  });
+
+	  // 화면 크기 체크 함수
+	  function checkWidth() {
+	    if (window.innerWidth <= 1200) {
+	    	QuickMenu.classList.add('active');
+	    } else {
+	    	QuickMenu.classList.remove('active');
+	    }
+	  }
+
+	  // 최초 실행 (페이지 로드시)
+	  checkWidth();
+
+	  // 리사이즈 될 때마다 실행
+	  window.addEventListener('resize', checkWidth);
+	});
+</script>
+ -->
+<button class="btn-top" type="button"><i class="bi bi-arrow-up"></i><span>TOP</span></button> 
+<script>
+	//스크롤 내리면 버튼 보이기
+	$(window).on('scroll', function () {
+	  if ($(this).scrollTop() > 200) {
+	    $('.btn-top').fadeIn();
+	  } else {
+	    $('.btn-top').fadeOut();
+	  }
+	});
+	// 클릭하면 맨 위로 이동
+	$('.btn-top').on('click', function () {
+	  $('html, body').animate({ scrollTop: 0 }, 300);
+	});
+	
+</script>
+
+<!--footer start-->
+<footer class="footer">
+	<div class="grab">
+		<div class="footer_wr">
+			<a class="ft_logo color-basic" href="/index" target="_blank"><img src="/resources/images/kas_astro_logo_new.png" alt="한국천문연구원 코스모스 허브"></a>
+			<div class="txt color-basic">
+				<p class="add">(34055) 대전광역시 유성구 대덕대로 776, 한국천문연구원</p>
+				<p><b>전화</b>080-373-3333(무료) / 042-865-3333(유료)</p>
+				<p><b>팩스</b>042-861-5610</p>
+			</div>
+		</div>
+		<div class="footer_bottom">
+			<div class="link color-basic">
+				<a class="color-blue" href="https://www.kasi.re.kr/kor/post/privacy" target="_blank" title="새창으로 열림">개인정보처리방침 <i class="bi bi-box-arrow-up-right"></i></a>
+				<a href="https://www.kasi.re.kr/kor/pageView/134" target="_blank" title="새창으로 열림">저작권정책 <i class="bi bi-box-arrow-up-right"></i></a>
+				<a href="/kor/post/suggestions">천문현상 제보</a>
+				<a href="https://www.kasi.re.kr/" target="_blank" title="새창으로 열림">한국천문연구원 홈페이지 바로가기 <i class="bi bi-box-arrow-up-right"></i></a>
+			</div>
+			<p class="copyright color-gray">Copyright (C) Korea Astronomy and Space Science Institute. All Rights Reserved.</p>
+		</div>
+	</div>
+</footer>
+<!--footer end-->
+
+<script>
+  (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+  (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+  })(window,document,'script','https://www.google-analytics.com/analytics.js','ga');
+  ga('create', 'UA-98871218-1', 'auto');
+  ga('send', 'pageview');
+</script>
+<!-- <script>
+  (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+  (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+  })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+  ga('create', 'UA-71702148-6', 'auto');
+  ga('send', 'pageview');
+</script> -->
+
+
+<!-- familySiteModal -->
+<!-- <div class="modal Submodal familySiteModal fade" id="familySiteModal" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true"> -->
+<!--   <div class="modal-dialog"> -->
+<!-- 	 <h3 class="h3_title_noimg">관련 사이트</h3> -->
+<!--      <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button> -->
+<!-- 	    <ul> -->
+<!-- 	     <li><a href="http://www.mopas.go.kr" target="_blank"><img src="/resources/images/content/footer_site_1.jpg" alt="행정안전부"></a></li> -->
+<!-- 	     <li><a href="http://www.nia.or.kr" target="_blank"><img src="/resources/images/content/footer_site_2.jpg"  alt="한국정보문화진흥원"></a></li> -->
+<!-- 	     <li><a href="http://www.kasi.re.kr" target="_blank"><img src="/resources/images/content/footer_site_3.jpg"  alt="한국천문연구원"></a></li> -->
+<!-- 	     <li><a href="http://www.data.go.kr" target="_blank"><img src="/resources/images/content/footer_site_4.jpg"  alt="공공데이터포털"></a></li> -->
+<!-- 	     <li><a href="http://www.ntis.go.kr" target="_blank"><img src="/resources/images/content/footer_site_5.jpg"  alt="국가과학기술 종합정보서비스"></a></li> -->
+<!-- 	     <li><a href="http://www.mest.go.kr" target="_blank"><img src="/resources/images/content/footer_site_6.jpg"  alt="교육과학기술부"></a></li> -->
+<!-- 	     <li><a href="http://www.nst.re.kr" target="_blank"><img src="/resources/images/content/footer_site_7.jpg"  alt="국가과학기술연구회"></a></li> -->
+<!-- 	     <li><a href="http://www.zeus.go.kr/cloud?organCd=200702080212" target="_blank"><img src="/resources/images/content/footer_site_1.jpg"  alt="ZEUS"></a></li> -->
+<!-- 	    </ul> -->
+<!--   </div> -->
+<!-- </div> -->
+<!-- //familySiteModal -->
+
+<!-- siteMapModal -->
+<!-- <div class="modal Submodal siteMapModal fade" id="siteMapModal" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true"> -->
+<!--   <div class="modal-dialog"> -->
+<!--      <h3 class="h3_title_noimg">사이트맵</h3> -->
+<!--      <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button> -->
+	 
+<!--   </div> -->
+<!-- </div>	 -->
+<!-- //siteMapModal -->
+	<!-- //footer -->
+
+</div>
+<!-- //wrap -->
+
+<script type="text/javascript" src="/resources/js/bootstrap.bundle.min.js"></script>
+<script type="text/javascript">
+	$(function(){
+		$("#location_wrap .dropdown").hover(function(){$(this).addClass("open");}, function(){$(this).removeClass("open");});
+		$(".depth_3, .tab").css("display","flex");
+		
+		$("img[title]").each(function(){
+			$(this).removeAttr('title');
+		});
+	});
+	
+	window.addEventListener('DOMContentLoaded', () => {
+	    if (window.innerWidth <= 1000) {
+	        document.querySelectorAll('.tab_accordion_dept.show').forEach(el => {
+	            el.classList.remove('show');
+	        });
+
+	        document.querySelectorAll('.accordion-button:not(.collapsed)').forEach(btn => {
+// 	            btn.classList.add('collapsed');
+				btn.classList.add('btn_active')
+	            btn.setAttribute('aria-expanded', 'false');
+	        });
+	    }
+	});
+</script>
+</body>
+</html>

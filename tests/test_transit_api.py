@@ -50,6 +50,7 @@ class TransitApiTests(unittest.TestCase):
         data = Mock()
         data.nearby_stops.return_value = [{"nodeid": "A", "nodenm": "정류장", "gpslati": 37.88, "gpslong": 127.73}]
         data.station_routes.return_value = [{"routeid": "r1", "routeno": "10"}, {"routeid": "r2", "routeno": "20"}]
+        data.route_info.side_effect = lambda route_id: {"routeid": route_id, "routeno": "10" if route_id == "r1" else "20"}
         data.route_stops.side_effect = PublicDataError("403", "Forbidden")
         walk = Mock()
         service = TransitService(data, walk)
@@ -57,7 +58,9 @@ class TransitApiTests(unittest.TestCase):
             service.plan({"lat": 37.88, "lon": 127.73, "name": "출발"}, {"lat": 37.86, "lon": 127.72, "name": "도착"})
         self.assertEqual(error.exception.code, "ROUTE_PERMISSION")
         self.assertEqual(data.route_stops.call_count, 1)
-        walk.assert_not_called()
+        # 전체 도보는 독립 조회하지만 노선 거절 뒤 접근 보행·도착 조회는 하지 않는다.
+        walk.assert_called_once_with(37.88, 127.73, "출발", 37.86, 127.72, "도착")
+        data.arrivals.assert_not_called()
 
     def test_real_service_wires_sequence_walks_and_arrivals_into_planner(self):
         def stop(node, order, lat):
@@ -66,6 +69,7 @@ class TransitApiTests(unittest.TestCase):
         data = Mock()
         data.nearby_stops.side_effect = lambda lat, lon: [board] if lat > 37.87 else [alight]
         data.station_routes.return_value = [{"routeid": "r1", "routeno": "10"}]
+        data.route_info.return_value = {"routeid": "r1", "routeno": "10"}
         data.route_stops.return_value = [board, middle, alight]
         data.arrivals.return_value = [{"routeid": "r1", "arrtime": 600}]
         service = TransitService(data, lambda *args: (3, 200))

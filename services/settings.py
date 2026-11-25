@@ -3,6 +3,7 @@
 from dataclasses import dataclass, field
 import os
 from pathlib import Path
+from urllib.parse import urlsplit
 
 from dotenv import dotenv_values
 
@@ -15,6 +16,8 @@ class ConfigurationError(RuntimeError):
 class Settings:
     tmap_app_key: str = field(default="", repr=False)
     public_data_key: str = field(default="", repr=False)
+    tago_api_key: str = field(default="", repr=False)
+    intercity_data_key: str = field(default="", repr=False)
     naver_map_client_id: str = field(default="", repr=False)
     debug: bool = False
     port: int = 5000
@@ -25,12 +28,29 @@ class Settings:
     taxi_cache_max_entries: int = 512
     ride_room_message_rate_per_minute: int = 15
     ride_room_create_rate_per_hour: int = 3
+    weather_data_key: str = field(default="", repr=False)
+    airkorea_data_key: str = field(default="", repr=False)
+    airkorea_station_name: str = "중앙로"
+    motis_base_url: str = field(default="", repr=False)
+    gbis_api_key: str = field(default="", repr=False)
+    seoul_bus_api_key: str = field(default="", repr=False)
+    ktdb_motis_base_url: str = field(default="", repr=False)
+
+    @property
+    def bus_data_key(self):
+        """시내버스 전용 키를 우선하고, 기존 환경은 공용 키로 호환한다."""
+        return self.tago_api_key or self.public_data_key
+
+    @property
+    def seoul_arrival_key(self):
+        return self.seoul_bus_api_key or self.bus_data_key
 
     def configured(self):
         """존재 여부만 반환한다. 발급·권한·외부 연결 성공을 뜻하지 않는다."""
         return {
             "tmap_app_key": bool(self.tmap_app_key),
             "public_data_key": bool(self.public_data_key),
+            "tago_api_key": bool(self.bus_data_key),
             "naver_map_client_id": bool(self.naver_map_client_id),
         }
 
@@ -67,6 +87,22 @@ def load_settings(base_dir, environ=None):
             raise ConfigurationError(f"{name}는 true 또는 false로 설정하세요.")
         return text in {"true", "1", "yes"}
 
+    def routing_url(name):
+        base_url = value(name).rstrip("/")
+        if not base_url:
+            return ""
+        try:
+            url = urlsplit(base_url)
+            local_http = url.scheme == "http" and url.hostname in {"localhost", "127.0.0.1", "::1"}
+            if (not url.hostname or url.username is not None or url.password is not None
+                    or url.query or url.fragment or url.path
+                    or not (local_http or url.scheme == "https")
+                    or (url.port is not None and not 1 <= url.port <= 65535)):
+                raise ValueError("invalid MOTIS URL")
+        except ValueError:
+            raise ConfigurationError(f"{name}에 로컬 HTTP 또는 HTTPS 서버 주소를 입력하세요.") from None
+        return base_url
+
     debug_text = value("APP_DEBUG", "false").lower()
     if debug_text not in {"true", "false", "1", "0", "yes", "no"}:
         raise ConfigurationError("APP_DEBUG는 true 또는 false로 설정하세요.")
@@ -79,6 +115,15 @@ def load_settings(base_dir, environ=None):
     return Settings(
         tmap_app_key=value("TMAP_APP_KEY"),
         public_data_key=value("PUBLIC_DATA_KEY"),
+        tago_api_key=value("TAGO_API_KEY"),
+        gbis_api_key=value("GBIS_API_KEY"),
+        seoul_bus_api_key=value("SEOUL_BUS_API_KEY"),
+        intercity_data_key=value("INTERCITY_DATA_KEY") or value("PUBLIC_DATA_KEY"),
+        weather_data_key=value("WEATHER_DATA_KEY") or value("PUBLIC_DATA_KEY"),
+        airkorea_data_key=value("AIRKOREA_DATA_KEY") or value("PUBLIC_DATA_KEY"),
+        airkorea_station_name=value("AIRKOREA_STATION_NAME", "중앙로") or "중앙로",
+        motis_base_url=routing_url("MOTIS_BASE_URL"),
+        ktdb_motis_base_url=routing_url("KTDB_MOTIS_BASE_URL"),
         naver_map_client_id=value("NAVER_MAP_CLIENT_ID"),
         debug=debug_text in {"true", "1", "yes"}, port=port,
         flask_secret_key=value("FLASK_SECRET_KEY"),

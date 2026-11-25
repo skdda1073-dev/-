@@ -50,6 +50,7 @@ class RideRoomService:
     def _public(self, snapshot):
         row = snapshot["room"]
         own = snapshot["own"]
+        is_host = own is not None and own["actor_hash"] == row["host_actor_hash"]
         room = {
             "id": row["id"], "title": row["title"],
             "meeting": {"name": row["meeting_name"], "lat": row["meeting_lat"], "lon": row["meeting_lon"]},
@@ -61,7 +62,7 @@ class RideRoomService:
             "closed_at": _iso(row["closed_at"]) if row["closed_at"] is not None else None,
         }
         result = {"room": room, "self": {"joined": own is not None,
-                                          "is_host": own is not None and own["actor_hash"] == row["host_actor_hash"],
+                                          "is_host": is_host, "can_delete": is_host,
                                           "member_id": own["member_id"] if own is not None else None}}
         if own is not None:
             result["participants"] = [{"member_id": member["member_id"], "nickname": member["nickname"],
@@ -103,6 +104,14 @@ class RideRoomService:
     def close_room(self, actor_hash, room_id):
         room_id = uuid_text(room_id, "room_id")
         return self._public(self.repository.close(room_id, actor_hash, self._now))
+
+    def delete_room(self, actor_hash, room_id):
+        room_id = uuid_text(room_id, "room_id")
+        self.repository.delete(room_id, actor_hash, self._now)
+        return {"deleted": True}
+
+    def purge_expired_rooms(self):
+        self.repository.purge_expired(self._now())
 
     @staticmethod
     def _message(row):
@@ -149,12 +158,17 @@ class RideRoomService:
         return {"message": self._message(row), "room_version": snapshot["room"]["room_version"]}, 201 if created else 200
 
     def list_rooms(self, actor_hash, query_dict):
-        self._object(query_dict, {"q", "from", "to", "status", "limit", "cursor"})
+        self._object(query_dict, {"q", "from", "to", "status", "limit", "cursor", "sort"})
         query = {"limit": self._bounded_integer(query_dict.get("limit", 20), "limit", 1, 50)}
+        sort = query_dict.get("sort", "departure")
+        if sort not in ("departure", "newest"):
+            raise RoomError("INVALID_SORT", "모집방 정렬 조건을 확인하세요.")
+        query["sort"] = sort
+        cursor_prefix = ["newest"] if sort == "newest" else []
         if query_dict.get("q"):
             query["q"] = clean_text(query_dict["q"], "q", 100)
         status = query_dict.get("status", "open")
-        if not isinstance(status, str) or status not in {"open", "full", "closed", "expired", "all", ""}:
+        if not isinstance(status, str) or status not in {"active", "open", "full", "closed", "expired", "all", ""}:
             raise RoomError("INVALID_STATUS", "모집 상태 조건을 확인하세요.")
         query["status"] = status
         for name in ("from", "to"):
@@ -167,7 +181,10 @@ class RideRoomService:
             try:
                 if not isinstance(raw, str) or len(raw) > 300:
                     raise ValueError("cursor")
-                timestamp, room_id = json.loads(base64.urlsafe_b64decode(raw + "=" * (-len(raw) % 4)).decode())
+                cursor_data = json.loads(base64.urlsafe_b64decode(raw + "=" * (-len(raw) % 4)).decode())
+                if not isinstance(cursor_data, list) or cursor_data[:-2] != cursor_prefix:
+                    raise ValueError("cursor order")
+                timestamp, room_id = cursor_data[-2:]
                 if isinstance(timestamp, bool) or not isinstance(timestamp, (int, float)) or not isfinite(timestamp):
                     raise ValueError("timestamp")
                 query["cursor"] = (timestamp, uuid_text(room_id, "cursor"))
@@ -177,7 +194,9 @@ class RideRoomService:
         cursor = None
         if has_more and snapshots:
             row = snapshots[-1]["room"]
-            cursor = base64.urlsafe_b64encode(json.dumps([row["departure_at"], row["id"]]).encode()).decode().rstrip("=")
+            time_key = "created_at" if sort == "newest" else "departure_at"
+            cursor_data = [*cursor_prefix, row[time_key], row["id"]]
+            cursor = base64.urlsafe_b64encode(json.dumps(cursor_data).encode()).decode().rstrip("=")
         return {"rooms": [self._public(snapshot) for snapshot in snapshots], "next_cursor": cursor, "has_more": has_more}
 
     def _estimate_payload(self, snapshot, estimate):

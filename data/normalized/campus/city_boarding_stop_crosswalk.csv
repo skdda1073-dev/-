@@ -1,0 +1,3 @@
+campus_id,gateway_name,published_stop_reference,tago_city_code,tago_stop_id,tago_stop_name,ars_code,stop_lat,stop_lon,observed_on,coordinate_granularity,school_source_url,stop_source_file
+knu_chuncheon,춘천시외버스터미널,학교 안내의 2056번 육교 건너 정류장,32010,CCB250002079,시외버스터미널,2056,37.86369,127.7172,2026-11-09,city_bus_stop,https://uicf.kangwon.ac.kr/Info/ContactUs,data/normalized/bus/tago_stops_20261109.csv
+knu_chuncheon,남춘천역,남춘천역종점,32010,CCB250026574,남춘천역2번출구,2310,37.86371,127.72481,2026-11-09,city_bus_stop,https://uicf.kangwon.ac.kr/Info/ContactUs,data/normalized/bus/tago_stops_20261109.csv

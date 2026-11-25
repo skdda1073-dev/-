@@ -336,7 +336,7 @@ class ShuttleServiceTests(unittest.TestCase):
 class ActualShuttleServiceTests(unittest.TestCase):
     def test_actual_file_can_be_queried_without_coordinates_or_external_calls(self):
         from services.shuttle_repository import ShuttleRepository
-        path = Path(__file__).resolve().parents[1] / "한림대_셔틀버스.csv"
+        path = Path(__file__).resolve().parents[1] / "data" / "raw" / "campus" / "한림대_셔틀버스.csv"
         repository = ShuttleRepository(path)
         walking = Mock(side_effect=AssertionError("원본 좌표 미매칭에서는 외부 API 호출 금지"))
         service = ShuttleService(repository, walking)

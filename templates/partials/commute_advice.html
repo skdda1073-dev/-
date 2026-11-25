@@ -1,0 +1,47 @@
+<aside id="commute-advice-panel" class="commute-advice-panel" role="region" aria-labelledby="commute-advice-heading" hidden>
+    <header class="commute-advice-header">
+        <div>
+            <h2 id="commute-advice-heading" tabindex="-1">오늘의 통학 준비</h2>
+            <p id="commute-advice-campus" class="commute-advice-campus">한림대학교 기준</p>
+        </div>
+        <button id="commute-advice-close" class="commute-advice-icon-button" type="button" aria-label="통학 준비 닫기" aria-controls="commute-advice-panel" hidden><svg class="icon" aria-hidden="true"><use href="#icon-close"></use></svg></button>
+    </header>
+    <div class="commute-advice-glance">
+        <dl id="commute-advice-glance-values" class="commute-advice-glance-values" aria-label="날씨예보 요약" hidden>
+            <div><dt>기온</dt><dd id="commute-advice-glance-temperature">—</dd></div>
+            <div><dt>풍속</dt><dd id="commute-advice-glance-wind">—</dd></div>
+            <div><dt>강수확률</dt><dd id="commute-advice-glance-rain">—</dd></div>
+        </dl>
+        <p id="commute-advice-glance-status" class="commute-advice-glance-status" role="status">예보 확인 중</p>
+    </div>
+    <div id="commute-advice-details" class="commute-advice-details" hidden>
+        <div id="commute-advice-body" class="commute-advice-body" aria-busy="false" tabindex="-1">
+            <p id="commute-advice-status" class="commute-advice-status" role="status" aria-live="polite">날씨와 대기질을 확인하고 있어요.</p>
+            <ul id="commute-advice-alerts" class="commute-advice-alerts" aria-label="출발 준비 안내"></ul>
+            <section class="commute-advice-reading" aria-labelledby="commute-weather-heading">
+                <div class="commute-advice-reading-title"><h3 id="commute-weather-heading">앞으로 6시간 예보</h3><span id="commute-weather-badge" class="commute-advice-badge">확인 중</span></div>
+                <p id="commute-weather-message" class="commute-advice-note">선택한 캠퍼스의 예보를 확인하고 있어요.</p>
+                <dl id="commute-weather-values" class="commute-weather-values" hidden>
+                    <div><dt>기온</dt><dd id="commute-weather-temperature">—</dd></div>
+                    <div><dt>풍속</dt><dd id="commute-weather-wind">—</dd></div>
+                    <div><dt>강수확률</dt><dd id="commute-weather-rain">—</dd></div>
+                </dl>
+                <p id="commute-weather-time" class="commute-advice-time"></p>
+            </section>
+            <section class="commute-advice-reading" aria-labelledby="commute-air-heading">
+                <div class="commute-advice-reading-title"><h3 id="commute-air-heading">대기질</h3><span id="commute-air-badge" class="commute-advice-badge">확인 중</span></div>
+                <p id="commute-air-message" class="commute-advice-note">주변 측정소의 대기질을 확인하고 있어요.</p>
+                <dl id="commute-air-values" class="commute-air-values" hidden>
+                    <div><dt>초미세먼지 <span>PM2.5</span></dt><dd><strong id="commute-air-pm25-grade">—</strong><span id="commute-air-pm25-value">—</span></dd></div>
+                    <div><dt>미세먼지 <span>PM10</span></dt><dd><strong id="commute-air-pm10-grade">—</strong><span id="commute-air-pm10-value">—</span></dd></div>
+                </dl>
+                <p id="commute-air-time" class="commute-advice-time"></p>
+            </section>
+            <p class="commute-advice-disclaimer">지역 예보와 주변 측정소를 기준으로 한 준비 안내예요.</p>
+        </div>
+        <footer class="commute-advice-footer">
+            <p>출처 <a href="https://www.weather.go.kr/" target="_blank" rel="noopener noreferrer">기상청</a> · <a href="https://www.airkorea.or.kr/" target="_blank" rel="noopener noreferrer">에어코리아</a></p>
+            <button id="commute-advice-refresh" class="commute-advice-refresh" type="button"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 7v5h-5M4 17v-5h5"/><path d="M5.5 8a7 7 0 0 1 11.5-3L20 8M4 16l3 3a7 7 0 0 0 11.5-3"/></svg><span>다시 확인</span></button>
+        </footer>
+    </div>
+</aside>

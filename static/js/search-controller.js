@@ -58,7 +58,7 @@
         if (!select) return;
         const placeholder = document.createElement('option');
         placeholder.value = '';
-        placeholder.textContent = '출발 건물을 선택하세요';
+        placeholder.textContent = '교내 건물을 선택하세요';
         select.replaceChildren(placeholder);
         const names = buildingData && Array.isArray(buildingData[campus]) ? buildingData[campus] : [];
         names.forEach(function(name) {
@@ -73,6 +73,7 @@
 
     function selectOriginMode(mode, options) {
         if (mode !== 'gps' && mode !== 'building') return;
+        if (window.AppState.getJourneyScope() === 'national') mode = 'building';
         options = options || {};
         const changed = window.AppState.getOriginMode() !== mode;
         window.AppState.setOriginMode(mode);
@@ -89,9 +90,7 @@
         if (field) field.hidden = mode !== 'building';
         if (status) {
             status.classList.remove('status-error');
-            status.textContent = mode === 'building'
-                ? (select && select.value ? select.value + '에서 출발해요.' : '학교 안 출발 건물을 골라주세요.')
-                : (window.AppState.getCurrentPosition() ? '현재 위치에서 출발해요.' : '검색할 때 현재 위치를 확인해요.');
+            status.textContent = '';
         }
         if (changed && mode === 'building' && select && options.focus !== false) select.focus();
         syncUI();
@@ -165,7 +164,7 @@
             sub.textContent = typeof item.sub === 'string' ? item.sub : '';
             option.append(name, sub);
             option.addEventListener('pointerdown', function(event) { event.preventDefault(); });
-            option.addEventListener('click', function() { selectDestination(item.name, item.lat, item.lon); });
+            option.addEventListener('click', function() { selectDestination(item.name, item.lat, item.lon, { address: item.sub }); });
             fragment.appendChild(option);
         });
         list.replaceChildren(fragment);
@@ -197,7 +196,7 @@
             return;
         }
         if (query.length > 100) {
-            setSearchStatus('목적지는 100자 이내로 입력해 주세요.', true);
+            setSearchStatus('장소 이름이나 주소는 100자 이내로 입력해 주세요.', true);
             return;
         }
         const version = searchVersion;
@@ -211,7 +210,7 @@
             const isCurrent = function() { return version === searchVersion && selectedCampus === campus; };
             try {
                 const response = await Promise.race([
-                    fetch('/search_poi?q=' + encodeURIComponent(query) + '&campus=' + encodeURIComponent(campus),
+                    fetch('/search_poi?' + new URLSearchParams({ q: query, campus, scope: 'national' }),
                         controller ? { signal: controller.signal } : {}),
                     new Promise(function(resolve, reject) {
                         timeout = setTimeout(function() {
@@ -243,8 +242,8 @@
         }, 250);
     }
 
-    function selectDestination(name, lat, lon) {
-        if (!window.AppState.setDestination(name, lat, lon)) {
+    function selectDestination(name, lat, lon, options = {}) {
+        if (!window.AppState.setDestination(name, lat, lon, options.address)) {
             setSearchStatus('장소의 위치를 확인하지 못했어요. 다른 검색 결과를 선택해 주세요.', true);
             return;
         }
@@ -254,12 +253,12 @@
         const tag = document.getElementById('dest-selected-tag');
         const text = document.getElementById('dest-selected-text');
         if (input) { input.value = ''; input.hidden = true; input.style.display = 'none'; }
-        if (tag) { tag.hidden = false; tag.style.display = 'flex'; }
+        if (tag) { tag.hidden = false; tag.style.display = ''; }
         if (text) text.textContent = destName;
-        setSearchStatus('목적지를 선택했어요. 출발지를 확인하고 경로를 찾아보세요.');
+        setSearchStatus('');
         syncUI();
         const submit = document.getElementById('route-submit');
-        if (submit) submit.focus({ preventScroll: true });
+        if (submit && options.focus !== false) submit.focus({ preventScroll: true });
     }
 
     function clearDestination(options) {
@@ -288,7 +287,7 @@
         } else if (event.key === 'Enter') {
             event.preventDefault();
             const item = suggestions[activeIndex < 0 ? 0 : activeIndex];
-            if (item) selectDestination(item.name, item.lat, item.lon);
+            if (item) selectDestination(item.name, item.lat, item.lon, { address: item.sub });
             else if (window.searchJourney) window.searchJourney();
         } else if (event.key === 'Escape' || event.key === 'Tab') {
             if (event.key === 'Escape') event.preventDefault();

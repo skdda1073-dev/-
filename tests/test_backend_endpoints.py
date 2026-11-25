@@ -24,6 +24,7 @@ class BackendEndpointTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json["status"], "ok")
         self.assertFalse(response.json["external_apis_verified"])
+        self.assertEqual(response.json["routing_mode"], "tago_route_candidates")
         self.assertTrue(all(isinstance(value, bool) for value in response.json["configured"].values()))
         self.assertNotIn("fake-private", response.get_data(as_text=True))
         self.assertNotIn("/Users/", response.get_data(as_text=True))
@@ -55,6 +56,22 @@ class BackendEndpointTests(unittest.TestCase):
             response = self.client.get("/health")
         self.assertEqual(response.status_code, 503)
         self.assertEqual(response.json["status"], "degraded")
+
+    def test_health_requires_public_key_for_official_bus_routing(self):
+        with patch.object(application, "settings", Settings(tmap_app_key="fake-tmap")):
+            response = self.client.get("/health")
+        self.assertEqual(response.status_code, 503)
+        self.assertEqual(response.json["checks"]["bus_routes"]["status"], "missing_key")
+
+    def test_health_accepts_dedicated_bus_key_without_changing_shared_key(self):
+        settings = Settings(tmap_app_key="fake-tmap", tago_api_key="fake-own-bus")
+        with patch.object(application, "settings", settings):
+            response = self.client.get("/health")
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(response.json["configured"]["public_data_key"])
+        self.assertTrue(response.json["configured"]["tago_api_key"])
+        self.assertEqual(response.json["checks"]["bus_routes"]["key_setting"], "TAGO_API_KEY")
+        self.assertNotIn("fake-", response.get_data(as_text=True))
 
     def test_health_csv_failure_does_not_expose_error_path(self):
         with patch.object(application, "settings", self.settings), \

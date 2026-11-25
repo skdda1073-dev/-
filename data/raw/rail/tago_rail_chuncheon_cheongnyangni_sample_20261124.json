@@ -1,0 +1,348 @@
+{
+  "retrieved_at": "2026-11-24T19:36:25+09:00",
+  "service_date": "2026-11-24",
+  "pairs": [
+    {
+      "departure_station_id": "NAT140873",
+      "arrival_station_id": "NAT130126",
+      "recommended_uses": [
+        "verification"
+      ],
+      "rows": [
+        {
+          "trainno": "02002",
+          "traingradename": "ITX-청춘",
+          "depplacename": "춘천",
+          "arrplacename": "청량리",
+          "depplandtime": "20261124060700",
+          "arrplandtime": "20261124071200",
+          "adultcharge": "8600"
+        },
+        {
+          "trainno": "02004",
+          "traingradename": "ITX-청춘",
+          "depplacename": "춘천",
+          "arrplacename": "청량리",
+          "depplandtime": "20261124065400",
+          "arrplandtime": "20261124080000",
+          "adultcharge": "8600"
+        },
+        {
+          "trainno": "02006",
+          "traingradename": "ITX-청춘",
+          "depplacename": "춘천",
+          "arrplacename": "청량리",
+          "depplandtime": "20261124073200",
+          "arrplandtime": "20261124083800",
+          "adultcharge": "8600"
+        },
+        {
+          "trainno": "02008",
+          "traingradename": "ITX-청춘",
+          "depplacename": "춘천",
+          "arrplacename": "청량리",
+          "depplandtime": "20261124081100",
+          "arrplandtime": "20261124091700",
+          "adultcharge": "8600"
+        },
+        {
+          "trainno": "02010",
+          "traingradename": "ITX-청춘",
+          "depplacename": "춘천",
+          "arrplacename": "청량리",
+          "depplandtime": "20261124092200",
+          "arrplandtime": "20261124102000",
+          "adultcharge": "8600"
+        },
+        {
+          "trainno": "02012",
+          "traingradename": "ITX-청춘",
+          "depplacename": "춘천",
+          "arrplacename": "청량리",
+          "depplandtime": "20261124102200",
+          "arrplandtime": "20261124112000",
+          "adultcharge": "8600"
+        },
+        {
+          "trainno": "02014",
+          "traingradename": "ITX-청춘",
+          "depplacename": "춘천",
+          "arrplacename": "청량리",
+          "depplandtime": "20261124111600",
+          "arrplandtime": "20261124121400",
+          "adultcharge": "8600"
+        },
+        {
+          "trainno": "02016",
+          "traingradename": "ITX-청춘",
+          "depplacename": "춘천",
+          "arrplacename": "청량리",
+          "depplandtime": "20261124120300",
+          "arrplandtime": "20261124130200",
+          "adultcharge": "8600"
+        },
+        {
+          "trainno": "02018",
+          "traingradename": "ITX-청춘",
+          "depplacename": "춘천",
+          "arrplacename": "청량리",
+          "depplandtime": "20261124130900",
+          "arrplandtime": "20261124140700",
+          "adultcharge": "8600"
+        },
+        {
+          "trainno": "02020",
+          "traingradename": "ITX-청춘",
+          "depplacename": "춘천",
+          "arrplacename": "청량리",
+          "depplandtime": "20261124140600",
+          "arrplandtime": "20261124151000",
+          "adultcharge": "8600"
+        },
+        {
+          "trainno": "02022",
+          "traingradename": "ITX-청춘",
+          "depplacename": "춘천",
+          "arrplacename": "청량리",
+          "depplandtime": "20261124145300",
+          "arrplandtime": "20261124155100",
+          "adultcharge": "8600"
+        },
+        {
+          "trainno": "02024",
+          "traingradename": "ITX-청춘",
+          "depplacename": "춘천",
+          "arrplacename": "청량리",
+          "depplandtime": "20261124160200",
+          "arrplandtime": "20261124170200",
+          "adultcharge": "8600"
+        },
+        {
+          "trainno": "02026",
+          "traingradename": "ITX-청춘",
+          "depplacename": "춘천",
+          "arrplacename": "청량리",
+          "depplandtime": "20261124165600",
+          "arrplandtime": "20261124175400",
+          "adultcharge": "8600"
+        },
+        {
+          "trainno": "02028",
+          "traingradename": "ITX-청춘",
+          "depplacename": "춘천",
+          "arrplacename": "청량리",
+          "depplandtime": "20261124181500",
+          "arrplandtime": "20261124191500",
+          "adultcharge": "8600"
+        },
+        {
+          "trainno": "02030",
+          "traingradename": "ITX-청춘",
+          "depplacename": "춘천",
+          "arrplacename": "청량리",
+          "depplandtime": "20261124185300",
+          "arrplandtime": "20261124195300",
+          "adultcharge": "8600"
+        },
+        {
+          "trainno": "02032",
+          "traingradename": "ITX-청춘",
+          "depplacename": "춘천",
+          "arrplacename": "청량리",
+          "depplandtime": "20261124194000",
+          "arrplandtime": "20261124204500",
+          "adultcharge": "8600"
+        },
+        {
+          "trainno": "02034",
+          "traingradename": "ITX-청춘",
+          "depplacename": "춘천",
+          "arrplacename": "청량리",
+          "depplandtime": "20261124211000",
+          "arrplandtime": "20261124221400",
+          "adultcharge": "8600"
+        },
+        {
+          "trainno": "02036",
+          "traingradename": "ITX-청춘",
+          "depplacename": "춘천",
+          "arrplacename": "청량리",
+          "depplandtime": "20261124221400",
+          "arrplandtime": "20261124231200",
+          "adultcharge": "8600"
+        }
+      ]
+    },
+    {
+      "departure_station_id": "NAT130126",
+      "arrival_station_id": "NAT140873",
+      "recommended_uses": [
+        "verification"
+      ],
+      "rows": [
+        {
+          "trainno": "02001",
+          "traingradename": "ITX-청춘",
+          "depplacename": "청량리",
+          "arrplacename": "춘천",
+          "depplandtime": "20261124055500",
+          "arrplandtime": "20261124065300",
+          "adultcharge": "8600"
+        },
+        {
+          "trainno": "02003",
+          "traingradename": "ITX-청춘",
+          "depplacename": "청량리",
+          "arrplacename": "춘천",
+          "depplandtime": "20261124065600",
+          "arrplandtime": "20261124075400",
+          "adultcharge": "8600"
+        },
+        {
+          "trainno": "02005",
+          "traingradename": "ITX-청춘",
+          "depplacename": "청량리",
+          "arrplacename": "춘천",
+          "depplandtime": "20261124081000",
+          "arrplandtime": "20261124090900",
+          "adultcharge": "8600"
+        },
+        {
+          "trainno": "02007",
+          "traingradename": "ITX-청춘",
+          "depplacename": "청량리",
+          "arrplacename": "춘천",
+          "depplandtime": "20261124091000",
+          "arrplandtime": "20261124100800",
+          "adultcharge": "8600"
+        },
+        {
+          "trainno": "02009",
+          "traingradename": "ITX-청춘",
+          "depplacename": "청량리",
+          "arrplacename": "춘천",
+          "depplandtime": "20261124103000",
+          "arrplandtime": "20261124112600",
+          "adultcharge": "8600"
+        },
+        {
+          "trainno": "02011",
+          "traingradename": "ITX-청춘",
+          "depplacename": "청량리",
+          "arrplacename": "춘천",
+          "depplandtime": "20261124111400",
+          "arrplandtime": "20261124121100",
+          "adultcharge": "8600"
+        },
+        {
+          "trainno": "02013",
+          "traingradename": "ITX-청춘",
+          "depplacename": "청량리",
+          "arrplacename": "춘천",
+          "depplandtime": "20261124121800",
+          "arrplandtime": "20261124131500",
+          "adultcharge": "8600"
+        },
+        {
+          "trainno": "02015",
+          "traingradename": "ITX-청춘",
+          "depplacename": "청량리",
+          "arrplacename": "춘천",
+          "depplandtime": "20261124130600",
+          "arrplandtime": "20261124140900",
+          "adultcharge": "8600"
+        },
+        {
+          "trainno": "02017",
+          "traingradename": "ITX-청춘",
+          "depplacename": "청량리",
+          "arrplacename": "춘천",
+          "depplandtime": "20261124142100",
+          "arrplandtime": "20261124151800",
+          "adultcharge": "8600"
+        },
+        {
+          "trainno": "02019",
+          "traingradename": "ITX-청춘",
+          "depplacename": "청량리",
+          "arrplacename": "춘천",
+          "depplandtime": "20261124153700",
+          "arrplandtime": "20261124163400",
+          "adultcharge": "8600"
+        },
+        {
+          "trainno": "02021",
+          "traingradename": "ITX-청춘",
+          "depplacename": "청량리",
+          "arrplacename": "춘천",
+          "depplandtime": "20261124161500",
+          "arrplandtime": "20261124171800",
+          "adultcharge": "8600"
+        },
+        {
+          "trainno": "02023",
+          "traingradename": "ITX-청춘",
+          "depplacename": "청량리",
+          "arrplacename": "춘천",
+          "depplandtime": "20261124171800",
+          "arrplandtime": "20261124181700",
+          "adultcharge": "8600"
+        },
+        {
+          "trainno": "02025",
+          "traingradename": "ITX-청춘",
+          "depplacename": "청량리",
+          "arrplacename": "춘천",
+          "depplandtime": "20261124181800",
+          "arrplandtime": "20261124192300",
+          "adultcharge": "8600"
+        },
+        {
+          "trainno": "02027",
+          "traingradename": "ITX-청춘",
+          "depplacename": "청량리",
+          "arrplacename": "춘천",
+          "depplandtime": "20261124191700",
+          "arrplandtime": "20261124202200",
+          "adultcharge": "8600"
+        },
+        {
+          "trainno": "02029",
+          "traingradename": "ITX-청춘",
+          "depplacename": "청량리",
+          "arrplacename": "춘천",
+          "depplandtime": "20261124201700",
+          "arrplandtime": "20261124212200",
+          "adultcharge": "8600"
+        },
+        {
+          "trainno": "02031",
+          "traingradename": "ITX-청춘",
+          "depplacename": "청량리",
+          "arrplacename": "춘천",
+          "depplandtime": "20261124204900",
+          "arrplandtime": "20261124215400",
+          "adultcharge": "8600"
+        },
+        {
+          "trainno": "02033",
+          "traingradename": "ITX-청춘",
+          "depplacename": "청량리",
+          "arrplacename": "춘천",
+          "depplandtime": "20261124213800",
+          "arrplandtime": "20261124223600",
+          "adultcharge": "8600"
+        },
+        {
+          "trainno": "02035",
+          "traingradename": "ITX-청춘",
+          "depplacename": "청량리",
+          "arrplacename": "춘천",
+          "depplandtime": "20261124230700",
+          "arrplandtime": "20261125000400",
+          "adultcharge": "8600"
+        }
+      ]
+    }
+  ]
+}
