@@ -185,6 +185,9 @@ class ShuttleProfile:
             "official_profile": {"filename": self.profile_path.name, "checked_on": self._profile["checked_on"], "sha256": self._profile_sha},
             "endpoint_enrichment": {"route_name": "제1노선", "generated_event_count": added, "original_row_count_preserved": True},
         })
+        published = self._profile.get("published_stop_time_routes", [])
+        self._require(isinstance(published, list) and all(isinstance(name, str) and name.strip() for name in published))
+        snapshot["source"]["published_stop_time_routes"] = list(published)
         snapshot["conditions"].update(deepcopy(self._profile["conditions"]))
         snapshot["conditions"].update({
             "weekdays": list(calendar["weekdays"]), "excluded_dates": list(calendar["excluded_dates"]),

@@ -48,7 +48,6 @@
 .clear-destination:hover { background: #d6efd8; }
 .clear-destination .icon { width: 16px; height: 16px; }
 .clear-destination:focus-visible { outline: 2px solid var(--green-dark); outline-offset: -3px; }
-.search-empty { padding: 17px 14px; color: #53685a; font-size: 14px; line-height: 1.6; }
 @media (min-width: 800px) {
     .dest-input { font-size: 17px; }
     .dest-input::placeholder { font-size: 15px; }

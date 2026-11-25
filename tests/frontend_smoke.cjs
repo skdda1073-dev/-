@@ -353,8 +353,8 @@ async function openApp(browser, options = {}) {
         await page.goto(BASE_URL, { waitUntil: options.mapSDKGate ? 'domcontentloaded' : 'networkidle' });
         await page.locator('#route-submit').waitFor({ state: 'visible' });
         await page.locator('#app-intro').waitFor({ state: 'hidden' });
-        if (!options.keepCommuteAdviceOpen && await page.locator('#commute-advice-panel').count()) {
-            if (await page.locator('#commute-advice-panel').isVisible()) await page.locator('#commute-advice-close').click();
+        if (!options.keepCommuteAdviceOpen && await page.locator('#commute-advice-close').isVisible()) {
+            await page.locator('#commute-advice-close').click();
         }
         if (options.realMobility) {
             // Room regression coverage opts into inert markup; the taxi script stays loaded once.
@@ -392,15 +392,16 @@ function intercityFixture(pathname, params = new URLSearchParams()) {
     if (pathname.endsWith('/destinations')) return { status: 'ok', today,
         departure: terminals.find(item => item.id === params.get('departure_id')) || { id: params.get('departure_id'), name: '테스트 출발', city: '테스트시' },
         destinations: terminals.filter(item => item.id !== params.get('departure_id')),
-        additional_stops: [],
+        additional_stops: [], display_scope: params.get('scope') || 'destinations',
         fetched_at: today + 'T08:00:00+09:00', from_cache: false,
         source: { name: '합성 등록 노선', url: 'https://example.invalid/registered-routes' }, warnings: [] };
-    return { status: 'ok', date: params.get('date') || today,
+    const serviceDate = params.get('date') || today;
+    return { status: 'ok', date: serviceDate,
         departure: { id: params.get('departure_id'), name: '테스트 출발' },
         arrival: { id: params.get('arrival_id'), name: '테스트 도착' },
         fetched_at: today + 'T08:00:00+09:00', from_cache: false, warnings: [],
-        trips: [{ departure_at: today + 'T10:00:00+09:00', arrival_at: today + 'T11:30:00+09:00', arrival_estimated: true, duration_minutes: 90, grade: '테스트 우등', fare_krw: 12300, route_id: 'TEST_ROUTE' },
-            { departure_at: today + 'T09:00:00+09:00', arrival_at: null, duration_minutes: null, grade: '테스트 일반', fare_krw: null, route_id: 'TEST_ROUTE_2' }] };
+        trips: [{ departure_at: serviceDate + 'T10:00:00+09:00', arrival_at: serviceDate + 'T11:30:00+09:00', arrival_estimated: true, duration_minutes: 90, grade: '테스트 우등', fare_krw: 12300, route_id: 'TEST_ROUTE' },
+            { departure_at: serviceDate + 'T09:00:00+09:00', arrival_at: null, duration_minutes: null, grade: '테스트 일반', fare_krw: null, route_id: 'TEST_ROUTE_2' }] };
 }
 
 async function noOverflow(page) {
@@ -495,6 +496,55 @@ test('desktop search and results use the same panel beside the map', async brows
     } finally { await app.close(); }
 });
 
+for (const [width, height] of [[360, 720], [1024, 768], [1440, 768]]) {
+    test(`${width}px map keeps both forecast and route selection visible through tool and result changes`, async browser => {
+        const app = await openApp(browser, { viewport: { width, height }, keepCommuteAdviceOpen: true });
+        try {
+            const { page } = app;
+            const route = page.locator('#map-journey-widget');
+            const weather = page.locator('#commute-advice-panel');
+            const map = page.locator('#map-stage');
+            const handle = page.locator('#sheet-handle');
+            const overlaps = (first, second) => first.x < second.x + second.width && first.x + first.width > second.x
+                && first.y < second.y + second.height && first.y + first.height > second.y;
+            async function checkBanners() {
+                await route.waitFor({ state: 'visible' });
+                await weather.waitFor({ state: 'visible' });
+                const [routeBox, forecastBox, mapBox] = await Promise.all([route.boundingBox(), weather.boundingBox(), map.boundingBox()]);
+                assert.ok(routeBox.y + routeBox.height <= mapBox.y + mapBox.height + 1, 'The sheet leaves map route controls available');
+                assert.equal(overlaps(routeBox, forecastBox), false, 'Pinned route and forecast are separate');
+                assert.equal(await route.locator('#map-pick-origin').isEnabled(), true);
+            }
+
+            await checkBanners();
+            if (width >= 1280) await page.locator('[data-map-zoom="1"]').click({ trial: true });
+            await selectTool(page, 'shuttle');
+            await checkBanners();
+            if (width < 800) {
+                await handle.press('End');
+                assert.equal(await page.locator('#workspace-panel').getAttribute('data-position'), 'full');
+                await checkBanners();
+            }
+            await chooseBuilding(page);
+            await selectDestination(page);
+            await page.locator('#route-submit').click();
+            await resultContains(page, '총 소요 추정');
+            await checkBanners();
+            await page.locator('#result-container .route-select').first().click();
+            const detail = page.locator('#route-detail');
+            await detail.waitFor({ state: 'visible' });
+            if (await detail.evaluate(element => element.parentElement.id === 'route-detail-map')) {
+                const detailBox = await detail.boundingBox();
+                assert.equal(overlaps(detailBox, await route.boundingBox()), false, 'Docked details leave the map point selector visible');
+                assert.equal(overlaps(detailBox, await weather.boundingBox()), false, 'Docked details do not cover the forecast');
+            }
+            await route.locator('#map-pick-origin').click({ trial: true });
+            await weather.locator('#commute-advice-heading').click({ trial: true });
+            await noOverflow(page);
+        } finally { await app.close(); }
+    });
+}
+
 test('mobile sheet snaps by click, keys, mouse and touch while preserving route results', async browser => {
     const app = await openApp(browser, { hasTouch: true });
     try {
@@ -582,7 +632,7 @@ test('390px initial layout, campus data, keyboard destination selection and clea
         assert.equal(await page.getByRole('button', { name: '지금 출발' }).getAttribute('aria-pressed'), 'true');
         assert.equal(await page.getByRole('button', { name: '날짜·시간 선택' }).isVisible(), true);
         assert.equal(await page.locator('#national-departure').isVisible(), false);
-        assert.equal(await page.locator('#map-journey-widget').isVisible(), false, 'The map selector starts out of the way');
+        assert.equal(await page.locator('#map-journey-widget').isVisible(), true, 'The map selector is available on startup');
         assert.ok((await page.locator('#dest-input').boundingBox()).height >= 44, 'Destination entry remains usable by touch');
         await screenshot(page, 'mobile-initial-preview.png');
         await page.locator('#journey-options > summary').press('Enter');
@@ -1112,6 +1162,34 @@ for (const width of [360, 390, 1024, 1440]) test(`${width}px independent results
         assert.equal(await page.locator('#results-section').isVisible(), true);
         assert.equal(app.requests.length, 1, 'Editing/closing/reopening never requeries');
     } finally { await app.close(); }
+});
+
+test('ITX stations can swap in place on a narrow phone and desktop', async browser => {
+    for (const width of [320, 1440]) {
+        const app = await openApp(browser, { viewport: { width, height: 900 } });
+        try {
+            const { page } = app;
+            await selectTool(page, 'subway');
+            const origin = page.locator('#itx-origin'), destination = page.locator('#itx-destination');
+            const date = page.locator('#itx-date'), time = page.locator('#itx-time');
+            const swap = page.getByRole('button', { name: '출발역과 도착역 바꾸기' });
+            await destination.selectOption('용산');
+            await time.fill('15:30');
+            const positions = await Promise.all([origin, swap, destination].map(control => control.boundingBox()));
+            assert.ok(positions[0].x < positions[1].x && positions[1].x < positions[2].x);
+            await swap.press('Enter');
+            assert.equal(await origin.inputValue(), '용산');
+            assert.equal(await destination.inputValue(), '춘천');
+            assert.equal(await time.inputValue(), '15:30');
+            assert.equal(await date.inputValue(), '2030-10-21');
+            assert.equal(app.itxRequests.length, 1);
+            await page.locator('#itx-load').click();
+            await page.getByRole('heading', { name: '용산역 → 춘천역' }).waitFor({ state: 'visible' });
+            assert.deepEqual(Object.fromEntries(new URLSearchParams(app.itxRequests[1].query)),
+                { origin: '용산', destination: '춘천', date: '20301021' });
+            await noOverflow(page);
+        } finally { await app.close(); }
+    }
 });
 
 async function run() {

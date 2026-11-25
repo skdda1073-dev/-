@@ -45,6 +45,18 @@ class MotisJourneyProviderTests(unittest.TestCase):
         self.provider = MotisJourneyProvider("https://motis.example/", user_agent="HallymCommute/1.0",
                                              requester=self.request)
 
+    def test_walking_fallback_requires_a_matching_pedestrian_route_and_keeps_precise_seconds(self):
+        wrong_stop = leg("WALK", CHUNCHEON, DESTINATION, 0, 3, duration=180, distance=190)
+        wrong_mode = leg("CAR", ORIGIN, CHUNCHEON, 0, 3, duration=180, distance=190)
+        verified = leg("WALK", ORIGIN, CHUNCHEON, 0, 3, duration=185, distance=187.3)
+        args = (ORIGIN["lat"], ORIGIN["lon"], ORIGIN["name"], CHUNCHEON["lat"], CHUNCHEON["lon"], CHUNCHEON["name"])
+        self.reply.json.return_value = {"direct": [{"legs": [wrong_stop]}, {"legs": [wrong_mode]}]}
+        self.assertEqual(self.provider.walking_time(*args), (-1, -1))
+        self.reply.json.return_value["direct"].append({"legs": [verified]})
+        self.assertEqual(self.provider.walking_time(*args), (185 / 60, 188))
+        self.assertEqual(self.request.call_args.kwargs["params"]["directModes"], "WALK")
+        self.assertEqual(self.request.call_args.kwargs["params"]["transitModes"], "")
+
     def test_requests_earliest_arrival_and_preserves_leg_times_and_source(self):
         self.reply.json.return_value = {"itineraries": [itinerary()]}
         requested_at = AT + timedelta(seconds=20)

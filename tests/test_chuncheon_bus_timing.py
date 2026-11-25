@@ -1,16 +1,19 @@
-from datetime import date
+from datetime import date, datetime
 import json
 from pathlib import Path
 from tempfile import TemporaryDirectory
 import unittest
 
 from services.chuncheon_bus_timing import ChuncheonBusTiming
+from services.national_bus_repository import NationalBusRepository
 
 
 DATA = Path(__file__).resolve().parents[1] / "data/normalized/bus/chuncheon_ride_time_estimates.json"
 STOPS = ("CCB250001275", "CCB250026527", "CCB250002228", "CCB250001337", "CCB250001294", "CCB250001295")
 KEY = ("CCB250030000", "0", STOPS)
 SOURCE = "춘천시대중교통정보 공개 시각표 기반 추정"
+STATION_APPROACH = ("CCB250002127", "CCB250001262", "CCB250001358", "CCB250001746",
+                    "CCB250001885", "CCB265000722", "CCB250026781")
 
 
 class ChuncheonBusTimingTests(unittest.TestCase):
@@ -25,9 +28,36 @@ class ChuncheonBusTimingTests(unittest.TestCase):
                 ("0", "CCB250001357", "CCB250001275", 0, 6),
                 ("0", "CCB250001275", "CCB250026559", 6, 24),
                 ("1", "CCB250002081", "CCB250002127", 25, 49),
+                ("1", "CCB250002127", "CCB250026781", 49, 55),
             })
         self.assertEqual(timing.for_date(date(2026, 11, 19)), {})
         self.assertEqual(timing.for_date(date(2026, 12, 1)), {})
+
+    def test_12_ride_estimate_only_applies_to_verified_regular_route_and_dates(self):
+        timing = ChuncheonBusTiming(DATA)
+        stops = (*STATION_APPROACH, "CCB250026552")
+        regular = ("CCB250001200", "0", stops)
+        variant = ("CCB250001201", "0", stops)
+        self.assertNotIn(regular, timing.for_date(date(2026, 11, 24)))
+        for day in (25, 26, 28, 30):
+            service_date = date(2026, 11, day)
+            self.assertEqual(timing.for_date(service_date)[regular], (7.0, SOURCE))
+            self.assertNotIn(variant, timing.for_date(service_date))
+            self.assertNotIn(regular, timing.published_for_date(service_date))
+
+    def test_300_uses_published_stop_before_station_and_walks_the_last_segment(self):
+        repo = NationalBusRepository(DATA.parents[2])
+        origin = {"name": "한림대학교", "lat": 37.88355, "lon": 127.73840}
+        destination = {"name": "춘천역", "lat": 37.884391, "lon": 127.716603}
+        requested = datetime.fromisoformat("2026-11-25T07:20:00+09:00")
+        trip, = repo.plan(origin, destination, requested, lambda *_: (5, 350),
+                         use_published_timing=True, timed_only=True)
+        _, bus, walk = trip["segments"]
+        self.assertEqual((bus["route_name"], bus["to_place"]["name"]), ("300", "꿈자람어린이공원"))
+        self.assertEqual((bus["departure_at"], bus["arrival_at"]),
+                         ("2026-11-25T07:29:00+09:00", "2026-11-25T07:35:00+09:00"))
+        self.assertEqual(walk["to_place"], destination)
+        self.assertEqual(trip["arrival_at"], "2026-11-25T07:40:00+09:00")
 
     def test_ignores_missing_and_invalid_data(self):
         query_date = date(2026, 11, 25)

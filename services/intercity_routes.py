@@ -40,7 +40,14 @@ def create_intercity_blueprint(service):
 
     @bp.get("/destinations")
     def destinations():
-        query = arguments({"departure_id"})
+        query = arguments({"departure_id", "scope"})
+        if query["scope"] is not None:
+            if query["scope"] != "terminals":
+                raise IntercityError("INVALID_INTERCITY_QUERY", "시외버스 조회 조건을 확인해 주세요.", 400)
+            read_terminals = getattr(service, "terminal_destinations", None)
+            if not callable(read_terminals):
+                raise IntercityError("INTERCITY_TERMINAL_PROFILE", "도착 터미널 목록을 확인하지 못했어요.", 503)
+            return jsonify(read_terminals(query["departure_id"]))
         return jsonify(service.destinations(query["departure_id"]))
 
     return bp

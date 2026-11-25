@@ -1,6 +1,7 @@
 {
   "schema_version": 1,
   "checked_on": "2026-10-18",
+  "published_stop_time_routes": ["제2노선", "제3노선", "제4노선"],
   "raw_source": {
     "filename": "한림대_셔틀버스.csv",
     "sha256": "7755f5982aa671785e59ea5b528b12048bcb9210b715ba3e4dc13d0f18d9f03d",

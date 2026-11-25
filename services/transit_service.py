@@ -18,14 +18,17 @@ class TransitService:
     MAX_STOPS = 8
     MAX_ROUTES = 32
 
-    def __init__(self, client, walking_time, topology_repository=None, shuttle_service=None, *, ride_timing=None):
+    def __init__(self, client, walking_time, topology_repository=None, shuttle_service=None, *, ride_timing=None,
+                 shuttle_planner=None, walking_fallback=None):
         self.client = client
         # 운영 시내버스는 공식 API의 ID·번호·순서를 함께 사용한다.
         # 명시적으로 주입한 CSV는 기존 데이터 검증·셔틀 참조와 호환한다.
         self.topology = topology_repository if topology_repository is not None else client
         self.csv_mode = topology_repository is not None
         self.walking_time = walking_time
+        self.walking_fallback = walking_fallback
         self.shuttle_service = shuttle_service
+        self.shuttle_planner = shuttle_planner
         self.ride_timing = ride_timing
 
     @staticmethod
@@ -67,7 +70,7 @@ class TransitService:
         if points[0] == points[1]:
             return {"status": "ok", "minutes": 0, "distance_m": 0, "source": "tmap"}
         try:
-            result = self.walking_time(
+            result, source = self._walking_path(
                 *points[0], str(origin.get("name") or "출발지"),
                 *points[1], str(destination.get("name") or "목적지"),
             )
@@ -80,7 +83,13 @@ class TransitService:
                 return unavailable
         except Exception:
             return unavailable
-        return {"status": "ok", "minutes": minutes, "distance_m": distance, "source": "tmap"}
+        return {"status": "ok", "minutes": minutes, "distance_m": distance, "source": source}
+
+    def _walking_path(self, *arguments):
+        result = self.walking_time(*arguments)
+        if self.walking_fallback is not None and result == (-1, -1):
+            return self.walking_fallback(*arguments), "motis"
+        return result, "tmap"
 
     def _official_metadata(self, ids, metadata, warnings):
         """정류소별 임시 번호 대신 같은 ID의 공식 노선상세를 기준으로 삼는다."""
@@ -145,7 +154,8 @@ class TransitService:
         def walk_to(node_id):
             stop = by_id[node_id]
             lat, lon = self._coords(stop)
-            return self.walking_time(origin["lat"], origin["lon"], origin["name"], lat, lon, str(stop.get("nodenm", "정류장")))
+            return self._walking_path(origin["lat"], origin["lon"], origin["name"], lat, lon,
+                                      str(stop.get("nodenm", "정류장")))[0]
         walks, _ = self._collect(by_id, walk_to)
         valid = {node_id: stop for node_id, stop in by_id.items() if walks.get(node_id, (-1, -1))[0] >= 0}
         if stops and not valid:
@@ -232,7 +242,7 @@ class TransitService:
 
         city_status = {"status": "ok", "code": None}
         try:
-            response = self._plan_city(origin, destination, journey_limit=None, max_transfers=max_transfers, departure_at=requested_at)
+            response = self.plan_city(origin, destination, max_transfers=max_transfers, departure_at=requested_at)
         except Exception as error:
             safe_codes = {"CSV_DATA", "WALK_UNAVAILABLE", "ROUTE_PERMISSION", "ROUTE_DATA", "PUBLIC_DATA_KEY_MISSING", "NETWORK", "INCOMPLETE"}
             code = getattr(error, "code", None)
@@ -245,8 +255,8 @@ class TransitService:
         response["direct_walk"] = direct_walk
 
         try:
-            shuttle = (self.shuttle_service.plan(origin, destination, query_at=departure_at) if departure_at is not None
-                       else self.shuttle_service.plan(origin, destination))
+            plan_shuttle = self.shuttle_planner or self.shuttle_service.plan
+            shuttle = plan_shuttle(origin, destination, query_at=requested_at)
         except Exception as error:
             code = "SHUTTLE_DATA" if getattr(error, "code", None) == "SHUTTLE_DATA" else "SHUTTLE_UNAVAILABLE"
             shuttle = {
@@ -282,9 +292,13 @@ class TransitService:
         response["recommendation"] = build_recommendation(origin, destination, direct_walk, response.get("journeys", []))
         return response
 
+    def plan_city(self, origin, destination, *, departure_at, max_transfers=1):
+        """Return city-bus candidates for multimodal ranking before any display limit."""
+        return self._plan_city(origin, destination, journey_limit=None, max_transfers=max_transfers, departure_at=departure_at)
+
     @staticmethod
     def _merge_journeys(city, shuttle, limit=3):
-        """완전한 총시간을 먼저 비교하고 미확인 후보는 수단별 순서를 유지한다."""
+        """수단과 관계없이 총시간을 확인한 후보를 먼저 비교한다."""
         ranked = []
         for group_index, group in enumerate((city, shuttle)):
             for position, journey in enumerate(group):
@@ -416,7 +430,7 @@ class TransitService:
             lat, lon = self._coords(stop)
             args = (lat, lon, str(stop.get("nodenm", "정류장")), destination["lat"], destination["lon"], destination["name"])
             walk_jobs[(args[0], args[1], args[3], args[4])] = args
-        walks, _ = self._collect(walk_jobs, lambda key: self.walking_time(*walk_jobs[key]))
+        walks, _ = self._collect(walk_jobs, lambda key: self._walking_path(*walk_jobs[key])[0])
         if any(value[0] < 0 for value in walks.values()):
             warnings.append("일부 보행 경로를 조회하지 못해 그 정류장을 이용하는 경로를 제외했습니다.")
         def walking_time(start_lat, start_lon, start_name, end_lat, end_lon, end_name):
@@ -426,7 +440,7 @@ class TransitService:
         valid_destinations = [stop for stop in destination_stops if walking_time(
             *self._coords(stop), "", destination["lat"], destination["lon"], destination["name"])[0] >= 0]
         if not valid_origins or not valid_destinations:
-            raise PublicDataError("WALK_UNAVAILABLE", "노선은 조회했지만 출발지 또는 목적지의 도보 경로를 확인하지 못했습니다. TMAP_APP_KEY 설정·호출 한도·네트워크를 확인하세요.")
+            raise PublicDataError("WALK_UNAVAILABLE", "노선은 조회했지만 출발지 또는 목적지의 도보 경로를 확인하지 못했습니다. TMAP_APP_KEY와 보행 서비스의 설정·호출 한도를 확인하세요.")
 
         def captured_arrivals(node_id):
             rows = self.client.arrivals(node_id)

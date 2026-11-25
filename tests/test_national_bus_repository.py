@@ -103,3 +103,22 @@ class PublishedChuncheonBusJourneyTests(unittest.TestCase):
                 self._plan(departure, use_timing=False),
                 self.repository.plan(self.end, self.start, departure, self.walk, use_published_timing=True)):
             self.assertTrue(all(item["status"] == "partial" for item in results))
+
+
+class SeoulBusTopologyTests(unittest.TestCase):
+    def test_nearby_route_preserves_stop_id_and_order_for_live_api_matching(self):
+        repository = NationalBusRepository(Path(__file__).resolve().parents[1] / "data")
+        origin = {"lat": 37.513305, "lon": 127.100133}
+        destination = {"lat": 37.5339323, "lon": 127.09476136}
+
+        starts = repository.nearby_seoul_routes(origin, 100)
+        ends = repository.nearby_seoul_routes(destination, 650)
+        route, board = next((route, stops) for route, stops in starts if route.identifier == "100100052")
+        _, alight = next((route, stops) for route, stops in ends if route.identifier == "100100052")
+        self.assertTrue(all(route.city == "seoul" for route, _ in starts + ends))
+        self.assertTrue(all(distance <= 100 for _, distance in board))
+        self.assertTrue(all(distance <= 650 for _, distance in alight))
+        self.assertIn(("123000579", 40), [(route.stops[index].identifier, route.stops[index].sequence)
+                                         for index, _ in board])
+        self.assertIn(("104000302", 46), [(route.stops[index].identifier, route.stops[index].sequence)
+                                         for index, _ in alight])

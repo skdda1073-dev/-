@@ -16,6 +16,8 @@ from services.national_transit_repository import BOARDING_SECONDS
 from services.place_search_service import PlaceSearchError
 from services.public_transit_client import PublicDataError
 from services.route_planner import BOARDING_MARGIN_MIN
+from services.shuttle_repository import ShuttleDataError
+from services.travel_recommendation import LONG_WALK_MIN
 
 
 KST = ZoneInfo("Asia/Seoul")
@@ -35,6 +37,7 @@ CHUNCHEON_CENTER = {"lat": 37.878, "lon": 127.737}
 LIVE_DEPARTURE_WINDOW = timedelta(minutes=2)
 CHUNCHEON_LOCAL_RADIUS_KM = 14
 CHUNCHEON_RAIL_ACCESS_RADIUS_KM = 6
+REGIONAL_DIRECT_RADIUS_KM = 12
 ENDPOINT_TOLERANCE_KM = 0.025
 RAIL_MODES = {"train", "subway"}
 PROVINCE_NAMES = {"충남": ("충남", "충청남도"), "충북": ("충북", "충청북도"),
@@ -110,6 +113,12 @@ def _quantity(value):
 def _distance_km(start, end):
     # Candidate screening only. Displayed walks always use the pedestrian provider.
     return sqrt(((start["lat"] - end["lat"]) * 111) ** 2 + ((start["lon"] - end["lon"]) * 88) ** 2)
+
+
+def _regional_bus_scope(origin, destination):
+    return (0 < _distance_km(origin, destination) <= REGIONAL_DIRECT_RADIUS_KM
+            and any(_distance_km(point, CHUNCHEON_CENTER) >= CHUNCHEON_LOCAL_RADIUS_KM
+                    for point in (origin, destination)))
 
 
 def _measured_walk(walking_time, start, end):
@@ -246,6 +255,32 @@ def _journey_order(journey):
             journey["transfer_count"], walk_seconds, -sum(leg.get("realtime") is True for leg in journey["segments"]))
 
 
+def _has_long_walk(journey):
+    minutes = 0
+    for segment in journey["segments"]:
+        minutes = minutes + (segment["duration_min"] or 0) if segment["mode"] == "walk" else 0
+        if minutes >= LONG_WALK_MIN:
+            return True
+    return False
+
+
+def _prioritize_transit(options):
+    ranked = []
+    short_walk_transit_at = None
+    for journey in options:
+        order = _journey_order(journey)
+        long_walk = _has_long_walk(journey)
+        transit = any(leg["mode"] not in ("walk", "wait", "connection") for leg in journey["segments"])
+        ranked.append((order, long_walk, transit, journey))
+        if journey["complete"] and not long_walk and transit:
+            short_walk_transit_at = min(short_walk_transit_at or order[1], order[1])
+    if short_walk_transit_at is None:
+        return [journey for _, _, _, journey in sorted(ranked, key=lambda item: item[0])]
+    remaining = [item for item in ranked if item[0][0] or not item[1] or item[0][1] < short_walk_transit_at]
+    remaining.sort(key=lambda item: (item[0][0], item[1] and not item[2], *item[0][1:]))
+    return [journey for _, _, _, journey in remaining]
+
+
 def _join_journeys(first, onward):
     warnings = (*first.get("warnings", ()), *onward.get("warnings", ()))
     return {**onward, "segments": [*first["segments"], *onward["segments"]],
@@ -283,7 +318,7 @@ class IntercityJourneyProvider:
     TERMINAL_MARGIN = timedelta(minutes=5)
 
     def __init__(self, intercity_service, place_search, profile_path, walking_time, regional_transit=None, *,
-                 regional_bus=None, motis=None):
+                 regional_bus=None, motis=None, walking_fallback=None):
         self.service = intercity_service
         self.place_search = place_search
         self.profile_path = Path(profile_path)
@@ -291,6 +326,7 @@ class IntercityJourneyProvider:
         self.regional_transit = regional_transit
         self.regional_bus = regional_bus
         self.motis = motis
+        self.walking_fallback = walking_fallback
 
     def _venues(self, center):
         profile = json.loads(self.profile_path.read_text(encoding="utf-8"))
@@ -335,12 +371,16 @@ class IntercityJourneyProvider:
     def _ground(self, start, end, when, label):
         distance = _distance_km(start, end)
         measured = _measured_walk(self.walking_time, start, end) if distance <= 8 else None
+        walking_source = "TMAP 보행"
+        if measured is None and distance <= 8 and self.walking_fallback is not None:
+            measured = _measured_walk(self.walking_fallback, start, end)
+            walking_source = "보행 도로망"
         candidates = []
         if measured is not None and measured[1] <= 9000:
             minutes, meters = measured
             arrival = when + timedelta(minutes=minutes) if when else None
             candidates.append({"segments": [_segment("walk", label, start, end, when, arrival, minutes,
-                                                      distance_m=meters, source="TMAP 보행")]})
+                                                      distance_m=meters, source=walking_source)]})
         if when is None:
             return candidates
         if 0 < distance <= self.CONNECTOR_RADIUS_KM and (not candidates or minutes > BOARDING_MARGIN_MIN):
@@ -369,7 +409,7 @@ class IntercityJourneyProvider:
         # catch it, each connector vehicle is an extra transfer on the whole journey.
         _, arrival, transfers, walking, realtime = _journey_order(candidate)
         has_vehicle = any(leg["mode"] not in ("walk", "wait", "connection") for leg in candidate["segments"])
-        return transfers + has_vehicle, walking, arrival, realtime
+        return _has_long_walk(candidate), transfers + has_vehicle, walking, arrival, realtime
 
     def _route(self, origin, destination, start, end, query_at):
         options = self.service.timetable(start["provider_id"], end["provider_id"], query_at.date().isoformat())
@@ -409,8 +449,8 @@ class IntercityJourneyProvider:
                 if timeline is not None:
                     joined.append(timeline)
             if joined:
-                candidates.append(min(joined, key=_journey_order))
-        return sorted(candidates, key=_journey_order)[:2]
+                candidates.append(_prioritize_transit(joined)[0])
+        return _prioritize_transit(candidates)[:2]
 
     def plan(self, origin, destination, query_at):
         departure_is_local = _distance_km(origin, CHUNCHEON_CENTER) < 14
@@ -444,11 +484,16 @@ class IntercityJourneyProvider:
 class RegionalBusJourneyProvider:
     """Provide timed ground connections from live or dated bus data."""
 
-    def __init__(self, repository, walking_time, local_transit=None, now=None):
+    SHUTTLE_CONNECTOR_RADIUS_M = 800
+
+    def __init__(self, repository, walking_time, local_transit=None, now=None, *, shuttle_service=None,
+                 regional_bus_plan=None):
         self.repository = repository
         self.walking_time = walking_time
         self.local_transit = local_transit
         self.now = now or (lambda: datetime.now(KST))
+        self.shuttle_service = shuttle_service
+        self.regional_bus_plan = regional_bus_plan
 
     def live_available(self, origin, destination, query_at):
         return (self.local_transit is not None
@@ -457,27 +502,80 @@ class RegionalBusJourneyProvider:
                 and _distance_km(destination, CHUNCHEON_CENTER) < CHUNCHEON_LOCAL_RADIUS_KM)
 
     def published_available(self, origin, destination, service_date):
-        return self.repository is not None and self.repository.has_published_connection(origin, destination, service_date)
+        return self.shuttle_available(origin, destination, service_date) or (
+            self.repository is not None and self.repository.has_published_connection(origin, destination, service_date))
 
-    def connections(self, origin, destination, query_at):
-        if self.live_available(origin, destination, query_at):
-            options = self.live(origin, destination, query_at, station_access=True)
-        elif self.repository is not None:
-            options = self.repository.plan(origin, destination, query_at, self.walking_time,
-                                           use_published_timing=True, timed_only=True)
-        else:
+    def shuttle_available(self, origin, destination, service_date, *, nearby_radius_m=SHUTTLE_CONNECTOR_RADIUS_M):
+        if self.shuttle_service is None or any(_distance_km(point, CHUNCHEON_CENTER) >= CHUNCHEON_LOCAL_RADIUS_KM
+                                               for point in (origin, destination)):
+            return False
+        try:
+            return self.shuttle_service.may_connect(origin, destination, service_date, nearby_radius_m=nearby_radius_m)
+        except (OSError, ValueError, ShuttleDataError):
+            return False
+
+    def shuttle_connections(self, origin, destination, query_at, *, include_references=False,
+                            nearby_radius_m=SHUTTLE_CONNECTOR_RADIUS_M):
+        if not self.shuttle_available(origin, destination, query_at.astimezone(KST).date(), nearby_radius_m=nearby_radius_m):
             return []
+        try:
+            options = self.shuttle_service.routing_plan(origin, destination, query_at=query_at, nearby_radius_m=nearby_radius_m)
+        except (OSError, ValueError, ShuttleDataError):
+            return []
+        journeys = []
+        for route in options.get("journeys", ()):
+            if route.get("schedule_comparable") is not True and not (include_references and route.get("schedule_reference") is True):
+                continue
+            leg = route["legs"][0]
+            board, alight = leg["board"], leg["alight"]
+            departure, arrival = _time(leg["scheduled_departure_at"]), _time(leg["scheduled_arrival_at"])
+            walk_in, walk_out = route["access_walk"], route["egress_walk"]
+            ready = query_at + timedelta(minutes=walk_in["minutes"])
+            if departure is None or departure < ready + timedelta(minutes=BOARDING_MARGIN_MIN):
+                continue
+            reached = arrival + timedelta(minutes=walk_out["minutes"]) if arrival else None
+            journeys.append({"estimated": True, "warnings": [
+                "한림대학교 공개 시간표 기준입니다. 승하차 위치는 대표점이며 운행과 탑승 여부는 학교 안내를 확인해 주세요."
+                if arrival else "셔틀 출발 시각은 학교 시간표에서 확인했습니다. 하차 시각과 총 소요시간은 미확인입니다."
+            ], "segments": [
+                _segment("walk", "셔틀 승차 지점까지", origin, board, query_at, ready, walk_in["minutes"], distance_m=walk_in["distance_m"]),
+                _segment("shuttle", leg["route_name"], board, alight, departure, arrival, leg.get("ride_min"),
+                         source="한림대학교 셔틀 시간표", estimated=True, path=leg.get("path", []),
+                         ride_time_basis=leg.get("ride_time_basis"), service_name="한림대학교"),
+                _segment("walk", "하차 후 도보", alight, destination, arrival, reached, walk_out["minutes"], distance_m=walk_out["distance_m"]),
+            ]})
+        return journeys
+
+    def connections(self, origin, destination, query_at, *, include_shuttle_references=False):
+        options = self.shuttle_connections(origin, destination, query_at, include_references=include_shuttle_references)
+        providers = []
+        if self.live_available(origin, destination, query_at):
+            providers.append(partial(self.live, station_access=True))
+        elif self.repository is not None:
+            providers.append(lambda start, end, when: self.repository.plan(
+                start, end, when, self.walking_time, use_published_timing=True, timed_only=True))
+        if self.regional_bus_plan is not None and _regional_bus_scope(origin, destination):
+            providers.append(self.regional_bus_plan)
+        failure = None
+        for provider in providers:
+            try:
+                options += provider(origin, destination, query_at)
+            except (OSError, ValueError, PublicDataError) as error:
+                failure = error
+        if failure is not None and not options:
+            raise failure
         valid = []
         for option in options:
             result = _finalize(option, query_at, origin=origin, destination=destination)
-            if result is None or not result["complete"]:
+            if result is None or (not result["complete"] and not include_shuttle_references):
                 continue
             ready = query_at + timedelta(minutes=BOARDING_MARGIN_MIN)
             for leg in result["segments"]:
                 if leg["mode"] == "walk":
                     ready = _time(leg["arrival_at"]) + timedelta(minutes=BOARDING_MARGIN_MIN)
                 elif leg["mode"] in ("bus", "shuttle"):
-                    if _time(leg["departure_at"]) >= ready:
+                    departure = _time(leg["departure_at"])
+                    if departure is not None and departure >= ready and (result["complete"] or leg["mode"] == "shuttle"):
                         valid.append(result)
                     break
         return sorted(valid, key=_journey_order)
@@ -487,15 +585,15 @@ class RegionalBusJourneyProvider:
             return []
         journeys = []
         try:
-            if station_access:
-                local = self.local_transit.plan(origin, destination, max_transfers=0, include_direct_walk=False, departure_at=query_at)
-            else:
-                local = self.local_transit.plan(origin, destination, include_direct_walk=False, departure_at=query_at)
+            local = self.local_transit.plan_city(origin, destination, max_transfers=0 if station_access else 1,
+                                                departure_at=query_at)
         except PublicDataError:
             return journeys
         for option in local.get("journeys", []):
             legs = option.get("legs", [])
             if not legs:
+                continue
+            if self.shuttle_service is not None and any(leg.get("transport_type") == "shuttle" for leg in legs):
                 continue
             access = _quantity(option.get("access_walk", {}).get("minutes"))
             egress = _quantity(option.get("egress_walk", {}).get("minutes"))
@@ -542,17 +640,26 @@ class RegionalBusJourneyProvider:
 
 class NationalJourneyService:
     def __init__(self, repository, walking_time, local_transit=None, intercity=None, bus_repository=None, now=None,
-                 *, motis=None, regional_bus=None, rail_bus_transfers=None):
+                 *, motis=None, regional_bus=None, rail_bus_transfers=None, walking_fallback=None):
         self.repository = repository
-        self.walking_time = walking_time
+        self.primary_walking_time = walking_time
+        self.walking_fallback = walking_fallback
+        self.walking_time = self._walk_time_with_fallback if walking_fallback is not None else walking_time
         self.intercity = intercity
         self.bus_repository = bus_repository
         self.now = now or (lambda: datetime.now(KST))
         self.motis = motis
         self.rail_bus_transfers = rail_bus_transfers
         self.regional_bus = regional_bus if regional_bus is not None else RegionalBusJourneyProvider(
-            bus_repository, walking_time, local_transit, self.now,
+            bus_repository, self.walking_time, local_transit, self.now,
+            regional_bus_plan=rail_bus_transfers.plan_direct if rail_bus_transfers is not None else None,
         )
+
+    def _walk_time_with_fallback(self, *arguments):
+        minutes, meters = self.primary_walking_time(*arguments)
+        if _quantity(minutes) is not None and _quantity(meters) is not None:
+            return minutes, meters
+        return self.walking_fallback(*arguments)
 
     def _walk(self, origin, destination, query_at):
         measured = _measured_walk(self.walking_time, origin, destination)
@@ -561,7 +668,7 @@ class NationalJourneyService:
         minutes, meters = measured
         final = query_at + timedelta(minutes=minutes)
         return [{"segments": [_segment("walk", "목적지까지 도보", origin, destination, query_at, final, minutes,
-                                      distance_m=meters, source="TMAP 보행")]}]
+                                      distance_m=meters, source="보행 경로")]}]
 
     def _motis_after_bus(self, gateway, destination, feeder):
         reached = _time(feeder["arrival_at"])
@@ -610,8 +717,9 @@ class NationalJourneyService:
             except MotisProviderError:
                 pass
         by_gateway = {}
-        for feeder in feeders:
-            by_gateway.setdefault(feeder["gateway"]["name"], feeder)
+        for feeder in sorted(feeders, key=lambda route: route["arrival_at"]):
+            gateway = feeder["gateway"]
+            by_gateway.setdefault((gateway["name"], gateway["lat"], gateway["lon"], _uses_shuttle(feeder)), feeder)
         return options + [route for feeder in by_gateway.values()
                           for route in self._motis_after_bus(feeder["gateway"], destination, feeder)]
 
@@ -621,16 +729,18 @@ class NationalJourneyService:
         local_destination = _distance_km(destination, CHUNCHEON_CENTER) < CHUNCHEON_LOCAL_RADIUS_KM
         live_access = local_origin and _distance_km(origin, CHUNCHEON_CENTER) < CHUNCHEON_RAIL_ACCESS_RADIUS_KM
         live_access = live_access and not local_destination and bus.live_available(origin, origin, query_at)
-        scheduled = bus.repository is not None and (local_origin or local_destination)
+        scheduled = (bus.repository is not None or bus.shuttle_service is not None) and (local_origin or local_destination)
+        remote_access = self.rail_bus_transfers if not local_origin else None
         remote_transfer = self.rail_bus_transfers if not local_destination else None
-        if not live_access and not scheduled and remote_transfer is None:
+        if not live_access and not scheduled and remote_access is None and remote_transfer is None:
             return self._rail_to(origin, destination, query_at, [])
 
         gateways = self.repository.chuncheon_gateways() if live_access or scheduled else []
         service_date = query_at.astimezone(KST).date()
 
         def station_access(gateway):
-            if _connected(origin, gateway) or not (live_access or bus.published_available(origin, gateway, service_date)):
+            if (_connected(origin, gateway) or _connected(gateway, destination)
+                    or not (live_access or bus.published_available(origin, gateway, service_date))):
                 return []
             try:
                 return [{**option, "gateway": gateway, "arrival_at": _time(option["arrival_at"])}
@@ -659,16 +769,25 @@ class NationalJourneyService:
                     break
                 checked.add(ready)
                 try:
-                    onward = bus.connections(gateway, destination, ready)
+                    parameters = {"include_shuttle_references": True} if bus.shuttle_service is not None else {}
+                    onward = bus.connections(gateway, destination, ready, **parameters)
                 except (OSError, ValueError, PublicDataError):
                     continue
                 connections.extend(_join_journeys(route, option) for option in onward)
             return connections
 
         with ThreadPoolExecutor(max_workers=3) as executor:
-            access_routes = [route for routes in executor.map(station_access, gateways) for route in routes]
             stations = self.repository.transfer_stations(destination) if remote_transfer else []
+            boarding_stations = self.repository.transfer_stations(origin) if remote_access else []
             transfer_job = executor.submit(remote_transfer.links, stations, destination, query_at) if stations else None
+            feeder_job = (executor.submit(remote_access.feeders, origin, boarding_stations, query_at)
+                          if boarding_stations else None)
+            access_routes = [route for routes in executor.map(station_access, gateways) for route in routes]
+            if feeder_job is not None:
+                try:
+                    access_routes += feeder_job.result()
+                except (OSError, ValueError, PublicDataError):
+                    pass
             arrival_jobs = [executor.submit(station_egress, gateway, access_routes) for gateway in gateways] if local_destination else []
             options = self._rail_to(origin, destination, query_at, access_routes)
             for future in arrival_jobs:
@@ -705,6 +824,11 @@ class NationalJourneyService:
             jobs.append((bus_plan, (origin, destination, query_at, self.walking_time)))
         if self.intercity is not None:
             jobs.append((self.intercity.plan, (origin, destination, query_at)))
+        if self.rail_bus_transfers is not None and _regional_bus_scope(origin, destination):
+            jobs.append((self.rail_bus_transfers.plan_direct, (origin, destination, query_at)))
+        if self.regional_bus.shuttle_service is not None:
+            jobs.append((partial(self.regional_bus.shuttle_connections, include_references=True, nearby_radius_m=500),
+                         (origin, destination, query_at)))
         if _distance_km(origin, destination) <= 6:
             jobs.append((self._walk, (origin, destination, query_at)))
         if (_distance_km(origin, CHUNCHEON_CENTER) < CHUNCHEON_LOCAL_RADIUS_KM
@@ -744,7 +868,7 @@ class NationalJourneyService:
                 for leg in journey["segments"])]
         seen = set()
         distinct = []
-        for journey in sorted(options, key=_journey_order):
+        for journey in _prioritize_transit(options):
             signature = _journey_signature(journey)
             if signature not in seen:
                 seen.add(signature)
@@ -761,3 +885,7 @@ class NationalJourneyService:
         )
         return {"mode": "national_journeys", "status": status, "origin": origin, "destination": destination,
                 "departure_at": query_at.isoformat(), "journeys": options[:5], "warnings": warnings}
+
+
+def _uses_shuttle(journey):
+    return any(leg["mode"] == "shuttle" for leg in journey["segments"])

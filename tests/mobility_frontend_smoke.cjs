@@ -4,7 +4,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs/promises');
 const path = require('node:path');
 const { chromium } = require('playwright');
-const { openApp: openBaseApp, activateRealMobility, chooseBuilding, selectDestination, clearDestination, noOverflow, resultContains,
+const { openApp: openBaseApp, activateRealMobility, selectTool, chooseBuilding, selectDestination, clearDestination, noOverflow, resultContains,
     taxiFixture, journeyFixture, DESTINATION, INJECTION, BASE_URL } = require('./frontend_smoke.cjs');
 
 // These room checks opt into preserved room markup; all provider requests are mocked.
@@ -24,11 +24,22 @@ async function preview(page, filename) {
     await page.screenshot({ path: path.join(process.env.CAPSTONE_SCREENSHOT_DIR, filename), fullPage: true, animations: 'disabled' });
 }
 
-async function search(page) {
+async function submitJourney(page, result) {
+    await selectTool(page, 'journey');
+    await page.locator('#route-submit').click();
+    await resultContains(page, result);
+}
+
+async function refreshTaxi(page) {
+    await selectTool(page, 'taxi');
+    await page.locator('#taxi-refresh').click();
+}
+
+async function search(page, result = '총 소요 추정') {
     await chooseBuilding(page);
     await selectDestination(page);
-    await page.locator('#route-submit').click();
-    await page.locator('#taxi-refresh').click();
+    await submitJourney(page, result);
+    await refreshTaxi(page);
 }
 
 function mockRoom(options = {}) {
@@ -81,18 +92,15 @@ test('transit and taxi partial failures remain independent; building payload and
             : route.fulfill({ json: taxiFixture(payload, { amount: count === 3 ? null : 10001 }) }),
     });
     try {
-        await search(app.page);
-        await resultContains(app.page, '버스 검증용 연결 실패');
+        await search(app.page, '버스 검증용 연결 실패');
         await visibleText(app.page, '#taxi-content', '예상요금 약 10,001원');
         assert.equal(app.taxiRequests[0].location, app.requests[0].location);
         assert.equal(app.taxiRequests[0].campus, app.requests[0].campus);
         assert.equal(app.taxiRequests[0].lat, undefined, 'Campus building coordinates are resolved by the server');
-        await app.page.locator('#route-submit').click();
-        await app.page.locator('#taxi-refresh').click();
-        await resultContains(app.page, '총 소요 추정');
+        await submitJourney(app.page, '총 소요 추정');
+        await refreshTaxi(app.page);
         await visibleText(app.page, '#taxi-content', '택시 검증용 연결 실패');
-        await app.page.locator('#route-submit').click();
-        await app.page.locator('#taxi-refresh').click();
+        await refreshTaxi(app.page);
         await visibleText(app.page, '#taxi-content', '요금 조회 불가');
         assert.match(await app.page.locator('#taxi-content').innerText(), /택시 이동 약 10분/);
         assert.doesNotMatch(await app.page.locator('#taxi-content').innerText(), /0원|NaN|undefined/);
@@ -116,14 +124,15 @@ for (const changed of ['destination', 'campus', 'building']) test(`uncancellable
         });
         await search(app.page);
         await started;
-        await resultContains(app.page, '총 소요 추정');
         if (changed === 'destination') { await clearDestination(app.page); await selectDestination(app.page); }
         else if (changed === 'campus') await chooseBuilding(app.page, 'knu');
         else {
+            await selectTool(app.page, 'journey');
             const second = await app.page.locator('#building-select option').evaluateAll(options => options.filter(option => option.value)[1]?.value);
             assert.ok(second);
             await app.page.locator('#building-select').selectOption(second);
         }
+        await selectTool(app.page, 'taxi');
         assert.equal(await app.page.locator('#taxi-section').isVisible(), true);
         assert.doesNotMatch(await app.page.locator('#taxi-content').innerText(), /12,345원/);
         const oldResponse = app.page.waitForResponse(response => new URL(response.url()).pathname === '/api/taxi/estimate');
@@ -155,7 +164,6 @@ test('room configuration failure leaves transit and taxi usable', async browser 
         await visibleText(app.page, '#room-status', '자동화 검증에서 채팅 기능을 사용하지 않아요');
         await app.page.locator('#room-hide').click();
         await search(app.page);
-        await resultContains(app.page, '총 소요 추정');
         await visibleText(app.page, '#taxi-content', '택시 이동 약 10분');
     } finally { await app.close(); }
 });
@@ -208,6 +216,7 @@ test('room creation retries retain their ID and a changed search invalidates the
         await app.page.locator('#room-meeting-options button').first().click();
         await app.page.locator('#room-meeting-confirm').check();
         assert.equal(await app.page.locator('#room-create-submit').isEnabled(), true);
+        await selectTool(app.page, 'journey');
         await app.page.locator('#tab-knu').click();
         assert.equal(await app.page.locator('#room-create-submit').isDisabled(), true);
         await visibleText(app.page, '#room-create-context', '경로가 바뀌었어요');
@@ -367,7 +376,8 @@ if (process.env.CAPSTONE_LIVE_ROOM_TESTS === '1') test('two isolated browsers us
             'Real room checks require scripts/run_mobility_test_server.py with its disposable database and blocked providers');
         const page = first.page;
         await selectDestination(page);
-        await page.locator('#route-submit').click();
+        await submitJourney(page, '총 소요 추정');
+        await refreshTaxi(page);
         await visibleText(page, '#taxi-content', '택시 이동 약 10분');
         await page.locator('#taxi-create-room').click();
         assert.equal(await page.locator('#room-meeting-confirm').isDisabled(), true);

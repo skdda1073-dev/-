@@ -12,6 +12,7 @@
     const chatInput = byId('demo-chat-input');
     const chatList = byId('demo-chat-messages');
     const toast = byId('demo-toast');
+    const fieldNames = ['title', 'destination', 'from'];
     let room = null;
     let nextRoomId = 0;
     let creating = false;
@@ -29,6 +30,10 @@
         // Reject calendar normalization such as February 30, regardless of browser timezone.
         const instant = Date.parse(value + ':00+09:00');
         return Number.isFinite(instant) && new Date(instant + 9 * 60 * 60 * 1000).toISOString().slice(0, 16) === value;
+    }
+    function clearFieldError(input) {
+        input.removeAttribute('aria-invalid');
+        byId(input.id + '-error').textContent = '';
     }
     const count = item => item.joined ? '2/4명' : '1/4명';
     function textNode(tag, value, className) {
@@ -159,11 +164,10 @@
             byId('demo-' + name).setAttribute('aria-invalid', 'true');
             if (!firstError) firstError = byId('demo-' + name);
         };
-        ['title', 'destination', 'from'].forEach(name => {
+        fieldNames.forEach(name => {
             const input = byId('demo-' + name);
             values[name] = input.value.trim();
-            input.removeAttribute('aria-invalid');
-            byId('demo-' + name + '-error').textContent = '';
+            clearFieldError(input);
             if (!values[name]) error(name, name === 'title' ? '제목을 입력해 주세요.' : name === 'destination' ? '목적지를 입력해 주세요.' : '날짜와 시간을 입력해 주세요.');
         });
         // Explicit offset avoids interpreting Korean wall-clock inputs in the browser's timezone.
@@ -171,7 +175,7 @@
         if (firstError) { firstError.focus(); return; }
         const fingerprint = JSON.stringify(values);
         if (fingerprint === lastSubmission) {
-            byId('demo-create-status').textContent = '이미 작성한 모집글입니다. 방 찾기에서 확인하거나 새 모집글 작성을 눌러 주세요.';
+            byId('demo-create-status').textContent = '이미 작성한 모집글입니다. 방 찾기에서 확인하세요.';
             return;
         }
         creating = true;
@@ -183,7 +187,7 @@
             renderList();
             lastSubmission = fingerprint;
             byId('demo-new-post').hidden = false;
-            byId('demo-create-status').textContent = '이 페이지의 시연 게시물을 만들었어요. 잠시 후 방 찾기에서 보여드려요.';
+            byId('demo-create-status').textContent = '';
             showSuccess(id);
             window.AppModules.shell?.refreshUnloadGuard();
         } finally {
@@ -194,11 +198,8 @@
         cancelAutoMove();
         lastSubmission = null;
         form.reset();
-        ['title', 'destination', 'from'].forEach(name => {
-            byId('demo-' + name).removeAttribute('aria-invalid');
-            byId('demo-' + name + '-error').textContent = '';
-        });
-        byId('demo-create-status').textContent = '새 모집글을 작성해 주세요.';
+        fieldNames.forEach(name => clearFieldError(byId('demo-' + name)));
+        byId('demo-create-status').textContent = '';
         byId('demo-title').focus();
         window.AppModules.shell?.refreshUnloadGuard();
     });
@@ -209,6 +210,7 @@
         const input = byId('demo-destination');
         if (destination && !input.value.trim()) {
             input.value = destination;
+            if (input.value.trim()) clearFieldError(input);
             shell.refreshUnloadGuard();
         }
         byId('demo-title').focus();
@@ -274,9 +276,14 @@
         if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
         else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
     });
-    form.addEventListener('input', cancelAutoMove);
+    form.addEventListener('input', event => {
+        cancelAutoMove();
+        const input = event.target;
+        const name = fieldNames.find(field => input === byId('demo-' + field));
+        if (name && input.value.trim() && (name !== 'from' || validDeparture(input.value))) clearFieldError(input);
+    });
     window.AppModules.shell.onMenuSelect((_, options) => { if (options.source !== 'demo-auto') cancelAutoMove(); });
-    const hasUnsavedData = () => rooms.size > 0 || ['title', 'destination', 'from']
+    const hasUnsavedData = () => rooms.size > 0 || fieldNames
         .some(name => Boolean(byId('demo-' + name).value));
     window.AppModules.demo = { hasUnsavedData, openCreate };
     window.AppModules.shell.setDirtyProvider(hasUnsavedData);

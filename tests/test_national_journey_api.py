@@ -4,9 +4,10 @@ from datetime import datetime, timedelta
 import unittest
 from unittest.mock import Mock, patch
 
-from app import CAMPUS_BUILDINGS, app
+from app import CAMPUS_BUILDINGS, app, shuttle_profile, shuttle_repository
 from services.motis_journey_provider import MotisProviderError
-from services.national_journey_service import IntercityJourneyProvider, KST, NationalJourneyService
+from services.national_journey_service import IntercityJourneyProvider, KST, NationalJourneyService, RegionalBusJourneyProvider
+from services.shuttle_service import ShuttleService
 
 
 ORIGIN = {"name": "한림대학교 의학관", "lat": 37.886, "lon": 127.737}
@@ -58,6 +59,70 @@ class NationalEndpointTests(unittest.TestCase):
 
 
 class NationalTimelineTests(unittest.TestCase):
+    def test_long_walking_connector_is_a_fallback_when_a_timed_subway_connects(self):
+        jamsil = {"name": "잠실", "lat": 37.513305, "lon": 127.100133}
+        gangbyeon = {"name": "강변", "lat": 37.535, "lon": 127.095}
+        terminal = {"name": "동서울종합터미널", "lat": 37.5339323, "lon": 127.09476136}
+        arrive_jamsil = AT + timedelta(minutes=28)
+        first_train = segment("subway", ORIGIN, jamsil, AT, arrive_jamsil, route_name="8호선")
+        long_walk = segment("walk", jamsil, terminal, arrive_jamsil, arrive_jamsil + timedelta(minutes=40))
+        rail_board = arrive_jamsil + timedelta(minutes=8)
+        rail_alight = rail_board + timedelta(minutes=4)
+        rail_tail = [segment("subway", jamsil, gangbyeon, rail_board, rail_alight, route_name="2호선"),
+                     segment("walk", gangbyeon, terminal, rail_alight, rail_alight + timedelta(minutes=3))]
+        repository = Mock()
+        service = NationalJourneyService(repository, Mock())
+        walking_route = {"segments": [first_train, long_walk]}
+        subway_route = {"segments": [first_train, *rail_tail]}
+        repository.plan.return_value = [walking_route, subway_route]
+        best, = service.plan(ORIGIN, terminal, AT)["journeys"]
+        self.assertEqual(best["total_min"], 43)
+        self.assertEqual(best["segments"][-2]["route_name"], "2호선")
+
+        repository.plan.return_value = [walking_route, {**subway_route, "complete": False}]
+        best, reference = service.plan(ORIGIN, terminal, AT)["journeys"]
+        self.assertEqual(best["segments"][-1]["duration_min"], 40)
+        self.assertIsNone(reference["arrival_at"])
+
+        late_board = AT + timedelta(minutes=70)
+        late_alight = late_board + timedelta(minutes=4)
+        repository.plan.return_value = [walking_route, {"segments": [
+            first_train, segment("subway", jamsil, gangbyeon, late_board, late_alight),
+            segment("walk", gangbyeon, terminal, late_alight, late_alight + timedelta(minutes=3)),
+        ]}]
+        self.assertEqual([route["total_min"] for route in service.plan(ORIGIN, terminal, AT)["journeys"]], [68, 77])
+
+    def test_measured_walking_fallback_is_used_when_primary_is_unavailable(self):
+        origin = {"name": "강변역", "lat": 37.535, "lon": 127.095}
+        destination = {"name": "동서울종합터미널", "lat": 37.5339323, "lon": 127.09476136}
+        repository = Mock(**{"plan.return_value": []})
+        fallback = Mock(return_value=(158 / 60, 166))
+        result = NationalJourneyService(repository, lambda *_: (-1, -1), walking_fallback=fallback).plan(
+            origin, destination, AT,
+        )
+        best, = result["journeys"]
+        self.assertEqual(best["arrival_at"], (AT + timedelta(seconds=158)).isoformat())
+        self.assertEqual(best["segments"][0]["distance_m"], 166)
+        fallback.assert_called_once_with(origin["lat"], origin["lon"], origin["name"],
+                                         destination["lat"], destination["lon"], destination["name"])
+
+    def test_regional_bus_feeder_can_start_a_journey_to_chuncheon(self):
+        station = {"name": "금곡역", "lat": 37.637414, "lon": 127.207931}
+        arrival = AT + timedelta(minutes=20)
+        feeder = {"gateway": station, "arrival_at": arrival, "segments": [
+            segment("bus", DESTINATION, station, AT + timedelta(minutes=5), arrival),
+        ]}
+        rail = segment("subway", station, ORIGIN, arrival + timedelta(minutes=3), arrival + timedelta(minutes=67))
+        repository = Mock(**{"transfer_stations.return_value": [station],
+                             "plan.return_value": [{"segments": [*feeder["segments"], rail]}]})
+        transfers = Mock(**{"feeders.return_value": [feeder]})
+        service = NationalJourneyService(repository, Mock(), rail_bus_transfers=transfers)
+        best, = service.plan(DESTINATION, ORIGIN, AT)["journeys"]
+        transfers.feeders.assert_called_once_with(DESTINATION, [station], AT)
+        self.assertEqual(repository.plan.call_args.kwargs["access_routes"], [feeder])
+        self.assertEqual([leg["mode"] for leg in best["segments"]], ["wait", "bus", "wait", "subway"])
+        self.assertEqual(best["total_min"], 87)
+
     def test_motis_and_existing_candidates_are_sorted_by_arrival_not_provider_order(self):
         early = AT + timedelta(minutes=70)
         later = AT + timedelta(minutes=90)
@@ -161,8 +226,8 @@ class NationalTimelineTests(unittest.TestCase):
         available = segment("bus", stop, destination, at + timedelta(minutes=5), at + timedelta(minutes=16))
         available["duration_min"] = 90  # The provider's decorative total must not replace the leg clocks.
         repository = Mock(**{"plan.return_value": [{"segments": [walk, impossible]}, {"segments": [walk, available]}]})
-        result = NationalJourneyService(repository, lambda *_: (21, 1600)).plan(origin, destination, at)
-        self.assertEqual([j["total_min"] for j in result["journeys"]], [16, 21])
+        result = NationalJourneyService(repository, lambda *_: (19, 1600)).plan(origin, destination, at)
+        self.assertEqual([j["total_min"] for j in result["journeys"]], [16, 19])
         self.assertEqual([(s["mode"], s["duration_min"]) for s in result["journeys"][0]["segments"]],
                          [("walk", 3), ("wait", 2), ("bus", 11)])
 
@@ -216,7 +281,7 @@ class ChuncheonRailAccessTests(unittest.TestCase):
         }]}
 
     def test_live_campus_bus_supplies_timed_rail_access(self):
-        self.local.plan.return_value = self.local_result()
+        self.local.plan_city.return_value = self.local_result()
 
         def rail_plan(origin, destination, query_at, walking, *, access_routes):
             self.assertEqual((origin, destination, query_at, walking), (ORIGIN, DESTINATION, AT, self.walking))
@@ -230,13 +295,13 @@ class ChuncheonRailAccessTests(unittest.TestCase):
 
         self.repository.plan.side_effect = rail_plan
         result = self.service.plan(ORIGIN, DESTINATION, AT)
-        self.local.plan.assert_called_once_with(ORIGIN, self.gateway, max_transfers=0, include_direct_walk=False, departure_at=AT)
+        self.local.plan_city.assert_called_once_with(ORIGIN, self.gateway, max_transfers=0, departure_at=AT)
         self.assertEqual(result["status"], "ok")
         self.assertEqual([part["mode"] for part in result["journeys"][0]["segments"]],
                          ["walk", "wait", "bus", "walk", "wait", "subway"])
 
     def test_verified_bus_is_joined_to_motis_after_the_station_walk(self):
-        self.local.plan.return_value = self.local_result()
+        self.local.plan_city.return_value = self.local_result()
         self.repository.plan.return_value = []
         motis = Mock()
         self.service.motis = motis
@@ -259,7 +324,7 @@ class ChuncheonRailAccessTests(unittest.TestCase):
         for eta, verified in ((6, True), (9, False), (None, True)):
             with self.subTest(eta=eta, verified=verified):
                 self.repository.plan.reset_mock()
-                self.local.plan.return_value = self.local_result(eta, verified)
+                self.local.plan_city.return_value = self.local_result(eta, verified)
                 self.service.plan(ORIGIN, DESTINATION, AT)
                 self.repository.plan.assert_called_once_with(ORIGIN, DESTINATION, AT, self.walking)
 
@@ -269,7 +334,7 @@ class ChuncheonRailAccessTests(unittest.TestCase):
         leg.update(transport_type="shuttle", service_date_confirmed=True,
                    scheduled_departure_at=(AT + timedelta(minutes=9)).isoformat(),
                    scheduled_arrival_at=(AT + timedelta(minutes=17)).isoformat())
-        self.local.plan.return_value = result
+        self.local.plan_city.return_value = result
         self.service.plan(ORIGIN, DESTINATION, AT)
         access, = self.repository.plan.call_args.kwargs["access_routes"]
         self.assertEqual(access["segments"][2]["mode"], "shuttle")
@@ -285,12 +350,12 @@ class ChuncheonRailAccessTests(unittest.TestCase):
     def test_future_departure_does_not_use_the_current_live_bus(self):
         future = AT + timedelta(minutes=30)
         self.service.plan(ORIGIN, DESTINATION, future)
-        self.local.plan.assert_not_called()
+        self.local.plan_city.assert_not_called()
         self.repository.chuncheon_gateways.assert_not_called()
         self.repository.plan.assert_called_once_with(ORIGIN, DESTINATION, future, self.walking)
 
     def test_feeder_provider_failure_preserves_rail_search(self):
-        self.local.plan.side_effect = OSError
+        self.local.plan_city.side_effect = OSError
         self.service.plan(ORIGIN, DESTINATION, AT)
         self.repository.plan.assert_called_once_with(ORIGIN, DESTINATION, AT, self.walking)
 
@@ -319,10 +384,10 @@ class ChuncheonRailAccessTests(unittest.TestCase):
         service = NationalJourneyService(self.repository, self.walking, local_transit=self.local,
                                          bus_repository=bus, now=lambda: AT)
         routes = service.plan(ORIGIN, DESTINATION, departure)["journeys"]
-        self.assertEqual([route["total_min"] for route in routes], [87, 145])
+        self.assertEqual([route["total_min"] for route in routes], [87])
         self.assertEqual([leg["mode"] for leg in routes[0]["segments"] if leg["mode"] in ("bus", "train")],
                          ["bus", "train"])
-        self.local.plan.assert_not_called()
+        self.local.plan_city.assert_not_called()
 
     def test_rail_arrival_queries_bus_and_rejects_boarding_without_margin(self):
         departure = datetime(2026, 11, 26, 8, 0, tzinfo=KST)
@@ -348,9 +413,153 @@ class ChuncheonRailAccessTests(unittest.TestCase):
         bus.plan.side_effect = bus_plan
         self.repository.plan.side_effect = rail_plan
         service = NationalJourneyService(self.repository, self.walking, bus_repository=bus, now=lambda: AT)
-        mixed, direct = service.plan(DESTINATION, ORIGIN, departure)["journeys"]
-        self.assertEqual((mixed["total_min"], direct["total_min"]), (93, 111))
+        mixed, = service.plan(DESTINATION, ORIGIN, departure)["journeys"]
+        self.assertEqual(mixed["total_min"], 93)
         self.assertEqual(next(leg["departure_at"] for leg in mixed["segments"] if leg["mode"] == "bus"), at(82).isoformat())
+
+
+class PublishedShuttleJourneyTests(unittest.TestCase):
+    CLC = {"name": "한림대학교 Campus Life Center", "lat": 37.88632, "lon": 127.73812}
+    GATEWAY = {"name": "춘천역", "lat": 37.884391, "lon": 127.716603}
+    HUMAN_TOWN = {"name": "휴먼타운", "lat": 37.85433, "lon": 127.74069}
+    SOYANG = {"name": "소양중 정문", "lat": 37.90604, "lon": 127.72475}
+    YONGSAN = {"name": "용산역", "lat": 37.5299, "lon": 126.9648}
+    TERMINAL = {"name": "춘천시외버스터미널", "lat": 37.864, "lon": 127.717, "provider_id": "BUSTAGO_2037"}
+
+    def setUp(self):
+        self.rail = Mock()
+        self.rail.chuncheon_gateways.return_value = [self.GATEWAY]
+        self.rail.plan.return_value = []
+        shuttle = ShuttleService(shuttle_repository, self.walking, profile=shuttle_profile)
+        self.regional = RegionalBusJourneyProvider(None, self.walking, now=lambda: AT, shuttle_service=shuttle)
+        self.service = NationalJourneyService(self.rail, self.walking, regional_bus=self.regional, now=lambda: AT)
+
+    @staticmethod
+    def at(hour, minute, second=0, *, day=25):
+        return datetime(2026, 11, day, hour, minute, second, tzinfo=KST)
+
+    def walking(self, from_lat, from_lon, from_name, to_lat, to_lon, to_name):
+        start, end = (from_lat, from_lon), (to_lat, to_lon)
+        if start == end:
+            return 0, 0
+        if start == (self.CLC["lat"], self.CLC["lon"]) and end in (
+                (self.HUMAN_TOWN["lat"], self.HUMAN_TOWN["lon"]), (self.TERMINAL["lat"], self.TERMINAL["lon"])):
+            return 55, 3400
+        if end == (self.TERMINAL["lat"], self.TERMINAL["lon"]):
+            return 8, 700
+        return 4, 220
+
+    @staticmethod
+    def ride_modes(journey):
+        return [item["mode"] for item in journey["segments"] if item["mode"] not in {"walk", "wait"}]
+
+    def test_city_arrivals_and_catchable_shuttle_are_ranked_on_the_same_timeline(self):
+        when = self.at(17, 4)
+        self.regional.now = lambda: when
+        self.regional.local_transit = city = Mock()
+        self.service.walking_time = lambda *_: (45, 2800)
+
+        for eta_300, eta_12, fastest in ((6, 15, "300"), (15, 6, "12"), (15, 17, "제4노선")):
+            with self.subTest(fastest=fastest):
+                city.plan_city.return_value = {"journeys": [
+                    {"access_walk": {"minutes": 4}, "egress_walk": {"minutes": 3}, "legs": [
+                        {"route_no": route, "board": self.CLC, "alight": self.GATEWAY,
+                         "arrival_min": eta, "ride_min": 8, "direction_verified": True},
+                    ]} for route, eta in (("300", eta_300), ("12", eta_12))
+                ]}
+                city.plan_city.reset_mock()
+                response = self.service.plan(self.CLC, self.GATEWAY, when)
+                ranked = [next(leg["route_name"] for leg in item["segments"] if leg["mode"] in {"bus", "shuttle"})
+                          for item in response["journeys"] if self.ride_modes(item)]
+                self.assertEqual(ranked[0], fastest)
+                self.assertTrue({"300", "12", "제4노선"}.issubset(ranked))
+                self.assertEqual(response["journeys"][0]["total_min"], 20 if fastest == "제4노선" else 17)
+                city.plan_city.assert_called_once_with(self.CLC, self.GATEWAY, max_transfers=1, departure_at=when)
+                city.plan.assert_not_called()
+
+    def test_planned_local_search_ranks_shuttle_and_checks_boarding_time_and_operating_day(self):
+        def search(at):
+            with patch("app.national_journey_service", self.service):
+                return app.test_client().post("/api/journeys", json={
+                    "origin": {"campus": "hallym", "building": "Campus Life Center"},
+                    "destination": self.HUMAN_TOWN, "departure_at": at.isoformat(),
+                })
+
+        response = search(self.at(17, 10))
+        self.assertEqual(response.status_code, 200)
+        best = response.json["journeys"][0]
+        self.assertEqual(self.ride_modes(best), ["shuttle"])
+        self.assertTrue(best["estimated"])
+        self.assertEqual(best["arrival_at"], self.at(17, 41).isoformat())
+        self.assertEqual(best["total_min"], 31)
+        ride = next(leg for leg in best["segments"] if leg["mode"] == "shuttle")
+        self.assertEqual((ride["route_name"], ride["departure_at"]), ("제2노선", self.at(17, 20).isoformat()))
+        self.assertIsNot(ride.get("realtime"), True)
+
+        late = search(self.at(17, 19, 31)).json["journeys"]
+        late_departures = [leg["departure_at"] for route in late for leg in route["segments"] if leg["mode"] == "shuttle"]
+        self.assertNotIn(self.at(17, 20).isoformat(), late_departures)
+        saturday = search(self.at(17, 10, day=28)).json["journeys"]
+        self.assertTrue(saturday)
+        self.assertTrue(all("shuttle" not in self.ride_modes(journey) for journey in saturday))
+
+    def test_unpublished_route_one_arrival_remains_a_reference(self):
+        result = self.service.plan(self.CLC, self.GATEWAY, self.at(18, 45))
+        reference = next(journey for journey in result["journeys"] if self.ride_modes(journey) == ["shuttle"])
+        ride = next(leg for leg in reference["segments"] if leg["mode"] == "shuttle")
+        self.assertEqual((ride["route_name"], ride["departure_at"]), ("제1노선", self.at(19, 0).isoformat()))
+        self.assertIsNone(ride["arrival_at"])
+        self.assertFalse(reference["complete"])
+        self.assertIsNone(reference["total_min"])
+        self.assertNotEqual(self.ride_modes(result["journeys"][0]), ["shuttle"])
+
+    def test_future_shuttle_feeds_rail_without_live_or_published_city_bus(self):
+        def rail_plan(start, end, when, walking, *, access_routes=()):
+            self.assertEqual((start, end, when), (self.CLC, self.YONGSAN, self.at(17, 0)))
+            self.assertTrue(access_routes)
+            catchable = [route for route in access_routes if route["arrival_at"] < self.at(18, 15)]
+            feeder = min(catchable, key=lambda route: route["arrival_at"])
+            self.assertEqual(feeder["gateway"], self.GATEWAY)
+            self.assertEqual(feeder["arrival_at"], self.at(17, 24))
+            return [{"segments": [*feeder["segments"], segment(
+                "train", self.GATEWAY, end, self.at(18, 15), self.at(19, 35), booking_provider="korail")]}]
+
+        self.rail.plan.side_effect = rail_plan
+        result = self.service.plan(self.CLC, self.YONGSAN, self.at(17, 0))
+        best = result["journeys"][0]
+        self.assertEqual(self.ride_modes(best), ["shuttle", "train"])
+        self.assertEqual(best["transfer_count"], 1)
+        self.assertEqual(best["arrival_at"], self.at(19, 35).isoformat())
+
+    def test_rail_egress_uses_shuttle_time_after_reaching_the_representative_stop(self):
+        def rail_plan(start, end, when, walking):
+            if end != self.GATEWAY:
+                return []
+            return [{"segments": [segment("train", start, end, self.at(17, 1), self.at(18, 17))]}]
+
+        self.rail.plan.side_effect = rail_plan
+        result = self.service.plan(self.YONGSAN, self.SOYANG, self.at(16, 57))
+        mixed = result["journeys"][0]
+        self.assertEqual(self.ride_modes(mixed), ["train", "shuttle"])
+        ride = next(leg for leg in mixed["segments"] if leg["mode"] == "shuttle")
+        self.assertEqual((ride["route_name"], ride["departure_at"]), ("제4노선", self.at(18, 30).isoformat()))
+        self.assertEqual(mixed["arrival_at"], self.at(18, 40).isoformat())
+
+    def test_shuttle_walk_to_intercity_terminal_checks_the_coach_boarding_deadline(self):
+        remote = {"name": "동서울종합터미널", "lat": 37.534, "lon": 127.094, "provider_id": "BUSTAGO_0001"}
+        timetable = Mock()
+        timetable.timetable.return_value = {"trips": [
+            {"departure_at": self.at(17, 44), "arrival_at": self.at(19, 4)},
+            {"departure_at": self.at(17, 50), "arrival_at": self.at(19, 10)},
+        ]}
+        intercity = IntercityJourneyProvider(timetable, Mock(), "/unused", self.walking,
+                                            regional_bus=self.regional.connections)
+        results = intercity._route(self.CLC, remote, self.TERMINAL, remote, self.at(17, 10))
+        self.assertTrue(results)
+        best = results[0]
+        self.assertEqual(self.ride_modes(best), ["shuttle", "intercity_bus"])
+        coach = next(leg for leg in best["segments"] if leg["mode"] == "intercity_bus")
+        self.assertEqual(coach["departure_at"], self.at(17, 50).isoformat())
 
 
 class IntercityJoinTests(unittest.TestCase):

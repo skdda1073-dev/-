@@ -6,7 +6,7 @@
 const assert = require('node:assert/strict');
 const { chromium } = require('playwright');
 const { openApp, selectTool, activateRealMobility, chooseBuilding, selectDestination, clearDestination,
-    noOverflow, taxiFixture } = require('./frontend_smoke.cjs');
+    noOverflow, taxiFixture, DESTINATION } = require('./frontend_smoke.cjs');
 const tests = [];
 const test = (name, run) => tests.push({ name, run });
 const visibleText = (page, selector, text) => page.locator(selector).filter({ hasText: text }).waitFor({ state: 'visible' });
@@ -31,6 +31,19 @@ for (const width of [360, 390, 1440]) test(`${width}px ordinary taxi tab queries
         assert.equal(await page.locator('#ride-room-section').count(), 0);
         assert.equal(await page.locator('script[src$="/taxi-controller.js"]').count(), 1);
         assert.equal(app.taxiRequests.length, 0); assert.equal(app.roomRequests.length, 0);
+        if (width === 360) {
+            await page.locator('#demo-party-form button[type="submit"]').click();
+            const title = page.locator('#demo-title');
+            assert.equal(await title.getAttribute('aria-invalid'), 'true');
+            await title.fill('춘천역 동승');
+            assert.equal(await title.getAttribute('aria-invalid'), null);
+            assert.equal(await page.locator('#demo-title-error').isVisible(), false);
+            assert.equal(await page.locator('#demo-destination').getAttribute('aria-invalid'), 'true');
+            await page.locator('#demo-destination').fill('춘천역');
+            await page.locator('#demo-from').fill('2030-10-21T18:00');
+            assert.equal(await page.locator('#demo-destination-error').isVisible(), false);
+            assert.equal(await page.locator('#demo-from-error').isVisible(), false);
+        }
         await chooseBuilding(page); await selectDestination(page);
         await selectTool(page, 'taxi');
         await page.locator('#taxi-refresh').click();
@@ -131,8 +144,8 @@ test('partial, expired and retried quotes never fabricate a zero fare', async br
     } finally { await app.close(); }
 });
 
-test('room test activation preserves the existing taxi card and never duplicates scripts or IDs', async browser => {
-    const app = await openApp(browser);
+test('room test activation preserves the taxi card and asks for consent only after choosing a meeting place', async browser => {
+    const app = await openApp(browser, { roomHandler: route => route.fulfill({ json: { ready: true, csrf_token: 'test-csrf' } }) });
     try {
         const page = app.page; await prepare(page); await page.locator('#taxi-refresh').click();
         await visibleText(page, '#taxi-content', '10,001원');
@@ -148,6 +161,22 @@ test('room test activation preserves the existing taxi card and never duplicates
             const ids = [...document.querySelectorAll('[id]')].map(node => node.id);
             return ids.length === new Set(ids).size;
         }), true);
+        await page.locator('#taxi-create-room').click();
+        assert.equal(await page.locator('#room-create-destination').innerText(), DESTINATION.name);
+        assert.equal(await page.locator('#room-meeting-consent').isVisible(), false);
+        assert.equal(await page.locator('#room-create-submit').isDisabled(), true);
+        const meetingQuery = page.locator('#room-meeting-query');
+        const consent = page.locator('#room-meeting-confirm');
+        await meetingQuery.fill('공개 장소');
+        await page.locator('#room-meeting-options button').first().click();
+        assert.equal(await consent.isVisible(), true);
+        assert.equal(await page.locator('#room-create-submit').isDisabled(), true);
+        await consent.check();
+        assert.equal(await page.locator('#room-create-submit').isEnabled(), true);
+        await meetingQuery.fill('');
+        assert.equal(await consent.isVisible(), false);
+        assert.equal(await consent.isChecked(), false);
+        assert.equal(await page.locator('#room-create-submit').isDisabled(), true);
         await noOverflow(page);
     } finally { await app.close(); }
 });

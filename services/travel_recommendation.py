@@ -6,6 +6,7 @@ from math import isfinite
 # 제품 추천을 위한 튜닝값이며 보행 가능 여부나 교통수단 운행을 보장하지 않는다.
 SHORT_WALK_MAX_MIN = 15
 SHORT_WALK_MAX_M = 1000
+LONG_WALK_MIN = 20
 COMPARISON_MARGIN_MIN = 2
 REASONABLE_WALK_MAX_MIN = 25
 REASONABLE_WALK_MAX_M = 2000
@@ -44,7 +45,8 @@ def _candidate(journey, index):
     if not isinstance(legs, (list, tuple)) or not legs or any(not isinstance(leg, dict) for leg in legs):
         return None
     shuttle = journey.get("transport_type") == "shuttle"
-    if shuttle and journey.get("availability_confirmed") is not True:
+    planned_shuttle = journey.get("schedule_comparable") is True and journey.get("service_date_confirmed") is True
+    if shuttle and journey.get("availability_confirmed") is not True and not planned_shuttle:
         return None
     if not shuttle and journey.get("transport_type") not in (None, "city_bus"):
         return None
@@ -79,8 +81,9 @@ def build_recommendation(origin, destination, direct_walk, journeys):
         candidates = [candidate for index, journey in enumerate(journeys)
                       if (candidate := _candidate(journey, index)) is not None]
     complete = [candidate for candidate in candidates if candidate["total_min"] is not None]
-    best_complete = min(complete, key=lambda item: (item["total_min"], item["transfer_count"], item["stop_walk_min"],
-                                                    item["candidate_index"]), default=None)
+    best_complete = min(complete, key=lambda item: (
+        item["total_min"], item["transfer_count"], item["stop_walk_min"], item["candidate_index"],
+    ), default=None)
     least_walk = min(candidates, key=lambda item: (item["stop_walk_min"], item["candidate_index"])) if candidates else None
     result = {
         "status": "unavailable", "preferred_mode": "transit" if candidates else "undetermined",
@@ -113,6 +116,9 @@ def build_recommendation(origin, destination, direct_walk, journeys):
         bus_time = best_complete["total_min"]
         if bus_time < minutes:
             result.update(preferred_mode="transit", reason="transit_faster", time_saved_min=round(minutes - bus_time, 2))
+        elif (minutes >= LONG_WALK_MIN
+              and max(best_complete["access_walk_min"], best_complete["egress_walk_min"]) < LONG_WALK_MIN):
+            result.update(preferred_mode="transit", reason="less_walking")
         elif minutes < bus_time:
             result.update(preferred_mode="walk", reason="stop_walk_overhead" if overhead else "walk_faster",
                           time_saved_min=round(bus_time - minutes, 2))

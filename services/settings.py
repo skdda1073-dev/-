@@ -33,11 +33,16 @@ class Settings:
     airkorea_station_name: str = "중앙로"
     motis_base_url: str = field(default="", repr=False)
     gbis_api_key: str = field(default="", repr=False)
+    seoul_bus_api_key: str = field(default="", repr=False)
 
     @property
     def bus_data_key(self):
         """시내버스 전용 키를 우선하고, 기존 환경은 공용 키로 호환한다."""
         return self.tago_api_key or self.public_data_key
+
+    @property
+    def seoul_arrival_key(self):
+        return self.seoul_bus_api_key or self.bus_data_key
 
     def configured(self):
         """존재 여부만 반환한다. 발급·권한·외부 연결 성공을 뜻하지 않는다."""
@@ -107,6 +112,7 @@ def load_settings(base_dir, environ=None):
         public_data_key=value("PUBLIC_DATA_KEY"),
         tago_api_key=value("TAGO_API_KEY"),
         gbis_api_key=value("GBIS_API_KEY"),
+        seoul_bus_api_key=value("SEOUL_BUS_API_KEY"),
         intercity_data_key=value("INTERCITY_DATA_KEY") or value("PUBLIC_DATA_KEY"),
         weather_data_key=value("WEATHER_DATA_KEY") or value("PUBLIC_DATA_KEY"),
         airkorea_data_key=value("AIRKOREA_DATA_KEY") or value("PUBLIC_DATA_KEY"),

@@ -9,7 +9,7 @@
     const ALERT_IDS = new Set(['rain', 'snow', 'cold_wind', 'cold', 'wind', 'dust']);
     let initialized = false, sequence = 0, controller = null, timer = null;
     let lastAttemptAt = 0, renderedCampus = null, activeCampus = null, inFlight = false, hasRendered = false;
-    let toggle, panel, close, refresh, body;
+    let toggle, panel, details, close, refresh, body;
 
     function element(id) { return document.getElementById(id); }
     function text(value, fallback, limit) {
@@ -33,10 +33,13 @@
             hour: '2-digit', minute: '2-digit', hourCycle: 'h23',
         }).format(date);
     }
-    function opened(value, moveFocus) {
-        panel.hidden = !value;
+    function showDetails(value, moveFocus = false) {
+        const focusedInside = details.contains(document.activeElement) || document.activeElement === close;
+        details.hidden = !value;
+        close.hidden = !value;
+        panel.dataset.detailsOpen = String(value);
         toggle.setAttribute('aria-expanded', String(value));
-        if (moveFocus) (value ? element('commute-advice-heading') : toggle).focus();
+        if (moveFocus || (!value && focusedInside)) (value ? body : toggle).focus({ preventScroll: true });
     }
     function stopTimer() { if (timer !== null) window.clearTimeout(timer); timer = null; }
     function schedule() {
@@ -54,21 +57,33 @@
         const node = element('commute-advice-count');
         node.textContent = count ? String(count) : '';
         node.hidden = !count;
-        toggle.setAttribute('aria-label', count ? '통학 준비 안내 ' + count + '개 보기' : '통학 준비 안내 보기');
     }
     function toggleStatus(value) {
         write('commute-advice-toggle-status', value);
         const count = element('commute-advice-count');
-        toggle.setAttribute('aria-label', '통학 준비: ' + value + (count.hidden ? '' : ' · 안내 ' + count.textContent + '개') + ' 보기');
+        toggle.setAttribute('aria-label', '통학 준비 상세 · ' + value + (count.hidden ? '' : ' · 안내 ' + count.textContent + '개'));
+    }
+    function writeWeatherNumbers(values) {
+        const fields = [['temperature', '℃'], ['wind', 'm/s'], ['rain', '%']];
+        fields.forEach(function([field, unit], index) {
+            const value = numeric(values[index], unit);
+            write('commute-weather-' + field, value);
+            write('commute-advice-glance-' + field, value);
+        });
+    }
+    function showWeatherGlance(visible, message) {
+        const status = element('commute-advice-glance-status');
+        element('commute-advice-glance-values').hidden = !visible;
+        status.hidden = !message;
+        status.textContent = message;
     }
     function clearReadings(loading) {
         element('commute-weather-values').hidden = true;
         element('commute-air-values').hidden = true;
         write('commute-weather-time', '');
         write('commute-air-time', '');
-        write('commute-weather-temperature', '—');
-        write('commute-weather-wind', '—');
-        write('commute-weather-rain', '—');
+        writeWeatherNumbers([]);
+        showWeatherGlance(false, loading ? '예보 확인 중' : '예보 조회 불가');
         write('commute-air-pm25-grade', '—');
         write('commute-air-pm10-grade', '—');
         write('commute-air-pm25-value', '—');
@@ -108,13 +123,15 @@
         badge('commute-weather-badge', weather.status, stateLabel(weather.status, '예보'));
         const usable = weather.status !== 'unavailable';
         const values = [weather.temperature_c, weather.wind_speed_ms, weather.rain_probability];
-        element('commute-weather-values').hidden = !usable || !values.some(value => typeof value === 'number' && Number.isFinite(value));
-        write('commute-weather-temperature', numeric(weather.temperature_c, '℃'));
-        write('commute-weather-wind', numeric(weather.wind_speed_ms, 'm/s'));
-        write('commute-weather-rain', numeric(weather.rain_probability, '%'));
+        const visible = usable && values.some(value => typeof value === 'number' && Number.isFinite(value));
+        element('commute-weather-values').hidden = !visible;
+        writeWeatherNumbers(values);
+        const forecastAt = localTime(weather.forecast_at);
+        showWeatherGlance(visible, weather.status === 'ok' && visible
+            ? [forecastAt, '예보'].filter(Boolean).join(' ') : stateLabel(weather.status, '예보 조회 불가'));
         write('commute-weather-message', text(weather.message, usable ? '다음 예보 시각의 날씨예요.' : '날씨 정보를 불러오지 못했어요.'));
         const times = [];
-        if (localTime(weather.forecast_at)) times.push(localTime(weather.forecast_at) + ' 예보');
+        if (forecastAt) times.push(forecastAt + ' 예보');
         if (localTime(weather.issued_at)) times.push(localTime(weather.issued_at) + ' 발표');
         write('commute-weather-time', times.join(' · '));
     }
@@ -245,25 +262,25 @@
     function init() {
         if (initialized) return;
         toggle = element('commute-advice-toggle'); panel = element('commute-advice-panel');
+        details = element('commute-advice-details');
         close = element('commute-advice-close'); refresh = element('commute-advice-refresh');
         body = element('commute-advice-body');
-        if (!toggle || !panel || !close || !refresh || !body) return;
+        if (!toggle || !panel || !details || !close || !refresh || !body) return;
         initialized = true;
+        const desktop = window.matchMedia('(min-width: 1280px)');
         toggle.addEventListener('click', function() {
-            const opening = panel.hidden;
-            opened(opening, opening);
+            const opening = details.hidden;
+            showDetails(opening, true);
             if (opening && (!hasRendered || renderedCampus !== campus() || Date.now() - lastAttemptAt >= REFRESH_MS)) load();
         });
-        close.addEventListener('click', function() { opened(false, true); });
+        close.addEventListener('click', function() { showDetails(false, true); });
         refresh.addEventListener('click', function() { load(true); });
-        document.addEventListener('pointerdown', function(event) {
-            if (!panel.hidden && !panel.contains(event.target) && !toggle.contains(event.target)) opened(false, false);
-        });
         document.addEventListener('keydown', function(event) {
-            if (event.key === 'Escape' && !panel.hidden && (panel.contains(document.activeElement) || toggle.contains(document.activeElement))) {
-                event.preventDefault(); opened(false, true);
+            if (event.key === 'Escape' && !details.hidden && (panel.contains(document.activeElement) || toggle.contains(document.activeElement))) {
+                event.preventDefault(); showDetails(false, true);
             }
         });
+        desktop.addEventListener('change', function(event) { showDetails(event.matches); });
         window.addEventListener('commute:campus-change', function() {
             ++sequence;
             if (controller) controller.abort();
@@ -287,7 +304,7 @@
                 else schedule();
             }
         });
-        opened(true, false);
+        showDetails(desktop.matches);
         load();
     }
     window.AppModules = window.AppModules || {};

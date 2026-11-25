@@ -93,7 +93,7 @@ for (const width of [360, 390, 1024, 1440]) test(`${width}px menu, form, modal, 
             assert.equal(await tabs.nth(i).getAttribute('aria-selected'), 'true');
             assert.equal(await tabs.nth(i).getAttribute('tabindex'), '0');
             assert.equal(await page.locator('#planner-body .transport-panel:not([hidden])').count(), 1);
-            if (i === 3) assert.match(await panel.innerText(), /오늘 출발 시간표/);
+            if (i === 3) assert.equal(await panel.getByRole('button', { name: '시간표 조회', exact: true }).isVisible(), true);
             if (i === 4) {
                 assert.equal(await panel.locator('#taxi-refresh').isVisible(), true);
                 assert.equal(await panel.locator('#taxi-room-actions').isVisible(), false);

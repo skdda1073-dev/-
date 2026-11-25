@@ -109,17 +109,29 @@ class NationalBusRepository:
             times[key].append((date.fromisoformat(row["effective_from"]), time.fromisoformat(row["local_departure_time"])))
         return times, holidays, changes
 
-    def _near(self, coordinates):
+    def _near(self, coordinates, *, radius=BOARDING_RADIUS_M, city=None):
         routes, grid = self._topology
         latitude, longitude = self._cell(coordinates)
+        # Lower bounds for the size of a 0.01° cell across the indexed latitude range.
+        latitude_cells = math.ceil(radius / 1100)
+        longitude_cells = math.ceil(radius / 850)
         matches = defaultdict(list)
-        for dy in range(-1, 2):
-            for dx in range(-2, 3):
+        for dy in range(-latitude_cells, latitude_cells + 1):
+            for dx in range(-longitude_cells, longitude_cells + 1):
                 for route_number, sequence in grid.get((latitude + dy, longitude + dx), ()):
-                    distance = distance_m(coordinates, routes[route_number].stops[sequence].coordinates)
-                    if distance <= BOARDING_RADIUS_M:
+                    route = routes[route_number]
+                    if city is not None and route.city != city:
+                        continue
+                    distance = distance_m(coordinates, route.stops[sequence].coordinates)
+                    if distance <= radius:
                         matches[route_number].append((sequence, distance))
         return matches
+
+    def nearby_seoul_routes(self, point, radius):
+        """Return Seoul routes and nearby zero-based stop indexes with distances."""
+        matches = self._near((point["lat"], point["lon"]), radius=radius, city="seoul")
+        routes, _ = self._topology
+        return tuple((routes[index], stops) for index, stops in matches.items())
 
     def _published_departure(self, route, boarding, ready):
         schedules, holidays, _ = self._calendar

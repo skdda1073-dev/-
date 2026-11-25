@@ -7,6 +7,15 @@
     const el = name => root.querySelector('#shuttle-' + name);
     const route = el('route'), direction = el('direction'), at = el('at');
     const board = el('board'), alight = el('alight'), query = el('query');
+    const seoul = 'Asia/Seoul';
+    const dayFormat = new Intl.DateTimeFormat('ko-KR', { timeZone: seoul, month: 'long', day: 'numeric' });
+    const clockFormat = new Intl.DateTimeFormat('ko-KR', {
+        timeZone: seoul, hour: '2-digit', minute: '2-digit', hourCycle: 'h23',
+    });
+    const dateFormat = new Intl.DateTimeFormat('ko-KR', {
+        timeZone: seoul, year: 'numeric', month: '2-digit', day: '2-digit',
+        weekday: 'short', hour: '2-digit', minute: '2-digit', hourCycle: 'h23',
+    });
     let catalog = [], started = false, fullVersion = 0, segmentVersion = 0;
     let fullController, segmentController, fullAt = '', fullWarnings = [];
 
@@ -34,7 +43,7 @@
             .map(item => ({ value: item.direction, label: item.direction })));
     }
     function koreanNow() {
-        const parts = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Seoul',
+        const parts = new Intl.DateTimeFormat('en-CA', { timeZone: seoul,
             year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' })
             .formatToParts(new Date());
         const values = Object.fromEntries(parts.map(item => [item.type, item.value]));
@@ -62,14 +71,13 @@
         unknown: '조회일 운행 조건 미확인' })[value] || '조회일 운행 조건 미확인';
     function summary(data, count) {
         const messages = {
-            no_connection: '해당 노선·방면·정류장 순서에서 연결되는 구간이 없습니다.',
+            no_connection: '이 순서로 두 정류장에 들르는 편이 없습니다.',
             unmatched: '선택한 정류장이 시간표에 없습니다. 노선·방면을 다시 선택해 주세요.',
             ambiguous_stop: '같은 이름의 정류장이 여러 개입니다. 정류장 ID를 구분해 선택해 주세요.',
-            not_operating: '조회일은 해당 시간표의 미운행 조건에 해당합니다.',
-            no_departures_remaining: '조회 기준 시각 이후 남은 시간표 후보가 없습니다. 다음 운행일은 추정하지 않습니다.',
+            not_operating: '선택한 날짜는 미운행일입니다.',
+            no_departures_remaining: '선택한 시각 이후 남은 시간표가 없습니다.',
         };
-        const text = messages[data.status] || `시간표 참고 후보 ${count}건`;
-        return data.calendar_status === 'verified' ? text : text + ' 조회 날짜의 운행 조건은 미확인입니다.';
+        return messages[data.status] || (count ? `조회한 시간표 ${count}편` : '시간표가 없습니다.');
     }
     async function fetchData(params, signal) {
         let response;
@@ -106,8 +114,11 @@
         el('next-content').replaceChildren();
         el('next').hidden = true;
         el('later').hidden = true;
+        el('results').hidden = true;
+        el('context').textContent = '';
+        el('segment-details').hidden = true;
         el('segment-warnings').replaceChildren();
-        status(el('segment-status'), '타는 정류장과 내리는 정류장을 선택한 뒤 구간을 조회해 주세요.');
+        status(el('segment-status'), '');
         query.disabled = board.disabled || alight.disabled || !fullAt;
     }
     function renderFull(data) {
@@ -130,7 +141,12 @@
             trip.events.forEach(event => {
                 const label = event.time_role === 'departure' && trip.sequence_basis === 'official_route_endpoints'
                     ? '예정 출발' : '시간표 시각';
-                list.append(node('li', `${event.name} · ${label} ${event.time ?? '미확인'}`));
+                const stop = node('li', '', 'shuttle-trip-stop');
+                const clock = node('span', event.time ?? '미확인', 'shuttle-trip-time');
+                const description = node('span', '', 'shuttle-trip-station');
+                description.append(node('strong', event.name), node('small', label));
+                stop.append(clock, description);
+                list.append(stop);
             });
             article.append(list);
             return article;
@@ -143,8 +159,9 @@
             + (coverage ? ` · 운행 달력 확인 범위: ${coverage.start} ~ ${coverage.end}` : ' · 운행 달력 확인 범위 미확인');
         warnings(el('warnings'), data);
         fullWarnings = warningMessages(data);
-        status(el('status'), `전체 시간표 ${trips.length}회차 · ` + (data.calendar_status === 'verified'
-            ? '조회일 운행 조건은 각 회차에서 확인하세요.' : '조회일 운행 조건 미확인.'));
+        const fullStatus = data.status === 'not_operating' ? '선택한 날짜는 미운행일입니다.'
+            : data.calendar_status !== 'verified' ? '조회일 운행 조건 미확인' : `전체 시간표 ${trips.length}회차`;
+        status(el('status'), fullStatus, data.status === 'not_operating' || data.calendar_status !== 'verified' ? 'notice' : 'ok');
         clearSegment();
     }
     async function loadFull() {
@@ -181,53 +198,63 @@
         }
     }
     function localTime(value) {
-        if (value === null || value === undefined) return '미확인';
         const date = new Date(value);
-        return Number.isNaN(date.getTime()) ? '미확인' : new Intl.DateTimeFormat('ko-KR', { timeZone: 'Asia/Seoul',
-            year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(date);
+        return typeof value !== 'string' || Number.isNaN(date.getTime()) ? '미확인' : dateFormat.format(date);
     }
-    function clockTime(value) {
+    function timeNode(value, className, reference) {
         const date = new Date(value);
-        return Number.isNaN(date.getTime()) ? '미확인' : new Intl.DateTimeFormat('ko-KR', {
-            timeZone: 'Asia/Seoul', hour: '2-digit', minute: '2-digit', hourCycle: 'h23',
-        }).format(date);
+        if (typeof value !== 'string' || Number.isNaN(date.getTime())) return node('span', '미확인', className);
+        const clock = node('time', clockFormat.format(date), className);
+        clock.dateTime = value;
+        const referenceDate = new Date(reference);
+        if (!Number.isNaN(referenceDate.getTime()) && dayFormat.format(date) !== dayFormat.format(referenceDate)) {
+            clock.append(node('small', dayFormat.format(date), 'shuttle-clock-date'));
+        }
+        return clock;
     }
-    function serviceCondition(item) {
-        return item.service_date_confirmed ? '조회일 운행 조건에 해당' : '조회일 운행 조건 미확인';
+    function arrivalTiming(item) {
+        if (item.scheduled_arrival_at) return [item.scheduled_arrival_at, '예정 도착'];
+        if (item.scheduled_alight_stop_at) return [item.scheduled_alight_stop_at, '정류장 시간표 시각'];
+        return [null, '도착 시각'];
     }
-    function renderNext(item, data) {
+    function renderNext(item, reference) {
         const article = node('article', '', 'shuttle-next-card');
         article.dataset.tripId = item.trip_id;
-        article.append(node('h4', `타는 곳 · ${item.board.name}`, 'shuttle-next-route'),
-            node('p', `내리는 곳 · ${item.alight.name} · ${item.route_name || route.value}`, 'shuttle-next-direction'),
-            node('p', item.scheduled_departure_at ? '다음 예정 출발' : '다음 정류장 시간표 시각', 'shuttle-time-label'),
-            node('p', clockTime(item.scheduled_departure_at || item.scheduled_stop_at), 'shuttle-next-time'),
-            node('p', serviceCondition(item), 'shuttle-condition'),
-            node('p', `조회 기준 ${localTime(data.query_at)} · 한국 시간`, 'shuttle-note'));
-        const arrival = item.scheduled_arrival_at ? '예정 도착 ' + localTime(item.scheduled_arrival_at)
-            : item.scheduled_alight_stop_at ? '내리는 정류장 시간표 시각 ' + localTime(item.scheduled_alight_stop_at) : null;
-        if (arrival === null && item.ride_min == null) {
-            article.append(node('p', '도착 시각·승차 소요시간 미확인', 'shuttle-next-arrival'));
-        } else {
-            article.append(node('p', arrival || '도착 시각 미확인', 'shuttle-next-arrival'),
-                node('p', item.ride_min == null ? '승차 소요시간 미확인' : `시간표 기준 승차 소요시간 ${item.ride_min}분`, 'shuttle-note'));
-        }
-        article.append(node('p', '계획 시간표 · 실제 운행·탑승 보장 아님', 'shuttle-note'),
-            node('p', '정류장까지 이동시간·탑승 여유시간 미반영', 'shuttle-note'));
+        const stops = node('div', '', 'shuttle-next-stops');
+        const departure = node('div', '', 'shuttle-next-stop');
+        departure.append(node('span', '타는 정류장', 'shuttle-time-label'),
+            node('h4', item.board.name, 'shuttle-next-route'),
+            timeNode(item.scheduled_departure_at || item.scheduled_stop_at, 'shuttle-next-time', reference),
+            node('span', item.scheduled_departure_at ? '예정 출발' : '정류장 시간표 시각', 'shuttle-time-label'));
+        const arrival = node('div', '', 'shuttle-next-stop shuttle-next-stop--arrival');
+        const [arrivalAt, label] = arrivalTiming(item);
+        arrival.append(node('span', '내리는 정류장', 'shuttle-time-label'),
+            node('h4', item.alight.name, 'shuttle-next-route'),
+            timeNode(arrivalAt, 'shuttle-next-arrival', reference),
+            node('span', label, 'shuttle-time-label'));
+        stops.append(departure, arrival);
+        article.append(stops);
+        if (!item.service_date_confirmed) article.append(node('p', '조회일 운행 조건 미확인', 'shuttle-condition'));
+        if (Number.isFinite(item.ride_min)) article.append(node('p', `시간표 기준 탑승 ${item.ride_min}분`, 'shuttle-note'));
         if (item.board.stop_location_verified !== true || item.alight.stop_location_verified !== true) {
-            article.append(node('p', '정확한 승강장 위치는 미확인입니다. 학교 안내를 확인해 주세요.', 'shuttle-location-note'));
+            article.append(node('p', '승강장 위치는 학교 안내에서 확인해 주세요.', 'shuttle-location-note'));
         }
         el('next-content').replaceChildren(article);
         el('next').hidden = false;
     }
-    function renderLater(items) {
+    function renderLater(items, reference) {
         el('candidates').replaceChildren(...items.map(item => {
             const article = node('article', '', 'shuttle-candidate shuttle-later-row');
             article.dataset.tripId = item.trip_id;
-            article.append(node('p', clockTime(item.scheduled_departure_at || item.scheduled_stop_at), 'shuttle-later-time'),
-                node('p', item.scheduled_departure_at ? '예정 출발' : '정류장 시간표 시각', 'shuttle-time-label'),
-                node('p', `${item.board.name} → ${item.alight.name}`, 'shuttle-later-route'),
-                node('p', serviceCondition(item), 'shuttle-note'));
+            const departure = node('div', '', 'shuttle-later-side');
+            departure.append(timeNode(item.scheduled_departure_at || item.scheduled_stop_at, 'shuttle-later-time', reference),
+                node('span', item.scheduled_departure_at ? '예정 출발' : '타는 정류장 시간표', 'shuttle-time-label'));
+            const arrival = node('div', '', 'shuttle-later-side');
+            const [arrivalAt, label] = arrivalTiming(item);
+            arrival.append(timeNode(arrivalAt, 'shuttle-later-arrival', reference),
+                node('span', label === '정류장 시간표 시각' ? '내리는 정류장 시간표' : label, 'shuttle-time-label'));
+            article.append(departure, arrival);
+            if (!item.service_date_confirmed) article.append(node('p', '조회일 운행 조건 미확인', 'shuttle-condition'));
             return article;
         }));
         el('later').hidden = items.length === 0;
@@ -248,12 +275,15 @@
         segmentController?.abort();
         segmentController = new AbortController();
         query.disabled = true;
+        el('results').hidden = false;
+        el('context').textContent = `${localTime(fullAt)} 이후 · ${route.value} · ${direction.value}`;
         el('candidates').replaceChildren();
         el('next-content').replaceChildren();
         el('next').hidden = true;
         el('later').hidden = true;
+        el('segment-details').hidden = true;
         el('segment-warnings').replaceChildren();
-        status(el('segment-status'), '구간 후보를 조회하고 있어요.', 'loading');
+        status(el('segment-status'), '시간표를 조회하고 있어요.', 'loading');
         try {
             if (fullAt !== queryAt()) throw new Error('날짜·시각을 변경했습니다. 전체 시간표를 먼저 다시 조회해 주세요.');
             if (!board.value || !alight.value || board.value === alight.value) throw new Error('서로 다른 타는 정류장과 내리는 정류장을 선택해 주세요.');
@@ -262,9 +292,13 @@
             const data = await fetchData(params, segmentController.signal);
             if (version !== segmentVersion) return;
             warnings(el('segment-warnings'), data, fullWarnings);
+            el('segment-details').hidden = !el('segment-warnings').children.length && !data.timetable_candidates.length;
+            if (data.timetable_candidates.length) {
+                el('segment-warnings').append(node('li', '정류장까지 걷는 시간과 승차 여유 시간은 포함되지 않습니다.'));
+            }
             status(el('segment-status'), summary(data, data.timetable_candidates.length));
-            if (data.timetable_candidates.length) renderNext(data.timetable_candidates[0], data);
-            renderLater(data.timetable_candidates.slice(1));
+            if (data.timetable_candidates.length) renderNext(data.timetable_candidates[0], data.query_at);
+            renderLater(data.timetable_candidates.slice(1), data.query_at);
         } catch (error) {
             if (version !== segmentVersion) return;
             status(el('segment-status'), error instanceof Error ? error.message : '구간 조회 오류가 발생했습니다.', 'error');

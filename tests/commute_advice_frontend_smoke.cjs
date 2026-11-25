@@ -6,7 +6,12 @@ const path = require('node:path');
 const { chromium } = require('playwright');
 const { openApp, selectTool, noOverflow, adviceFixture, INJECTION } = require('./frontend_smoke.cjs');
 const tests = [], test = (name, run) => tests.push({ name, run });
-const ready = page => page.locator('#commute-advice-body[aria-busy="false"]').waitFor();
+const ready = page => page.locator('#commute-advice-body[aria-busy="false"]').waitFor({ state: 'attached' });
+const details = page => page.locator('#commute-advice-details');
+async function openDetails(page) {
+    if (!await details(page).isVisible()) await page.locator('#commute-advice-toggle').click();
+    await details(page).waitFor({ state: 'visible' });
+}
 const alerts = [
     { id: 'rain', severity: 'notice', title: '우산을 챙기세요', message: '오후 비 예보가 있어요. 우산을 준비해 주세요.', source: '기상청', at: '2030-10-21T13:00:00+09:00' },
     { id: 'dust', severity: 'warning', title: '마스크를 챙기세요', message: '초미세먼지가 나쁨 수준이에요. 외출 전 마스크를 챙기세요.', source: '에어코리아', at: '2030-10-21T08:00:00+09:00' },
@@ -36,6 +41,16 @@ for (const width of [320, 390, 1440]) test(`${width}px advice shows rain, dust a
         const page = app.page;
         await ready(page);
         assert.equal(await page.locator('#commute-advice-panel').isVisible(), true);
+        assert.equal(await details(page).isVisible(), width >= 1280);
+        if (width < 1280) {
+            assert.equal(await page.locator('#commute-advice-glance-values').isVisible(), true);
+            assert.equal(await page.locator('#commute-advice-glance-temperature').innerText(), '3℃');
+            assert.equal(await page.locator('#commute-advice-glance-wind').innerText(), '4.3m/s');
+            assert.equal(await page.locator('#commute-advice-glance-rain').innerText(), '70%');
+            assert.ok((await page.locator('#commute-advice-panel').boundingBox()).height <= 88);
+        }
+        assert.notEqual(await page.evaluate(() => document.activeElement.id), 'commute-advice-body', 'Automatic opening does not move keyboard focus');
+        await openDetails(page);
         assert.equal(await page.locator('#commute-advice-alerts > li').count(), 3);
         assert.equal(await page.locator('#commute-advice-count').innerText(), '3');
         assert.equal(await page.locator('#commute-weather-temperature').innerText(), '3℃');
@@ -45,22 +60,25 @@ for (const width of [320, 390, 1440]) test(`${width}px advice shows rain, dust a
         assert.equal(await page.locator('#commute-air-pm25-grade').innerText(), '나쁨');
         assert.equal(app.adviceRequests.length, 1);
         assert.deepEqual(await page.evaluate(() => window.__testGPSCalls), []);
-        assert.notEqual(await page.evaluate(() => document.activeElement.id), 'commute-advice-heading', 'Automatic opening does not move keyboard focus');
         await bounds(page);
         if (process.env.CAPSTONE_ADVICE_SCREENSHOT_DIR) {
             await fs.mkdir(process.env.CAPSTONE_ADVICE_SCREENSHOT_DIR, { recursive: true });
             await page.screenshot({ path: path.join(process.env.CAPSTONE_ADVICE_SCREENSHOT_DIR, `advice-synthetic-${width}.png`), fullPage: false });
         }
         await page.locator('#commute-advice-close').click();
-        assert.equal(await page.locator('#commute-advice-panel').isVisible(), false);
+        assert.equal(await page.locator('#commute-advice-panel').isVisible(), true);
+        assert.equal(await details(page).isVisible(), false);
+        assert.equal(await page.locator('#commute-advice-glance-values').isVisible(), true);
         assert.equal(await page.evaluate(() => document.activeElement.id), 'commute-advice-toggle');
         await page.locator('#commute-advice-toggle').press('Enter');
-        assert.equal(await page.evaluate(() => document.activeElement.id), 'commute-advice-heading');
+        assert.equal(await page.evaluate(() => document.activeElement.id), 'commute-advice-body');
         await page.keyboard.press('Escape');
-        assert.equal(await page.locator('#commute-advice-panel').isVisible(), false);
+        assert.equal(await page.locator('#commute-advice-panel').isVisible(), true);
+        assert.equal(await details(page).isVisible(), false);
         await page.locator('#commute-advice-toggle').click();
         await selectTool(page, 'taxi');
-        assert.equal(await page.locator('#commute-advice-panel').isVisible(), false, 'Other tools dismiss the non-modal card');
+        assert.equal(await page.locator('#commute-advice-panel').isVisible(), true, 'Forecast remains visible in other tools');
+        assert.equal(await details(page).isVisible(), true, 'Clicking other tools leaves open details intact');
         assert.equal(await page.locator('#transport-panel-taxi').isVisible(), true);
         assert.equal(app.adviceRequests.length, 1, 'Opening or closing does not re-query fresh data');
         assert.deepEqual(app.errors, []);
@@ -74,6 +92,7 @@ test('partial service failures keep available weather and never invent clean air
     }) }) });
     try {
         await ready(app.page);
+        await openDetails(app.page);
         assert.equal(await app.page.locator('#commute-weather-values').isVisible(), true);
         assert.equal(await app.page.locator('#commute-air-values').isVisible(), false);
         assert.equal(await app.page.locator('[data-advice="dust"]').count(), 0);
@@ -89,6 +108,7 @@ test('failed and malformed refreshes remove old advice while the app stays usabl
             : route.fulfill({ json: { status: 'ok', campus: { id: 'hallym' }, weather: null, air: null } }) });
     try {
         await ready(app.page);
+        await openDetails(app.page);
         for (let i = 0; i < 2; i++) {
             await app.page.locator('#commute-advice-refresh').click();
             await ready(app.page);
@@ -102,11 +122,12 @@ test('failed and malformed refreshes remove old advice while the app stays usabl
         await app.page.locator('#commute-advice-close').click();
         await selectTool(app.page, 'intercity');
         assert.equal(await app.page.locator('#transport-panel-intercity').isVisible(), true);
+        assert.equal(await app.page.locator('#commute-advice-panel').isVisible(), true);
         assert.deepEqual(app.errors, []);
     } finally { await app.close(); }
 });
 
-test('changing campus rejects an uncancellable old response and preserves closed state', async browser => {
+test('changing campus rejects an uncancellable old response and keeps details folded', async browser => {
     let release, began;
     const gate = new Promise(resolve => { release = resolve; });
     const started = new Promise(resolve => { began = resolve; });
@@ -117,6 +138,7 @@ test('changing campus rejects an uncancellable old response and preserves closed
     try {
         const page = app.page;
         await ready(page);
+        await openDetails(page);
         await page.evaluate(() => {
             const original = window.fetch.bind(window);
             window.fetch = (url, options) => String(url).includes('/api/commute-advice')
@@ -130,7 +152,8 @@ test('changing campus rejects an uncancellable old response and preserves closed
         const returned = page.waitForResponse(response => new URL(response.url()).pathname === '/api/commute-advice' && new URL(response.url()).searchParams.get('campus') === 'hallym');
         release(); await returned;
         await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
-        assert.equal(await page.locator('#commute-advice-panel').isVisible(), false);
+        assert.equal(await page.locator('#commute-advice-panel').isVisible(), true);
+        assert.equal(await details(page).isVisible(), false);
         await page.locator('#commute-advice-toggle').click();
         assert.match(await page.locator('#commute-advice-campus').innerText(), /강원대학교/);
         assert.doesNotMatch(await page.locator('#commute-advice-status').innerText(), /오래된/);
@@ -146,6 +169,7 @@ test('stale data is visibly delayed and source text stays literal', async browse
     }) }) });
     try {
         await ready(app.page);
+        await openDetails(app.page);
         assert.equal(await app.page.locator('#commute-weather-badge').innerText(), '자료 지연');
         assert.equal(await app.page.locator('[data-advice="rain"]').count(), 0);
         assert.equal(await app.page.locator('[data-advice="cold_wind"]').count(), 0);
@@ -161,6 +185,7 @@ test('initialization is idempotent and hidden pages pause the fifteen-minute ref
     try {
         const page = app.page;
         await ready(page);
+        await openDetails(page);
         await page.clock.install();
         await page.evaluate(() => {
             window.AppModules.commuteAdvice.init();

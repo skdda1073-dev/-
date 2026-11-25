@@ -20,7 +20,7 @@ function fixture(selected = 'hallym', overrides = {}) {
             { id: 'cold_wind', title: '장갑을 챙기세요', message: '추위와 바람이 예상돼요.' },
         ], ...overrides };
 }
-function harness(handler = async selected => fixture(selected)) {
+function harness(handler = async selected => fixture(selected), wideViewport = true) {
     let now = Date.parse('2030-10-21T08:30:00+09:00'), next = 0, document;
     const timers = new Map(), nodes = new Map(), requests = [];
     class Events {
@@ -53,12 +53,16 @@ function harness(handler = async selected => fixture(selected)) {
     document.activeElement = new Element('body');
     for (const match of markup.matchAll(/id="([^"]+)"/g)) nodes.set(match[1], new Element('div', match[1]));
     for (const id of ['commute-advice-toggle', 'commute-advice-count', 'commute-advice-toggle-status']) nodes.set(id, new Element('button', id));
-    const panel = nodes.get('commute-advice-panel'); panel.hidden = true;
-    for (const [id, node] of nodes) if (id !== panel.id && !['commute-advice-toggle', 'commute-advice-count', 'commute-advice-toggle-status'].includes(id)) panel.appendChild(node);
+    const panel = nodes.get('commute-advice-panel'), details = nodes.get('commute-advice-details');
+    for (const [id, node] of nodes) if (id !== panel.id && !['commute-advice-toggle', 'commute-advice-count', 'commute-advice-toggle-status'].includes(id)) {
+        (id === 'commute-advice-body' ? details : panel).appendChild(node);
+    }
     document.getElementById = id => nodes.get(id) || null;
     document.createElement = tag => new Element(tag);
     document.createElementNS = (_, tag) => new Element(tag);
     const window = new Events(); window.CustomEvent = Event;
+    const viewport = new Events(); viewport.matches = wideViewport;
+    window.matchMedia = () => viewport;
     window.setTimeout = (callback, delay) => { const id = ++next; timers.set(id, { at: now + delay, callback }); return id; };
     window.clearTimeout = id => timers.delete(id);
     window.fetch = async (url, options) => {
@@ -75,6 +79,7 @@ function harness(handler = async selected => fixture(selected)) {
     const api = window.AppModules.commuteAdvice;
     api.init();
     return { window, document, nodes, requests, api, el: id => nodes.get(id),
+        viewport(value) { viewport.matches = value; viewport.dispatchEvent(new Event('change', { matches: value })); },
         async click(id) {
             const node = nodes.get(id);
             if (node.disabled) return;
@@ -98,6 +103,7 @@ function harness(handler = async selected => fixture(selected)) {
 test('all simultaneous advice and measured/forecast labels render without focus theft', async () => {
     const app = harness(); await flush();
     assert.equal(app.el('commute-advice-panel').hidden, false);
+    assert.equal(app.el('commute-advice-details').hidden, false);
     assert.equal(app.document.activeElement.tagName, 'body');
     assert.equal(app.el('commute-advice-alerts').children.length, 3);
     assert.equal(app.el('commute-advice-count').textContent, '3');
@@ -106,20 +112,37 @@ test('all simultaneous advice and measured/forecast labels render without focus 
     assert.match(app.el('commute-weather-time').textContent, /예보.*발표/);
     assert.match(app.el('commute-air-time').textContent, /측정소.*춘천 참고값.*측정/);
 });
-test('closing, reopening and reinitializing preserve input state and one request', async () => {
+test('folding details through the close button or Escape keeps weather visible', async () => {
     const app = harness(); await flush(); app.api.init();
     await app.click('commute-advice-close');
-    assert.equal(app.el('commute-advice-panel').hidden, true);
+    assert.equal(app.el('commute-advice-panel').hidden, false);
+    assert.equal(app.el('commute-advice-details').hidden, true);
+    assert.equal(app.el('commute-advice-glance-temperature').textContent, '3℃');
     assert.equal(app.document.activeElement.id, 'commute-advice-toggle');
     await app.click('commute-advice-toggle');
-    assert.equal(app.document.activeElement.id, 'commute-advice-heading');
+    assert.equal(app.document.activeElement.id, 'commute-advice-body');
+    app.document.dispatchEvent({ type: 'pointerdown', target: app.document });
+    assert.equal(app.el('commute-advice-details').hidden, false);
     app.document.dispatchEvent({ type: 'keydown', key: 'Escape', preventDefault() {} });
-    assert.equal(app.el('commute-advice-panel').hidden, true);
+    assert.equal(app.el('commute-advice-panel').hidden, false);
+    assert.equal(app.el('commute-advice-details').hidden, true);
     assert.equal(app.requests.length, 1);
     await app.click('commute-advice-toggle'); await app.click('commute-advice-refresh');
     assert.equal(app.requests.length, 2);
 });
-test('a late uncancellable campus response cannot replace the new campus or reopen a closed panel', async () => {
+test('crossing the wide viewport breakpoint switches details and keeps the forecast ready', async () => {
+    const app = harness(undefined, false); await flush();
+    assert.equal(app.el('commute-advice-details').hidden, true);
+    assert.equal(app.el('commute-advice-glance-wind').textContent, '4.5m/s');
+    app.viewport(true);
+    assert.equal(app.el('commute-advice-details').hidden, false);
+    assert.equal(app.document.activeElement.tagName, 'body');
+    app.viewport(false);
+    assert.equal(app.el('commute-advice-panel').hidden, false);
+    assert.equal(app.el('commute-advice-details').hidden, true);
+    assert.equal(app.requests.length, 1);
+});
+test('a late uncancellable campus response cannot replace the new campus or unfold details', async () => {
     let release;
     const app = harness((selected, count) => count === 1 ? new Promise(resolve => { release = resolve; }) : fixture(selected));
     await flush(); await app.click('commute-advice-close');
@@ -128,7 +151,8 @@ test('a late uncancellable campus response cannot replace the new campus or reop
     release(fixture('hallym', { summary: '오래된 응답' })); await flush();
     assert.equal(app.el('commute-advice-campus').textContent, '강원대학교 기준');
     assert.doesNotMatch(app.el('commute-advice-status').textContent, /오래된/);
-    assert.equal(app.el('commute-advice-panel').hidden, true);
+    assert.equal(app.el('commute-advice-panel').hidden, false);
+    assert.equal(app.el('commute-advice-details').hidden, true);
     await app.select('knu'); await app.select('invalid');
     assert.equal(app.requests.length, 2, 'Unchanged/invalid campus does not re-query');
 });

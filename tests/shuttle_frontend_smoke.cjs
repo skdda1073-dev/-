@@ -49,10 +49,11 @@ async function memoryUI(handler = params => fixture(params), { shell } = {}) {
         }
     }
     const ids = ['route', 'direction', 'at', 'board', 'alight', 'query', 'refresh', 'now', 'status', 'source', 'warnings',
-        'trips', 'candidates', 'candidates-heading', 'next', 'next-content', 'later', 'segment-status', 'segment-warnings', 'segment-form'];
+        'trips', 'candidates', 'candidates-heading', 'next', 'next-content', 'later', 'segment-status', 'segment-warnings',
+        'segment-form', 'results', 'context', 'segment-details'];
     const elements = Object.fromEntries(ids.map(id => [id, new Element(['route', 'direction', 'board', 'alight'].includes(id) ? 'select' : 'div')]));
     const root = new Element(), panel = new Element(); panel.hidden = true;
-    elements.next.hidden = elements.later.hidden = true;
+    elements.next.hidden = elements.later.hidden = elements.results.hidden = true;
     root.querySelector = selector => elements[selector.replace('#shuttle-', '')];
     const requests = []; let observe;
     class FixedDate extends Date { constructor(...args) { super(...(args.length ? args : [FIXED])); } static now() { return new Date(FIXED).getTime(); } }
@@ -96,21 +97,21 @@ if (unit) {
         assert.equal(app.elements.trips.children.length, 2);
         assert.equal(app.elements.next.hidden, true);
         assert.equal(app.elements.later.hidden, true);
+        assert.equal(app.elements.results.hidden, true);
         assert.equal(app.focused, undefined, 'Background full schedule loading never moves focus');
-        assert.match(app.text('trips'), /예정 출발 09:15/);
-        assert.match(app.text('trips'), /시간표 시각 미확인/);
+        assert.match(app.text('trips'), /09:15\s+춘천역\s+예정 출발/);
+        assert.match(app.text('trips'), /미확인\s+대학교\s+시간표 시각/);
         await app.submit();
         assert.equal(app.requests.length, 2);
         assert.equal(app.requests[1].board, 'r1-a');
         assert.equal(app.elements.next.hidden, false);
+        assert.equal(app.elements.results.hidden, false);
         assert.equal(app.elements['next-content'].children[0].dataset.tripId, 't1');
-        assert.match(app.text('next-content'), /09:15/);
-        assert.match(app.text('next-content'), /다음 예정 출발/);
-        assert.match(app.text('next-content'), /조회 기준.*2026.*10.*19.*07:50/);
-        assert.match(app.text('next-content'), /승차 소요시간 미확인/);
-        assert.match(app.text('next-content'), /정류장까지 이동시간·탑승 여유시간 미반영/);
-        assert.equal(app.elements['next-content'].children[0].children[0].textContent, '타는 곳 · 춘천역');
-        assert.match(app.text('next-content'), /정확한 승강장 위치는 미확인/);
+        assert.match(app.text('next-content'), /타는 정류장\s+춘천역\s+09:15\s+예정 출발/);
+        assert.match(app.text('next-content'), /내리는 정류장\s+대학교\s+미확인\s+도착 시각/);
+        assert.match(app.text('context'), /2026.*10.*19.*07:50 이후 · 제1노선 · 등교/);
+        assert.match(app.text('segment-warnings'), /정류장까지 걷는 시간과 승차 여유 시간/);
+        assert.match(app.text('next-content'), /승강장 위치는 학교 안내/);
         assert.equal(app.elements.candidates.children.length, 1);
         assert.equal(app.elements.candidates.children[0].dataset.tripId, 't1-later');
         assert.match(app.text('candidates'), /09:20/);
@@ -128,7 +129,7 @@ if (unit) {
         assert.equal(app.elements.next.hidden, true);
         assert.equal(app.elements.later.hidden, true);
         assert.equal(app.text('trips'), full);
-        assert.match(app.text('segment-status'), /남은 시간표 후보가 없습니다/);
+        assert.match(app.text('segment-status'), /남은 시간표가 없습니다/);
     });
     for (const [date, status] of [
         ['2026-10-19T07:50', 'ok'], ['2026-10-17T07:50', 'not_operating'],
@@ -140,7 +141,7 @@ if (unit) {
         if (status === 'not_operating') {
             assert.equal(app.elements.candidates.children.length, 0);
             assert.equal(app.elements.next.hidden, true);
-            assert.match(app.text('segment-status'), /미운행 조건/);
+            assert.match(app.text('segment-status'), /미운행일/);
         } else if (status === 'unknown') {
             assert.match(app.text('warnings'), /운행 조건 미확인/);
             assert.match(app.text('next-content'), /운행 조건 미확인/);
@@ -160,17 +161,17 @@ if (unit) {
         assert.match(app.text('trips'), /17:30/);
         await app.change('board', 'r1-d'); await app.change('alight', 'r1-c'); await app.submit();
         assert.equal(app.elements.candidates.children.length, 0);
-        assert.match(app.text('segment-status'), /연결되는 구간이 없습니다/);
+        assert.match(app.text('segment-status'), /이 순서로 두 정류장에 들르는 편이 없습니다/);
         await app.change('route', '제2노선');
         const duplicate = app.elements.board.children.filter(item => item.textContent.startsWith('동명 정류장'));
         assert.deepEqual(duplicate.map(item => item.value), ['r2-b', 'r2-c']);
         duplicate.forEach(item => assert.match(item.textContent, /ID r2-/));
         await app.change('board', 'r2-a'); await app.change('alight', 'r2-d'); await app.submit();
-        assert.match(app.text('segment-status'), /연결되는 구간이 없습니다/);
+        assert.match(app.text('segment-status'), /이 순서로 두 정류장에 들르는 편이 없습니다/);
         await app.change('alight', 'r2-b'); await app.submit();
         assert.equal(app.elements.candidates.children.length, 0);
         assert.equal(app.elements.next.hidden, false);
-        assert.match(app.text('next-content'), /다음 정류장 시간표 시각/);
+        assert.match(app.text('next-content'), /정류장 시간표 시각/);
         assert.doesNotMatch(app.text('next-content'), /예정 출발/);
     });
     test('malformed response, HTTP error, network error and explicit retry', async () => {
@@ -211,12 +212,21 @@ if (unit) {
             return data;
         });
         await app.open(); await app.submit();
-        assert.match(app.text('next-content'), /다음 정류장 시간표 시각/);
-        assert.match(app.text('next-content'), /조회일 운행 조건에 해당/);
-        assert.match(app.text('next-content'), /내리는 정류장 시간표 시각.*09:40/);
-        assert.match(app.text('next-content'), /승차 소요시간 미확인/);
+        assert.match(app.text('next-content'), /타는 정류장\s+춘천역\s+09:15\s+정류장 시간표 시각/);
+        assert.match(app.text('next-content'), /내리는 정류장\s+대학교\s+09:40\s+정류장 시간표 시각/);
         assert.doesNotMatch(app.text('next-content'), /예정 출발|예정 도착/);
-        assert.match(app.text('candidates'), /정류장 시간표 시각/);
+        assert.match(app.text('candidates'), /09:40\s+내리는 정류장 시간표/);
+    });
+    test('an arrival on the following day shows its own date alongside the time', async () => {
+        const app = await memoryUI(params => {
+            const data = fixture(params);
+            if (data.timetable_candidates.length) {
+                data.timetable_candidates[0].scheduled_arrival_at = '2026-10-20T00:10:00+09:00';
+            }
+            return data;
+        });
+        await app.open(); await app.submit();
+        assert.match(app.text('next-content'), /00:10\s+10월 20일\s+예정 도착/);
     });
     test('every query change immediately clears next and later without moving focus', async () => {
         const changes = [
@@ -231,6 +241,7 @@ if (unit) {
             const focusCount = app.elements['candidates-heading'].focusCount;
             await change(app);
             assert.equal(app.elements.next.hidden, true); assert.equal(app.elements.later.hidden, true);
+            assert.equal(app.elements.results.hidden, true);
             assert.equal(app.elements['next-content'].children.length, 0);
             assert.equal(app.elements.candidates.children.length, 0);
             assert.equal(app.elements['candidates-heading'].focusCount, focusCount);
@@ -270,7 +281,7 @@ if (unit) {
         assert.equal(app.text('trips'), full);
         await app.date('2026-10-19T23:59'); await app.submit();
         assert.equal(app.elements.next.hidden, true);
-        assert.match(app.text('segment-status'), /남은 시간표 후보가 없습니다/);
+        assert.match(app.text('segment-status'), /남은 시간표가 없습니다/);
         assert.equal(app.elements['candidates-heading'].focusCount, 3);
     });
     test('a result completed after its panel closes cannot steal focus or scroll', async () => {
@@ -329,7 +340,8 @@ if (unit) {
         assert.equal(app.elements['next-content'].children.length, 0);
         assert.equal(app.elements.later.hidden, true);
         assert.equal(app.focused, undefined, 'Discarded requests never move focus');
-        assert.match(app.text('segment-status'), /선택한 뒤/);
+        assert.equal(app.elements.results.hidden, true);
+        assert.equal(app.text('segment-status'), '');
     });
 } else {
     const { openApp, selectTool, noOverflow } = require('./frontend_smoke.cjs');
@@ -350,7 +362,8 @@ if (unit) {
             const state = await page.evaluate(() => ({ campus: selectedCampus, mode: originMode, destination: AppState.getDestination() }));
             await selectTool(page, 'shuttle');
             await page.waitForFunction(() => !document.getElementById('shuttle-query').disabled);
-            assert.match(await page.locator('#transport-panel-shuttle').innerText(), /한림대학교 자료 · 저장된 시간표 기반/);
+            assert.equal(await page.locator('#transport-panel-shuttle > h2').innerText(), '한림대학교 셔틀 시간표');
+            assert.equal(await page.locator('#shuttle-results').isVisible(), false);
             assert.equal(await page.locator('#shuttle-at').inputValue(), '2026-10-19T07:50');
             assert.deepEqual(await page.evaluate(() => ({ campus: selectedCampus, mode: originMode, destination: AppState.getDestination() })), state);
             await page.locator('#shuttle-query').click();
@@ -358,8 +371,10 @@ if (unit) {
                 && document.querySelectorAll('.shuttle-candidate').length === 1);
             assert.equal(app.shuttleRequests.length, 2);
             assert.equal(await page.locator('.shuttle-trip').count(), 2);
-            assert.match(await page.locator('#shuttle-next-content').innerText(), /승차 소요시간 미확인/);
-            assert.match(await page.locator('#shuttle-next-content').innerText(), /09:15/);
+            assert.match(await page.locator('#shuttle-context').innerText(), /07:50 이후 · 제1노선 · 등교/);
+            assert.equal(await page.locator('.shuttle-next-time').innerText(), '09:15');
+            assert.equal(await page.locator('.shuttle-next-time').getAttribute('datetime'), '2026-10-19T09:15:00+09:00');
+            assert.equal(await page.locator('.shuttle-next-arrival').innerText(), '미확인');
             assert.match(await page.locator('#shuttle-candidates').innerText(), /09:20/);
             assert.equal(await page.evaluate(() => document.activeElement.id), 'shuttle-candidates-heading');
             assert.equal(await page.locator('#shuttle-trips').isVisible(), false, 'Full schedule starts collapsed');
@@ -374,7 +389,7 @@ if (unit) {
             await page.locator('#shuttle-alight').selectOption('r2-b');
             await page.locator('#shuttle-query').click();
             await page.locator('#shuttle-next').waitFor({ state: 'visible' });
-            assert.match(await page.locator('.shuttle-next-route').innerText(), /휴먼타운A/);
+            assert.match(await page.locator('.shuttle-next-route').first().innerText(), /휴먼타운A/);
             assert.equal(await page.locator('#shuttle-later').isVisible(), false);
             await noOverflow(page);
             await page.locator('#shuttle-full-heading').click();

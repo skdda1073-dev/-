@@ -263,7 +263,7 @@
     function invalidateSearchContext() {
         if (view !== 'create' || !createContext) return;
         createContextInvalidated = true;
-        setText('room-create-context', '경로가 바뀌었어요. 취소한 뒤 새 목적지로 방을 다시 준비해 주세요.');
+        setText('room-create-context', '경로가 바뀌었어요. 취소하고 새 목적지로 다시 열어 주세요.');
         updateCreateButton();
     }
 
@@ -279,13 +279,12 @@
         byId('room-create-form').reset();
         byId('room-meeting-options').replaceChildren();
         show('room-meeting-selected', false);
+        show('room-meeting-consent', false);
         byId('room-meeting-confirm').disabled = true;
         byId('room-departure').value = localInput(new Date(Date.now() + 30 * 60000));
-        setText('room-meeting-status', '공개할 장소를 검색하고 목록에서 선택해 주세요.');
-        setText('room-create-context', context.mode === 'gps'
-            ? '현재 GPS를 집결지로 공개하지 않아요. 공개할 만날 장소를 직접 선택해 주세요.'
-            : '교내 건물이나 정문 등 공개할 만날 장소를 검색해 선택해 주세요.');
-        setText('room-create-destination', '공개 목적지: ' + context.payload.dest_name);
+        setText('room-meeting-status', '');
+        setText('room-create-context', '');
+        setText('room-create-destination', context.payload.dest_name);
         updateCreateButton();
         focus('room-title');
         const generation = viewVersion;
@@ -299,13 +298,14 @@
         byId('room-meeting-confirm').checked = false;
         byId('room-meeting-confirm').disabled = true;
         show('room-meeting-selected', false);
+        show('room-meeting-consent', false);
         byId('room-meeting-options').replaceChildren();
         updateCreateButton();
         const query = byId('room-meeting-query').value.trim();
-        if (!query) { setText('room-meeting-status', '공개할 장소를 검색해 주세요.'); return; }
+        if (!query) { setText('room-meeting-status', ''); return; }
         const version = meetingVersion;
         const generation = viewVersion;
-        setText('room-meeting-status', '공개 집결 장소를 찾고 있어요…');
+        setText('room-meeting-status', '장소 검색 중…');
         meetingTimer = setTimeout(async function() {
             const controller = new AbortController();
             meetingController = controller;
@@ -327,16 +327,17 @@
                         if (version !== meetingVersion || generation !== viewVersion) return;
                         meeting = { name: place.name.trim(), lat: Number(place.lat), lon: Number(place.lon) };
                         byId('room-meeting-options').replaceChildren();
-                        setText('room-meeting-selected', '공개 집결 장소: ' + meeting.name);
+                        setText('room-meeting-selected', meeting.name);
                         show('room-meeting-selected', true);
                         byId('room-meeting-confirm').disabled = false;
-                        setText('room-meeting-status', '장소를 확인하고 공개 동의를 선택해 주세요.');
+                        show('room-meeting-consent', true);
+                        setText('room-meeting-status', '');
                         updateCreateButton();
                         focus('room-meeting-confirm');
                     });
                     byId('room-meeting-options').appendChild(button);
                 });
-                setText('room-meeting-status', places.length ? '목록에서 공개 집결 장소를 선택해 주세요.' : '검색 결과가 없어요. 다른 공개 장소를 검색해 주세요.');
+                setText('room-meeting-status', places.length ? '' : '검색 결과가 없어요.');
             } catch (error) {
                 if (generation === viewVersion && version === meetingVersion && error.name !== 'AbortError') {
                     setText('room-meeting-status', error instanceof TypeError || error instanceof SyntaxError ? '장소 검색을 연결하지 못했어요.' : error.message);
@@ -368,9 +369,9 @@
             const data = await api('', 'POST', payload);
             if (generation !== viewVersion || view !== 'create') return;
             await openRoom(data.room.id);
-            status('방을 만들었어요. 방장도 참가 인원에 포함돼요.');
+            status('모집방을 만들었어요.');
         } catch (error) {
-            if (generation === viewVersion) status(error.message + ' 같은 내용으로 다시 누르면 중복 생성되지 않아요.', true);
+            if (generation === viewVersion) status(error.message, true);
         } finally {
             createBusy = false;
             if (view === 'create' && generation === viewVersion) updateCreateButton();

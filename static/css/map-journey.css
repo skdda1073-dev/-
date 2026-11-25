@@ -1,24 +1,21 @@
-/* Movable map point selector. All route results use the existing results panel. */
+/* Map point selector stays available beside the workspace. */
 .map-journey-widget {
+    --map-journey-weather-clearance: 0px;
     position: absolute;
+    top: max(16px, var(--map-journey-weather-clearance));
     left: 16px;
-    z-index: 2;
+    z-index: 3;
+    width: min(330px, calc(100% - 32px));
     min-width: 0;
+    max-height: calc(100% - max(16px, var(--map-journey-weather-clearance)) - 8px);
+    padding: 10px 12px;
+    overflow-y: auto;
     border: 1px solid #d5e3d7;
     border-radius: 16px;
     background: var(--surface, #fff);
     color: var(--ink, #18352b);
     box-shadow: 0 5px 22px #18352b1a;
     overflow-wrap: anywhere;
-}
-
-.map-journey-widget {
-    top: 16px;
-    width: min(330px, calc(100% - 32px));
-    padding: 10px 12px;
-    z-index: 3;
-    max-height: calc(100% - 16px);
-    overflow-y: auto;
     overscroll-behavior: contain;
 }
 
@@ -96,19 +93,21 @@
 
 .map-journey-widget button:focus-visible { outline: 3px solid var(--green-dark, #187526); outline-offset: 3px; }
 
-#app-shell:not(.search-closed) .map-stage:not(.is-map-picking) .map-journey-widget { display: none; }
-
-/* The existing detail view takes priority over these compact map overlays. */
-.map-stage:has(#route-detail:not([hidden])) .map-journey-widget { visibility: hidden; pointer-events: none; }
+@media (max-width: 1279px) {
+    .map-journey-widget { --map-journey-weather-clearance: 106px; }
+}
 
 @media (max-width: 799px) {
-    .results-visible .map-journey-widget { display: none; }
-    .map-journey-widget { left: 10px; border-radius: 13px; }
-    .map-journey-widget { top: 10px; width: min(330px, calc(100% - 20px)); padding: 8px 10px; }
-    .map-journey-heading { min-height: 44px; margin-bottom: 4px; padding-left: 48px; }
+    .map-journey-widget {
+        left: 10px;
+        width: min(330px, calc(100% - 72px));
+        padding: 8px 10px;
+        border-radius: 13px;
+    }
+    .map-journey-heading { margin-bottom: 4px; }
     .map-journey-heading h2 { font-size: 13px; }
     .map-journey-reset { min-height: 30px; padding: 4px 7px; }
-    .map-point-pick { min-height: 48px; padding: 6px 8px; gap: 2px; }
+    .map-point-pick { min-height: 44px; padding: 6px 8px; gap: 2px; }
     .map-point-label { font-size: 10px; }
     .map-journey-status { margin-top: 5px; font-size: 10px; }
 }

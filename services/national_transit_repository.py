@@ -620,7 +620,7 @@ def _walk_segment(midnight, end_time, walk):
         "arrival_at": _iso(midnight, end_time),
         "duration_min": ceil(walk.seconds / 60), "fare_won": 0,
         "distance_m": walk.meters, "estimated": walk.transfer,
-        "source": "역내 환승 계획 여유시간" if walk.transfer else "TMAP 보행 경로",
+        "source": "역내 환승 계획 여유시간" if walk.transfer else "보행 경로",
     }
 
 
@@ -672,13 +672,22 @@ def _routing_place(place):
 def _rail_seeds(timetable, walks_in, access_routes, departure_at, midnight, started):
     seeds = [_Label(started + walk.seconds, station, 0, walk, walk_seconds=walk.seconds)
              for station, walk in walks_in.items()]
+    if not access_routes:
+        return seeds
+
+    station_keys = defaultdict(list)
+    for key in sorted(timetable.routed):
+        station_keys[_station_place_key(timetable.stations[key].place())].append(key)
     for route in access_routes:
         gateway, arrival = route["gateway"], route["arrival_at"]
-        match = timetable.chuncheon_gateways.get(gateway["name"])
-        if match is None or arrival < departure_at:
+        if arrival < departure_at:
             continue
-        hub, stations = match
-        if hub.place() != gateway:
+        match = timetable.chuncheon_gateways.get(gateway["name"])
+        if match is not None and match[0].place() == gateway:
+            stations = match[1]
+        else:
+            stations = station_keys.get(_station_place_key(gateway), ())
+        if not stations:
             continue
         arrived = ceil((arrival - midnight).total_seconds())
         access = _Access(tuple(route["segments"]), tuple(route.get("warnings", ())))

@@ -52,9 +52,10 @@ class ShuttleService:
     NEARBY_RADIUS_M = 500
 
     def __init__(self, repository, walking_time, stop_mappings=None, clock=None,
-                 boarding_margin_min=1.0, service_calendar=None, profile=None):
+                 boarding_margin_min=1.0, service_calendar=None, profile=None, *, routing_walk_fallback=None):
         self.repository = repository
         self.walking_time = walking_time
+        self.routing_walk_fallback = routing_walk_fallback
         self.clock = clock or (lambda: datetime.now(SEOUL))
         margin = _number(boarding_margin_min)
         if margin is None or margin < 0:
@@ -352,11 +353,69 @@ class ShuttleService:
             "scheduled_segment_min": last["minutes"] - first["minutes"] if last["minutes"] is not None else None,
         }
 
-    def plan(self, origin, destination, query_at=None):
+    def _nearby_pairs(self, origin, destination, radius):
+        def nearby(point):
+            return {stop_id for stop_id, mapping in self.stop_mappings.items() if _distance(point, _point(mapping)) <= radius}
+
+        return nearby(origin), nearby(destination)
+
+    def may_connect(self, origin, destination, service_date, *, nearby_radius_m=NEARBY_RADIUS_M):
+        """Check a dated forward stop pair before invoking walking or another provider."""
+        start, end = _point(origin), _point(destination)
+        if start is None or end is None:
+            return False
+        self._ensure_profile()
+        if self.service_calendar is None:
+            return False
+        boards, exits = self._nearby_pairs(start, end, nearby_radius_m)
+        if not boards or not exits:
+            return False
+        day_start = datetime.combine(service_date, datetime.min.time(), tzinfo=SEOUL)
+        for trip in (self.profile or self.repository).snapshot().get("trips", []):
+            events = self._events(trip)
+            if not events or not any(self._operating(day, trip) is True for day in self._dates(events, day_start)):
+                continue
+            if any(event["stop_id"] in boards and any(later["stop_id"] != event["stop_id"] and later["stop_id"] in exits
+                                                       for later in events[index + 1:]) for index, event in enumerate(events)):
+                return True
+        return False
+
+    def routing_plan(self, origin, destination, query_at=None, *, nearby_radius_m=NEARBY_RADIUS_M):
+        """Use verified route stop times as routing estimates without changing the timetable API."""
+        result = self.plan(origin, destination, query_at, nearby_radius_m=nearby_radius_m,
+                           walk_fallback=self.routing_walk_fallback)
+        published_routes = result["source"].get("published_stop_time_routes", ())
+        for route in result["journeys"]:
+            if not route["service_date_confirmed"] or any(route[key]["distance_m"] > 1200 for key in ("access_walk", "egress_walk")):
+                continue
+            leg = route["legs"][0]
+            departure, arrival = leg["scheduled_departure_at"], leg["scheduled_arrival_at"]
+            basis = "shuttle_schedule"
+            if (not departure or not arrival) and leg["route_name"] in published_routes:
+                departure, arrival = leg["scheduled_stop_at"], leg["scheduled_alight_stop_at"]
+                basis = "shuttle_published_stop_times"
+            if not arrival or not departure:
+                if departure:
+                    route["schedule_reference"] = True
+                continue
+            start, end = datetime.fromisoformat(departure), datetime.fromisoformat(arrival)
+            ride = (end - start).total_seconds() / 60
+            if ride <= 0:
+                continue
+            total = (end - datetime.fromisoformat(route["query_at"])).total_seconds() / 60 + route["egress_walk"]["minutes"]
+            timing = {"scheduled_departure_at": departure, "scheduled_arrival_at": arrival,
+                      "ride_min": round(ride, 6), "ride_time_basis": basis, "schedule_comparable": True}
+            leg.update(timing)
+            route.update(timing, total_min=round(total, 6), known_min=round(total, 6),
+                         known_min_complete=True, total_unavailable_reason=None)
+            route["warnings"].append("학교 공개 정류장 시각과 승하차 대표점을 사용한 예상 경로입니다.")
+        return result
+
+    def plan(self, origin, destination, query_at=None, *, nearby_radius_m=NEARBY_RADIUS_M, walk_fallback=None):
         now = self._now(query_at)
         snapshot, result = self._base(now)
         result.update({"journeys": [], "boarding_margin_min": self.boarding_margin_min,
-                       "nearby_radius_m": self.NEARBY_RADIUS_M})
+                       "nearby_radius_m": nearby_radius_m})
         result["warnings"].append("준비 완료 후의 정류장 시간표 시각을 고른 조건부 후보입니다. 대기시간은 시간표 기준이며 실제 출발·탑승을 보장하지 않습니다.")
         origin_point, destination_point = _point(origin), _point(destination)
         if origin_point is None or destination_point is None:
@@ -371,10 +430,9 @@ class ShuttleService:
         if not trips:
             result["status"] = "no_connection"
             return result
-        accessible = {stop_id for stop_id in stop_ids & self.stop_mappings.keys()
-                      if _distance(origin_point, _point(self.stop_mappings[stop_id])) <= self.NEARBY_RADIUS_M}
-        egressible = {stop_id for stop_id in stop_ids & self.stop_mappings.keys()
-                     if _distance(_point(self.stop_mappings[stop_id]), destination_point) <= self.NEARBY_RADIUS_M}
+        accessible, egressible = self._nearby_pairs(origin_point, destination_point, nearby_radius_m)
+        accessible.intersection_update(stop_ids)
+        egressible.intersection_update(stop_ids)
         if not accessible or not egressible:
             result["status"] = "unmatched"
             return result
@@ -383,13 +441,18 @@ class ShuttleService:
         def walk(start, start_name, end, end_name):
             key = start, end
             if key not in walk_cache:
-                try:
-                    response = self.walking_time(*start, start_name, *end, end_name)
-                    minutes, distance = _number(response[0]), _number(response[1])
-                    walk_cache[key] = ({"minutes": minutes, "distance_m": distance}
-                                       if minutes is not None and distance is not None and minutes >= 0 and distance >= 0 else None)
-                except Exception:
-                    walk_cache[key] = None
+                walk_cache[key] = None
+                for provider in (self.walking_time, walk_fallback):
+                    if provider is None:
+                        continue
+                    try:
+                        raw_minutes, raw_distance = provider(*start, start_name, *end, end_name)
+                        minutes, distance = _number(raw_minutes), _number(raw_distance)
+                        if minutes is not None and distance is not None and minutes >= 0 and distance >= 0:
+                            walk_cache[key] = {"minutes": minutes, "distance_m": distance}
+                            break
+                    except Exception:
+                        continue
             return walk_cache[key]
 
         connected, operating, walk_failed = False, False, False

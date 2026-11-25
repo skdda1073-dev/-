@@ -32,8 +32,13 @@
         place(docked);
         detail.hidden = !visible;
         if (docked && visible) {
-            const panel = detail.getBoundingClientRect(), tools = stage.querySelector('.map-tools')?.getBoundingClientRect();
-            const overlaps = tools && tools.width > 0 && tools.height > 0 && panel.left < tools.right && panel.right > tools.left && panel.top < tools.bottom && panel.bottom > tools.top;
+            const panel = detail.getBoundingClientRect();
+            const overlays = [stage.querySelector('.map-tools'), byId('map-journey-widget'), byId('commute-advice-panel')];
+            const overlaps = overlays.some(element => {
+                const box = element?.getBoundingClientRect();
+                return box && box.width > 0 && box.height > 0
+                    && panel.left < box.right && panel.right > box.left && panel.top < box.bottom && panel.bottom > box.top;
+            });
             if (panel.left < rect.left + 180 || panel.right > rect.right - 72 || panel.top < rect.top + 48 || panel.bottom > rect.bottom - 56 || overlaps) {
                 docked = false;
                 place(false);
@@ -295,7 +300,12 @@
             if (active === 'journey' && resultAvailable) showResults();
             else openTool();
         } });
-        if (typeof window.ResizeObserver === 'function') new window.ResizeObserver(layoutDetail).observe(byId('map-stage'));
+        if (typeof window.ResizeObserver === 'function') {
+            const observer = new window.ResizeObserver(layoutDetail);
+            observer.observe(byId('map-stage'));
+            const weather = byId('commute-advice-panel');
+            if (weather) observer.observe(weather);
+        }
         byId('skip-search').addEventListener('click', event => { event.preventDefault(); openJourney('tab-hallym'); });
         document.addEventListener('input', refreshUnloadGuard);
         document.addEventListener('change', refreshUnloadGuard);

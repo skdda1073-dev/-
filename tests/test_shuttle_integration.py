@@ -103,7 +103,8 @@ class ShuttleApiTests(unittest.TestCase):
         city = Mock()
         city.nearby_stops.side_effect = PublicDataError("NETWORK", "private external error")
         service = TransitService(city, Mock(), shuttle_service=shuttle)
-        with patch.object(application, "transit_service", service):
+        with patch.object(application, "transit_service", service), patch("services.transit_service.datetime") as clock:
+            clock.now.return_value = NOW
             response = self.client.post("/get_route_info", json={
                 "lat": ORIGIN["lat"], "lon": ORIGIN["lon"],
                 "dest_lat": DESTINATION["lat"], "dest_lon": DESTINATION["lon"],
@@ -182,6 +183,15 @@ class CombinedProviderTests(unittest.TestCase):
         self.assertEqual([j["transport_type"] for j in result["journeys"]], ["city_bus", "shuttle", "city_bus"])
         self.assertEqual(result["journeys"][0]["known_min"], 10)
 
+    def test_departure_only_shuttle_does_not_take_a_slot_from_a_complete_city_journey(self):
+        service = self.service()
+        shuttle = service.shuttle_service.plan.return_value["journeys"][0]
+        shuttle["schedule_reference"] = True
+        city_journeys = [{**self.city_journey(i), "total_min": 10 + i} for i in range(4)]
+        with patch.object(service, "_plan_city", return_value=self.city_response(city_journeys)):
+            result = service.plan(ORIGIN, DESTINATION)
+        self.assertEqual([journey["total_min"] for journey in result["journeys"]], [10, 11, 12])
+
     def test_city_planner_default_three_and_unlimited_integration_option(self):
         board = {"nodeid": "A", "nodenm": "A", "nodeord": 1, "updowncd": 0,
                  "gpslati": ORIGIN["lat"], "gpslong": ORIGIN["lon"]}
@@ -195,8 +205,12 @@ class CombinedProviderTests(unittest.TestCase):
     def test_city_early_empty_return_does_not_skip_shuttle(self):
         service = self.service()
         service.topology.nearby_stops.return_value = []
-        result = service.plan(ORIGIN, DESTINATION)
-        service.shuttle_service.plan.assert_called_once_with(ORIGIN, DESTINATION)
+        with patch("services.transit_service.datetime") as clock, \
+                patch.object(service, "_plan_city", wraps=service._plan_city) as city:
+            clock.now.return_value = NOW
+            result = service.plan(ORIGIN, DESTINATION)
+        self.assertEqual(city.call_args.kwargs["departure_at"], NOW)
+        service.shuttle_service.plan.assert_called_once_with(ORIGIN, DESTINATION, query_at=NOW)
         self.assertEqual(len(result["journeys"]), 1)
 
     def test_failed_city_without_replacement_keeps_502_and_shuttle_diagnostics(self):
@@ -276,7 +290,9 @@ class OfficialShuttleProfileApiTests(unittest.TestCase):
 
     def route(self, origin=None, destination=None, service=None):
         origin, destination = origin or self.STATION, destination or self.CAMPUS
-        with patch.object(application, "transit_service", service or self.transit()):
+        with patch.object(application, "transit_service", service or self.transit()), \
+                patch("services.transit_service.datetime") as clock:
+            clock.now.return_value = self.shuttle.clock()
             return self.client.post("/get_route_info", json={
                 "location": origin["name"], "lat": origin["lat"], "lon": origin["lon"],
                 "dest_name": destination["name"], "dest_lat": destination["lat"], "dest_lon": destination["lon"],

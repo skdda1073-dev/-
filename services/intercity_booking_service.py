@@ -91,7 +91,7 @@ class BookingIntercityService:
         return {"status": "ok", "terminals": rows, "today": self.today(),
                 "fetched_at": result["fetched_at"], "from_cache": result["from_cache"], "source": dict(SOURCE)}
 
-    def destinations(self, departure_id):
+    def destinations(self, departure_id, *, terminals_only=False):
         departure_source_id = self._source_id(departure_id)
         departure = next((item for item in self.terminals()["terminals"] if item["id"] == departure_id), None)
         if departure is None:
@@ -100,7 +100,15 @@ class BookingIntercityService:
         profile = self._terminal_profile()
         scoped = (departure_source_id == profile["origin"]["source_id"]
                   and terminal_identity(departure) == terminal_identity(profile["origin"]))
-        facilities = {row["source_id"]: row for row in profile["terminals"]} if scoped else {}
+        facilities = {}
+        if terminals_only:
+            facilities = {row["source_id"]: row for row in profile["terminals"] if row["kind"] == "terminal"}
+            origin = profile["origin"]
+            facilities[origin["source_id"]] = {
+                "source_name": origin["name"], "display_name": origin["name"], "city": origin["city"],
+            }
+        elif scoped:
+            facilities = {row["source_id"]: row for row in profile["terminals"]}
         main, additional = [], []
         for row in result["destinations"]:
             if row["source_id"] == departure_source_id:
@@ -110,6 +118,8 @@ class BookingIntercityService:
             verified = facility is not None and terminal_identity(row) == terminal_identity({
                 "name": facility["source_name"], "city": facility["city"],
             })
+            if terminals_only and not verified:
+                continue
             item = self._item(row, facility["display_name"] if verified else None)
             (main if verified or not scoped else additional).append(item)
         for rows in (main, additional):
@@ -119,8 +129,11 @@ class BookingIntercityService:
             "destinations": main, "additional_stops": additional,
             "today": self.today(), "fetched_at": result["fetched_at"], "from_cache": result["from_cache"],
             "source": dict(SOURCE), "warnings": [], "total_count": len(main),
-            "additional_count": len(additional), "display_scope": "terminals" if scoped else "destinations",
+            "additional_count": len(additional), "display_scope": "terminals" if scoped or terminals_only else "destinations",
         }
+
+    def terminal_destinations(self, departure_id):
+        return self.destinations(departure_id, terminals_only=True)
 
     @staticmethod
     def _text(value, limit=200):

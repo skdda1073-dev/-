@@ -77,6 +77,11 @@ function harness({ width = 1440, seen = false, storageFails = false, introFails 
             const stage = { left: width < 800 ? 0 : rail + panel, top: 64, width: mapSize?.width ?? (width < 800 ? width : width - rail - panel), height: mapSize?.height ?? (width < 800 ? 288 : 700) };
             stage.right = stage.left + stage.width; stage.bottom = stage.top + stage.height;
             if (this.id === 'map-stage' || this.id === 'map') return stage;
+            if (this.id === 'map-journey-widget') {
+                const left = stage.left + 16, top = stage.top + (width < 1280 ? 106 : 16);
+                const widgetWidth = Math.min(330, stage.width - 32);
+                return { left, top, right: left + widgetWidth, bottom: top + 110, width: widgetWidth, height: 110 };
+            }
             if (this.id === 'route-detail' && this.parentElement?.id === 'route-detail-map') {
                 const panelWidth = Math.min(340, stage.width - 112), panelHeight = Math.min(420, stage.height - 128);
                 return { left: stage.right - 80 - panelWidth, right: stage.right - 80, top: stage.bottom - 64 - panelHeight, bottom: stage.bottom - 64, width: panelWidth, height: panelHeight };
@@ -333,6 +338,45 @@ function itxTimetable(query = {}) {
         { origin, destination, train_no: '05003', departure_time: '10:00', arrival_time: '11:09', fare: null },
     ] };
 }
+test('ITX swap preserves the date and time, cancels stale results and queries the reversed pair', async () => {
+    const app = harness(), pending = [];
+    app.loadITX((url, options) => {
+        if (url === '/api/itx/stations') return itxStations();
+        return new Promise(resolve => pending.push({ resolve, signal: options.signal,
+            query: Object.fromEntries(new URLSearchParams(url.split('?')[1])) }));
+    });
+    const swap = app.el('itx-swap'), submit = app.el('itx-load');
+    assert.equal(swap.disabled, true);
+    app.shell.select('subway'); await flush();
+    assert.equal(swap.disabled, false);
+    app.el('itx-destination').value = '용산'; await app.el('itx-destination').emit('change');
+    app.el('itx-date').value = '2026-10-23';
+    app.el('itx-time').value = '10:00';
+    await submit.emit('click');
+    assert.equal(swap.disabled, false);
+    await swap.emit('click');
+    assert.equal(pending[0].signal.aborted, true);
+    assert.equal(pending.length, 1);
+    assert.equal(app.el('itx-origin').value, '용산');
+    assert.equal(app.el('itx-destination').value, '춘천');
+    assert.ok(app.el('itx-destination').children.every(option => option.value !== '용산'));
+    assert.equal(app.el('itx-date').value, '2026-10-23');
+    assert.equal(app.el('itx-time').value, '10:00');
+    await submit.emit('click');
+    assert.deepEqual(pending[1].query, { origin: '용산', destination: '춘천', date: '20261023' });
+    pending[1].resolve(itxTimetable(pending[1].query)); await flush();
+    pending[0].resolve(itxTimetable(pending[0].query)); await flush();
+    assert.equal(app.el('itx-results-heading').textContent, '용산역 → 춘천역');
+    assert.match(app.el('itx-result-meta').textContent, /10:00 이후.*1편/);
+    const list = app.el('itx-train-list');
+    assert.equal(list.children.length, 1);
+    assert.equal(list.querySelector('time').textContent, '10:00');
+    app.el('itx-time').value = '20:00'; await app.el('itx-time').emit('input');
+    assert.equal(app.el('itx-results').hidden, true);
+    await submit.emit('click');
+    pending[2].resolve(itxTimetable(pending[2].query)); await flush();
+    assert.match(list.textContent, /20:00 이후 출발하는 열차가 없어요/);
+});
 test('ITX mobile results group the query once and compare labelled departure/arrival pairs', async () => {
     for (const width of [360, 390]) {
         const app = harness({ width });
@@ -674,6 +718,44 @@ test('shuttle schedule notes and source survive without inventing live arrival o
     assert.doesNotMatch(app.el('route-detail-content').textContent, /후 도착/);
     assert.doesNotMatch(app.el('result-container').textContent, /총 소요 추정|0원/);
 });
+test('a comparable shuttle shows its planned times and representative stops in local directions', () => {
+    const app = harness(), routing = app.loadRouting(() => routeFixture());
+    const data = routeFixture();
+    const shuttle = data.journeys[2];
+    Object.assign(shuttle, { transport_type: 'shuttle', schedule_comparable: true, service_date_confirmed: true,
+        has_live_departure: false, availability_confirmed: false, location_is_approximate: true, query_at: '2026-11-26T17:02:00+09:00' });
+    Object.assign(shuttle.legs[0], { route_no: '제4노선', direction_verified: false,
+        scheduled_departure_at: '2026-11-26T17:10:00+09:00', scheduled_arrival_at: '2026-11-26T17:21:00+09:00' });
+    data.journeys = [shuttle];
+    routing.render(data);
+    const card = app.el('result-container').textContent;
+    const detail = app.el('route-detail-content').textContent;
+    assert.match(card, /셔틀 시간표 기준/);
+    assert.match(card, /총 소요 추정.*23분/);
+    assert.match(card, /승하차 위치는 대표 지점 기준/);
+    assert.match(detail, /오후 5:10 출발 예정 · 오후 5:21 도착 예상/);
+    assert.match(detail, /승차 대기 약 5분 · 학교 시간표 기준/);
+    assert.doesNotMatch(card + detail, /대기 시간 미확인|실시간|후 도착/);
+});
+test('national directions name the shuttle and keep departure-only plans distinct', () => {
+    const app = harness(), routing = app.loadRouting(() => routeFixture());
+    const origin = { name: '한림대학교', lat: 37.88632, lon: 127.73812 };
+    const destination = { name: '춘천역', lat: 37.88529, lon: 127.71803 };
+    const start = '2026-11-26T17:02:00+09:00';
+    const arrival = '2026-11-26T17:20:00+09:00';
+    const shuttle = { mode: 'shuttle', route_name: '제4노선', from_place: origin, to_place: destination,
+        departure_at: '2026-11-26T17:10:00+09:00', arrival_at: arrival, duration_min: 10, estimated: true };
+    const journey = { segments: [shuttle], complete: true, departure_at: start, arrival_at: arrival, total_min: 18, estimated: true };
+    const response = { mode: 'national_journeys', status: 'ok', origin, destination, departure_at: start, journeys: [journey] };
+    routing.render(response);
+    assert.match(app.el('result-container').textContent, /추천 경로.*셔틀 제4노선.*셔틀 시간표 기준/s);
+    assert.match(app.el('route-detail-content').textContent, /학교 셔틀.*오후 5:10 출발 예정 · 오후 5:20 도착 예상/s);
+    routing.render({ ...response, status: 'partial', journeys: [{ ...journey, complete: false, arrival_at: null, total_min: null,
+        segments: [{ ...shuttle, route_name: '제1노선', arrival_at: null, duration_min: null }] }] });
+    assert.match(app.el('result-container').textContent, /총 소요 미확인.*셔틀 제1노선/s);
+    assert.match(app.el('route-detail-content').textContent, /오후 5:10 출발 예정/);
+    assert.doesNotMatch(app.el('route-detail-content').textContent, /도착 예상|실시간/);
+});
 test('invalid root responses and network failures are errors rather than an empty timetable', async () => {
     for (const result of [null, {}, 'invalid']) {
         const app = harness(); app.loadRouting(() => result); await app.context.findRoutes();
@@ -816,6 +898,8 @@ test('map-space limits and real overflow/collision checks use the inline fallbac
         assert.equal(detail.hidden, false);
     }
     app.resize(1440, { width: 640, height: 480 });
+    assert.equal(detail.parentElement.id, 'route-detail-inline', 'The map point picker remains unobstructed on a short map');
+    app.resize(1440, { width: 640, height: 700 });
     assert.equal(detail.parentElement, app.el('route-detail-map'));
     detail.getBoundingClientRect = () => ({ left: 0, right: 2000, top: 0, bottom: 2000, width: 2000, height: 2000 });
     app.resize(1440, { width: 900, height: 700 });

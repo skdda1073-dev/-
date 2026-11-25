@@ -1,4 +1,5 @@
-/* An independent, dismissible preparation card; the map and planner keep their layout. */
+/* The map keeps a forecast summary; the longer preparation details can fold away. */
+:root { --commute-advice-panel-width: 340px; }
 .header-context { display: flex; align-items: center; gap: 10px; min-width: 0; }
 .commute-advice-toggle { display: inline-flex; align-items: center; justify-content: center; gap: 7px; flex: 0 0 auto; min-height: 42px; padding: 8px 13px; border: 1px solid #d1e3d4; border-radius: 13px; color: var(--green-deep); background: #f0f8ed; font-size: 12px; font-weight: 750; white-space: nowrap; }
 .commute-advice-toggle:hover, .commute-advice-toggle[aria-expanded="true"] { background: #e4f2df; border-color: #a8c9aa; }
@@ -6,7 +7,7 @@
 .commute-advice-toggle-copy { display: grid; gap: 2px; text-align: left; line-height: 1.15; }
 .commute-advice-toggle-status { color: #697e60; font-size: 9px; font-weight: 550; }
 .commute-advice-count { display: grid; place-items: center; min-width: 19px; height: 19px; padding: 0 4px; border-radius: 99px; color: #fff; background: var(--green-dark); font-size: 10px; }
-.commute-advice-panel { position: fixed; z-index: 38; top: 76px; right: 16px; display: flex; flex-direction: column; width: min(340px, calc(100vw - 32px)); max-height: min(660px, calc(100vh - 92px)); max-height: min(660px, calc(100dvh - 92px)); overflow: hidden; border: 1px solid #d9e5d7; border-radius: 22px; background: #fffef9; color: var(--ink); box-shadow: 0 16px 50px #173b2924, 0 3px 10px #173b2910; }
+.commute-advice-panel { position: fixed; z-index: 38; top: 76px; right: 16px; display: flex; flex-direction: column; width: min(var(--commute-advice-panel-width), calc(100vw - 32px)); max-height: min(660px, calc(100vh - 92px)); max-height: min(660px, calc(100dvh - 92px)); overflow: hidden; border: 1px solid #d9e5d7; border-radius: 22px; background: #fffef9; color: var(--ink); box-shadow: 0 16px 50px #173b2924, 0 3px 10px #173b2910; }
 .commute-advice-header { display: flex; justify-content: space-between; gap: 8px; flex: 0 0 auto; padding: 19px 16px 15px 20px; border-bottom: 1px solid #e8ecdf; background: #f2f7e9; }
 .commute-advice-eyebrow { margin: 0 0 4px; color: #5b775e; font-size: 10px; font-weight: 600; letter-spacing: .2px; }
 .commute-advice-header h2 { margin: 0; font-size: 20px; font-weight: 800; letter-spacing: -.6px; line-height: 1.3; }
@@ -14,6 +15,14 @@
 .commute-advice-icon-button { display: grid; place-items: center; flex: 0 0 auto; width: 40px; height: 40px; margin: -4px -6px 0 0; border-radius: 50%; background: transparent; color: #50664f; }
 .commute-advice-icon-button:hover { background: #e4ecd9; }
 .commute-advice-icon-button .icon { width: 19px; height: 19px; }
+.commute-advice-glance { display: none; padding: 10px 20px; }
+.commute-advice-panel:not([data-details-open="true"]) .commute-advice-glance { display: block; }
+.commute-advice-glance-values { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; margin: 0; line-height: 1.2; }
+.commute-advice-glance-values dt { color: #667462; font-size: 10px; }
+.commute-advice-glance-values dd { margin: 1px 0 0; font-size: 14px; font-weight: 800; white-space: nowrap; }
+.commute-advice-glance-status { margin: 0; color: #667462; font-size: 11px; line-height: 1.3; }
+.commute-advice-glance-values:not([hidden]) + .commute-advice-glance-status { margin-top: 4px; }
+.commute-advice-details { display: flex; flex-direction: column; min-height: 0; }
 .commute-advice-body { min-height: 0; padding: 16px 18px 12px; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; scrollbar-color: #b7d0b5 transparent; }
 .commute-advice-status { margin: 0 0 12px; color: #657360; font-size: 12px; line-height: 1.6; overflow-wrap: anywhere; }
 .commute-advice-status.is-unavailable { padding: 11px 12px; border: 1px dashed #d8ddd0; border-radius: 12px; background: #f7f7f0; color: #626b59; }
@@ -56,13 +65,39 @@
 .commute-advice-refresh:hover { background: #f0f5e9; }
 .commute-advice-refresh:disabled { opacity: .55; }
 .commute-advice-refresh .icon { width: 15px; height: 15px; }
+@media (max-width: 1279px) {
+    .commute-advice-panel { width: min(268px, calc(100vw - 32px)); max-height: none; overflow: visible; border-radius: 14px; }
+    .commute-advice-header { padding: 6px 10px 3px; border: 0; border-radius: 14px 14px 0 0; background: transparent; align-items: center; }
+    .commute-advice-header div { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 8px; min-width: 0; }
+    .commute-advice-header h2 { font-size: 13px; letter-spacing: -.2px; }
+    .commute-advice-eyebrow { display: none; }
+    .commute-advice-campus { margin: 0; font-size: 9px; }
+    .commute-advice-panel .commute-advice-glance { display: block; padding: 0 10px 6px; }
+    .commute-advice-glance-values div + div { padding-left: 6px; border-left: 1px solid #e8ecdf; }
+    .commute-advice-icon-button { width: 24px; height: 24px; margin: 0; }
+    .commute-advice-icon-button .icon { width: 16px; height: 16px; }
+    .commute-advice-details {
+        position: fixed;
+        top: min(320px, calc(100dvh - 150px));
+        right: 16px;
+        width: min(var(--commute-advice-panel-width), calc(100vw - 32px));
+        max-height: calc(100dvh - min(320px, calc(100dvh - 150px)) - 10px);
+        overflow: hidden;
+        border: 1px solid #d9e5d7;
+        border-radius: 14px;
+        background: #fffef9;
+        box-shadow: 0 16px 50px #173b2924;
+    }
+}
+@media (max-width: 799px) {
+    .commute-advice-panel { top: 74px; right: 10px; left: 64px; width: auto; }
+    .commute-advice-details { right: 10px; width: min(var(--commute-advice-panel-width), calc(100vw - 20px)); }
+}
 @media (max-width: 479px) {
     .header-context { gap: 0; }
     .header-context .city-badge { display: none; }
     .commute-advice-toggle { min-height: 40px; padding: 8px 10px; gap: 5px; font-size: 11px; }
     .commute-advice-toggle .icon { width: 19px; height: 19px; }
-    .commute-advice-panel { top: 74px; right: 16px; max-height: calc(100dvh - 90px); border-radius: 19px; }
-    .commute-advice-header { padding: 16px 14px 13px 17px; }
     .commute-advice-body { padding: 14px 15px 10px; }
     .commute-advice-footer { padding-left: 15px; padding-right: 12px; }
 }

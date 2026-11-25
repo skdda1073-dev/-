@@ -145,12 +145,14 @@ if (-not (Test-Path .env)) { Copy-Item .env.example .env }
 ## 6. 회귀 테스트
 
 ```bash
-.venv/bin/python -m unittest discover -s tests
-node tests/frontend_smoke.cjs
+.venv/bin/python scripts/run_mobility_tests.py
+.venv/bin/python data/validate_transit_data.py
 git diff --check
 ```
 
-Windows는 Python 명령을 `.\.venv\Scripts\python.exe -m unittest discover -s tests`로 바꾼다. Node.js는 프런트엔드 모의 테스트에만 필요하며 Flask 실행 필수 도구는 아니다.
+Windows PowerShell에서는 `.venv/bin/python` 대신 `.\.venv\Scripts\python.exe`를 사용한다. 회귀 테스트는 개인 `.env`와 외부 API 없이 실행된다.
+
+브라우저 테스트에는 Node.js, Playwright와 Chromium이 필요하다. 첫 터미널에서 `.venv/bin/python scripts/run_mobility_test_server.py`를 실행하고, 다른 터미널에서 `node tests/frontend_smoke.cjs`를 실행한다. 검증 서버는 기본 포트 8765에서 모의 교통 정보와 임시 모집방 데이터베이스를 사용한다.
 
 ## 공식 문서
 

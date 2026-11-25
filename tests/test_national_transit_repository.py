@@ -95,6 +95,32 @@ class NationalTransitRepositoryTests(unittest.TestCase):
         self.assertFalse(repository.plan(self.campus_a, self.station_b, "2026-11-24T08:00:00+09:00",
                                          lambda *_: (-1, -1)))
 
+    def test_bus_feeder_can_board_at_a_verified_station_outside_chuncheon(self):
+        repository = self.trains([
+            ("202", "상행", "도착", "출발", "08:12", "11:15", "화"),
+        ])
+        origin = {"name": "부산 출발지", "lat": 35.09, "lon": 129.04}
+        destination = {"name": "출발역", "lat": 37.89, "lon": 127.72}
+        requested = datetime.fromisoformat("2026-11-24T08:00+09:00")
+        arrival = datetime.fromisoformat("2026-11-24T08:06+09:00")
+        gateway, = repository.transfer_stations(origin)
+        bus = {"mode": "bus", "route_name": "26", "from_place": origin, "to_place": gateway,
+               "departure_at": requested.isoformat(), "arrival_at": arrival.isoformat(), "duration_min": 6}
+        feeder = {"gateway": gateway, "arrival_at": arrival, "segments": [bus]}
+
+        def unavailable_walk(*_):
+            return -1, -1
+
+        journey, = repository.plan(origin, destination, requested, unavailable_walk, access_routes=[feeder])
+        self.assertEqual([leg["mode"] for leg in journey["segments"]], ["bus", "train"])
+        self.assertEqual(journey["segments"][1]["from_place"], gateway)
+        self.assertEqual(journey["arrival_at"], "2026-11-24T11:15:00+09:00")
+
+        wrong_location = {**feeder, "gateway": {**gateway, "lat": gateway["lat"] + 0.001}}
+        missed_departure = {**feeder, "arrival_at": datetime.fromisoformat("2026-11-24T08:08+09:00")}
+        self.assertFalse(repository.plan(origin, destination, requested, unavailable_walk,
+                                         access_routes=[wrong_location, missed_departure]))
+
     def test_boarding_later_stop_of_same_trip_can_save_walk_with_same_arrival(self):
         timetable = SimpleNamespace(
             trips=[SimpleNamespace(mode="subway", stops=(_StopTime("first", None, 300),
@@ -190,6 +216,23 @@ class NationalLine8IntegrationTests(unittest.TestCase):
         journeys = self.repository.plan(self.dasan, self.chuncheon, "2026-11-24T09:32:00+09:00", lambda *_: (-1, -1))
         self.assertTrue(journeys)
         self.assertEqual(self.rides(journeys[0]), [("8호선", "다산역", "별내역"), ("경춘선", "별내역", "춘천역")])
+
+    def test_dongseoul_terminal_uses_line_2_after_the_jamsil_line_8_transfer(self):
+        byeollae = self.repository._timetable().stations["metro:S4108:804"].place()
+        terminal = {"name": "동서울종합터미널", "lat": 37.5339323, "lon": 127.09476136}
+
+        def walking(_lat1, _lon1, start, _lat2, _lon2, end):
+            return (158 / 60, 166) if (start, end) == ("강변(동서울터미널)", terminal["name"]) else (-1, -1)
+
+        best, *_ = self.repository.plan(byeollae, terminal, "2026-11-25T17:50+09:00", walking)
+        self.assertEqual(self.rides(best), [("8호선", "별내역", "잠실(송파구청)"),
+                                          ("서울 도시철도 2호선", "잠실(송파구청)", "강변(동서울터미널)")])
+        transfer, subway, egress = best["segments"][-3:]
+        self.assertEqual(transfer["arrival_at"], "2026-11-25T18:23:50+09:00")
+        self.assertEqual(subway["departure_at"], "2026-11-25T18:28:00+09:00")
+        self.assertEqual(egress["duration_min"], 3)
+        self.assertEqual(egress["source"], "보행 경로")
+        self.assertEqual(best["arrival_at"], "2026-11-25T18:34:38+09:00")
 
     def test_deokso_transfer_candidates_include_geumgok_on_the_gyeongchun_line(self):
         destination = {"name": "덕소아이파크", "lat": 37.5871, "lon": 127.222}

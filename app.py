@@ -32,6 +32,7 @@ from services.national_journey_service import (
 )
 from services.national_transit_repository import NationalTransitRepository
 from services.gyeonggi_bus_arrivals import GyeonggiBusArrivals
+from services.seoul_bus_arrivals import SeoulBusArrivals
 from services.rail_bus_transfer import RailBusTransfers
 from services.commute_advice_service import CommuteAdviceService
 from services.commute_advice_routes import create_commute_advice_blueprint
@@ -63,16 +64,24 @@ CITY_CODE = "32010" # 춘천시
 
 transit_client = PublicTransitClient(BUS_DATA_KEY, CITY_CODE)
 walking_service = WalkingService(TMAP_APP_KEY)
+motis_journey_provider = MotisJourneyProvider(
+    settings.motis_base_url, user_agent="HallymCapstone/1.0 (+https://github.com/skdda1073-dev/-)",
+) if settings.motis_base_url else None
+walking_fallback = motis_journey_provider.walking_time if motis_journey_provider else None
 transit_repository = CsvTransitRepository(os.path.join(national_data_dir, "raw", "bus", "chuncheon_bus_routes_20260326.csv"))
 shuttle_repository = ShuttleRepository(os.path.join(campus_data_dir, "한림대_셔틀버스.csv"))
 shuttle_profile = ShuttleProfile(
     shuttle_repository, os.path.join(base_dir, "data", "hallym_shuttle_profile.json"),
     os.path.join(campus_data_dir, "한림대학교 건물별 좌표.csv"), transit_repository,
 )
-shuttle_service = ShuttleService(shuttle_repository, walking_service.get_precise_time, profile=shuttle_profile)
+shuttle_service = ShuttleService(
+    shuttle_repository, walking_service.get_precise_time, profile=shuttle_profile,
+    routing_walk_fallback=walking_fallback,
+)
 transit_service = TransitService(
     transit_client, walking_service.get_precise_time, shuttle_service=shuttle_service,
     ride_timing=ChuncheonBusTiming(os.path.join(national_data_dir, "normalized", "bus", "chuncheon_ride_time_estimates.json")),
+    shuttle_planner=shuttle_service.routing_plan, walking_fallback=walking_fallback,
 )
 
 # ==========================================
@@ -107,16 +116,17 @@ except Exception as e:
 
 place_search_service = PlaceSearchService(TMAP_APP_KEY, CAMPUS_BUILDINGS)
 national_transit_repository = NationalTransitRepository(national_data_dir, itx_schedule=planned_itx_trips)
-motis_journey_provider = MotisJourneyProvider(
-    settings.motis_base_url, user_agent="HallymCapstone/1.0 (+https://github.com/skdda1073-dev/-)",
-) if settings.motis_base_url else None
 national_bus_repository = NationalBusRepository(national_data_dir)
-regional_bus_journey_provider = RegionalBusJourneyProvider(
-    national_bus_repository, walking_service.get_precise_time, local_transit=transit_service,
-)
+seoul_bus_arrivals = SeoulBusArrivals(settings.seoul_arrival_key) if settings.seoul_arrival_key else None
 rail_bus_transfers = RailBusTransfers(
     national_data_dir, settings.bus_data_key, walking_service.get_precise_time,
     gyeonggi_arrivals=GyeonggiBusArrivals(settings.gbis_api_key) if settings.gbis_api_key else None,
+    walking_fallback=walking_fallback,
+    seoul_arrivals=seoul_bus_arrivals, seoul_routes=national_bus_repository.nearby_seoul_routes,
+)
+regional_bus_journey_provider = RegionalBusJourneyProvider(
+    national_bus_repository, walking_service.get_precise_time, local_transit=transit_service,
+    shuttle_service=shuttle_service, regional_bus_plan=rail_bus_transfers.plan_direct,
 )
 national_journey_service = NationalJourneyService(
     national_transit_repository, walking_service.get_precise_time,
@@ -124,9 +134,10 @@ national_journey_service = NationalJourneyService(
         intercity_service, place_search_service, os.path.join(national_data_dir, "chuncheon_intercity_terminals.json"),
         walking_service.get_precise_time, regional_transit=national_transit_repository,
         regional_bus=regional_bus_journey_provider.connections, motis=motis_journey_provider,
+        walking_fallback=walking_fallback,
     ),
     bus_repository=national_bus_repository, motis=motis_journey_provider, regional_bus=regional_bus_journey_provider,
-    rail_bus_transfers=rail_bus_transfers,
+    rail_bus_transfers=rail_bus_transfers, walking_fallback=walking_fallback,
 )
 
 # Independent mobility APIs preserve the existing transit response contract.
@@ -214,6 +225,7 @@ def health():
         "configured": configured,
         "checks": {"csv": csv_check, "campus": {"status": "ok" if campus_ok else "error"},
                    "motis": {"status": "configured" if motis_journey_provider is not None else "disabled"},
+                   "seoul_bus_arrivals": {"status": "configured" if seoul_bus_arrivals is not None else "disabled"},
                    "bus_routes": {
                        "source": "tago", "status": "configured" if configured["tago_api_key"] else "missing_key",
                        "key_setting": "TAGO_API_KEY" if settings.tago_api_key else "PUBLIC_DATA_KEY",

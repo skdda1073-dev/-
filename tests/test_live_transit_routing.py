@@ -1,7 +1,9 @@
 """공식 노선 ID·번호·정류장 순서를 연결하는 회귀 검증. 외부 호출 없음."""
 
 from copy import deepcopy
+from csv import DictReader
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 import unittest
 from unittest.mock import Mock, patch
 
@@ -186,6 +188,129 @@ class LiveTransitRoutingTests(unittest.TestCase):
                     self.assertEqual(error.code, "ROUTE_DATA")
                 else:
                     self.assertEqual(result["journeys"], [])
+
+
+class ChuncheonBusShuttleCompetitionTests(unittest.TestCase):
+    DEPARTURE = datetime(2026, 11, 25, 8, 0, tzinfo=timezone.utc)
+    ORIGIN = {"name": "한림대 Campus Life Center", "lat": 37.88632, "lon": 127.73812}
+    DESTINATION = {"name": "춘천역 출입구", "lat": 37.88439, "lon": 127.71660}
+    BOARD = "CCB250002127"
+    ALIGHT = "CCB250026552"
+    ROUTES = {
+        "300": ("CCB250030000", range(50, 58)),
+        "12": ("CCB250001200", range(12, 20)),
+    }
+
+    def setUp(self):
+        normalized = Path(__file__).resolve().parents[1] / "data" / "normalized" / "bus"
+        with (normalized / "chuncheon_tago_route_stop_sequences_20261124.csv").open(encoding="utf-8") as source:
+            rows = list(DictReader(source))
+        stops = {
+            route_id: [
+                {"nodeid": row["source_stop_id"], "nodenm": row["stop_name"],
+                 "nodeord": int(row["stop_sequence"]), "updowncd": row["source_direction_code"],
+                 "gpslati": float(row["latitude"]), "gpslong": float(row["longitude"])}
+                for row in rows
+                if row["source_route_id"] == route_id and int(row["stop_sequence"]) in sequence
+            ]
+            for route_id, sequence in self.ROUTES.values()
+        }
+        board, alight = stops[self.ROUTES["300"][0]][0], stops[self.ROUTES["300"][0]][-1]
+        self.assertEqual((board["nodeid"], alight["nodeid"]), (self.BOARD, self.ALIGHT))
+        metadata = {route_id: {"routeid": route_id, "routeno": number}
+                    for number, (route_id, _) in self.ROUTES.items()}
+        self.client = Mock(spec=PublicTransitClient)
+        self.client.nearby_stops.side_effect = lambda lat, lon: (
+            [board] if (lat, lon) == (self.ORIGIN["lat"], self.ORIGIN["lon"]) else [alight]
+        )
+        self.client.station_routes.return_value = list(metadata.values())
+        self.client.route_info.side_effect = metadata.__getitem__
+        self.client.route_stops.side_effect = stops.__getitem__
+        self.shuttle = Mock()
+        self.access_minutes = 2
+        self.primary_walk = Mock(return_value=(-1, -1))
+        self.walking_fallback = Mock(side_effect=self.walk)
+        self.service = TransitService(self.client, self.primary_walk, shuttle_service=self.shuttle,
+                                      walking_fallback=self.walking_fallback)
+
+    def walk(self, start_lat, start_lon, start_name, end_lat, end_lon, end_name):
+        if (start_lat, start_lon) == (self.ORIGIN["lat"], self.ORIGIN["lon"]):
+            if (end_lat, end_lon) == (self.DESTINATION["lat"], self.DESTINATION["lon"]):
+                return 55, 2600
+            return self.access_minutes, 300
+        return 1, 130
+
+    def predictions(self, *predicted):
+        arrivals = [
+            {"routeid": self.ROUTES[route_no][0], "routeno": route_no,
+             "arrtime": seconds, "updowncd": direction}
+            for route_no, seconds, direction in predicted
+        ]
+        self.client.arrivals.side_effect = lambda node_id: arrivals if node_id == self.BOARD else []
+
+    def plan(self, shuttle_total):
+        wait, walk = 5, 2
+        self.shuttle.plan.return_value = {
+            "status": "ok", "warnings": [], "journeys": [{
+                "transport_type": "shuttle", "schedule_comparable": True, "service_date_confirmed": True,
+                "total_min": shuttle_total, "walk_min": walk, "wait_min": wait,
+                "ride_min": shuttle_total - walk - wait, "transfer_count": 0,
+                "access_walk": {"minutes": 1}, "egress_walk": {"minutes": 1},
+                "legs": [{"route_no": "제4노선", "transport_type": "shuttle",
+                          "route_number_verified": True, "wait_min": wait}],
+            }],
+        }
+        with patch("services.transit_service.datetime") as clock, \
+                patch("services.transit_service.monotonic", return_value=10):
+            clock.now.return_value = self.DEPARTURE
+            return self.service.plan(self.ORIGIN, self.DESTINATION)
+
+    def test_earliest_arrival_can_be_300_12_or_the_shuttle(self):
+        cases = (
+            (210, 900, 24, "300"),
+            (900, 210, 24, "12"),
+            (1200, 1080, 20, "제4노선"),
+        )
+        for eta_300, eta_12, shuttle_total, first in cases:
+            with self.subTest(first=first):
+                self.predictions(("300", eta_300, "1"), ("12", eta_12, "0"))
+                self.shuttle.plan.reset_mock()
+                result = self.plan(shuttle_total)
+                names = [journey["legs"][0]["route_no"] for journey in result["journeys"]]
+                totals = [journey["total_min"] for journey in result["journeys"]]
+                self.assertEqual(names[0], first)
+                self.assertCountEqual(names, ["300", "12", "제4노선"])
+                self.assertEqual(totals, sorted(totals))
+                self.assertEqual(result["recommendation"]["transit"]["candidate_index"], 0)
+                self.assertEqual(result["direct_walk"]["source"], "motis")
+                self.shuttle.plan.assert_called_once_with(self.ORIGIN, self.DESTINATION, query_at=self.DEPARTURE)
+
+    def test_city_bus_can_rank_first_even_when_its_walk_is_longer(self):
+        self.access_minutes = 21
+        self.predictions(("300", 1320, "1"), ("12", 3000, "0"))
+        result = self.plan(shuttle_total=45)
+        self.assertEqual(result["journeys"][0]["legs"][0]["route_no"], "300")
+        self.assertEqual(result["journeys"][0]["access_walk"]["minutes"], 21)
+        self.assertEqual(result["recommendation"]["transit"]["candidate_index"], 0)
+
+    def test_first_prediction_must_be_reachable_and_in_the_correct_direction(self):
+        self.predictions(("300", 90, "1"), ("300", 270, "0"), ("300", 600, "1"), ("12", 420, "0"))
+        result = self.plan(shuttle_total=60)
+        legs = {journey["legs"][0]["route_no"]: journey["legs"][0] for journey in result["journeys"]}
+        self.assertEqual(result["journeys"][0]["legs"][0]["route_no"], "12")
+        self.assertEqual(legs["300"]["predicted_boarding_seconds"], 600)
+        self.assertEqual((legs["300"]["board"]["id"], legs["300"]["alight"]["id"]), (self.BOARD, self.ALIGHT))
+
+    def test_city_only_search_keeps_both_bus_candidates_and_skips_shuttle(self):
+        self.predictions(("300", 420, "1"), ("12", 360, "0"))
+        with patch("services.transit_service.datetime") as clock, \
+                patch("services.transit_service.monotonic", return_value=10):
+            clock.now.return_value = self.DEPARTURE
+            result = self.service.plan_city(self.ORIGIN, self.DESTINATION, departure_at=self.DEPARTURE)
+        self.assertEqual([journey["legs"][0]["route_no"] for journey in result["journeys"]
+                          if journey["total_min"] is not None], ["12", "300"])
+        self.assertGreater(len(result["journeys"]), 3)
+        self.shuttle.plan.assert_not_called()
 
 
 class DirectWalkingTests(unittest.TestCase):

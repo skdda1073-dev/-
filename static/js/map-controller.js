@@ -272,6 +272,17 @@
             padding[side] = Math.max(padding[side], side === 'top' ? box.bottom - rect.top + 12 : rect.bottom - box.top + 12);
         });
         padding.left = padding.right = Math.max(0, Math.min(32, rect.width * .12, (rect.width - 80) / 2));
+        if (rect.width >= 640 && window.matchMedia('(min-width: 1280px)').matches) {
+            const forecast = document.getElementById('commute-advice-panel');
+            if (forecast && !forecast.hidden) {
+                const box = forecast.getBoundingClientRect();
+                if (box.width > 0 && box.height > 0 && box.left < rect.right && box.right > rect.left
+                        && box.top < rect.bottom && box.bottom > rect.top) {
+                    padding.right = Math.max(padding.right,
+                        Math.min(rect.width - padding.left - 80, rect.right - box.left + 12));
+                }
+            }
+        }
         const budget = Math.max(0, rect.height - 80), total = padding.top + padding.bottom;
         if (total > budget) {
             padding.top = Math.floor(padding.top * budget / total);

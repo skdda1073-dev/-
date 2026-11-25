@@ -126,6 +126,38 @@ class BookingIntercityServiceTests(unittest.TestCase):
         self.assertEqual(result["additional_stops"], [])
         source.destinations.assert_called_once_with("0001")
 
+    def test_terminal_scope_excludes_airports_and_unverified_stops_for_all_origins(self):
+        service, _, _ = service_with()
+        client = client_for(service)
+        for departure, expected in (("1000", {"BUSTAGO_0001", "BUSTAGO_0002"}),
+                                    ("0001", {"BUSTAGO_1000", "BUSTAGO_0002"})):
+            with self.subTest(departure=departure):
+                response = client.get("/api/intercity/destinations", query_string={
+                    "departure_id": "BUSTAGO_" + departure, "scope": "terminals",
+                })
+                self.assertEqual(response.status_code, 200)
+                self.assertEqual(response.json["status"], "ok")
+                self.assertEqual(response.json["display_scope"], "terminals")
+                self.assertEqual({row["id"] for row in response.json["destinations"]}, expected)
+                self.assertEqual(response.json["additional_stops"], [])
+
+    def test_terminal_scope_requires_the_verified_name_and_region_for_any_origin(self):
+        service, _, _ = service_with(destinations=[
+            {**ORIGINS[0], "city": "부산"}, {**DESTINATIONS[1], "name": "새로운 시설"},
+            DESTINATIONS[2], DESTINATIONS[4],
+        ])
+        result = service.terminal_destinations("BUSTAGO_0001")
+        self.assertEqual(result["status"], "empty")
+        self.assertEqual(result["destinations"], [])
+        self.assertEqual(result["additional_stops"], [])
+
+    def test_unknown_destination_scope_is_rejected(self):
+        service, source, _ = service_with()
+        response = client_for(service).get("/api/intercity/destinations?departure_id=BUSTAGO_1000&scope=unknown")
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.json["code"], "INVALID_INTERCITY_QUERY")
+        source.destinations.assert_not_called()
+
     def test_every_offered_destination_queries_its_exact_original_pair(self):
         service, _, schedule = service_with()
         offered = service.destinations("BUSTAGO_1000")

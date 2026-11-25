@@ -69,6 +69,14 @@ class SettingsTests(unittest.TestCase):
         self.assertEqual(settings.bus_data_key, "fake-public")
         self.assertEqual(settings.tago_api_key, "")
 
+    def test_seoul_bus_key_prefers_the_service_specific_setting(self):
+        self.write_env("PUBLIC_DATA_KEY='fake-public'\nTAGO_API_KEY='fake-tago'\n")
+        self.assertEqual(load_settings(self.root, environ={}).seoul_arrival_key, "fake-tago")
+        settings = load_settings(self.root, environ={"SEOUL_BUS_API_KEY": "fake-seoul"})
+        self.assertEqual(settings.seoul_arrival_key, "fake-seoul")
+        self.assertEqual(settings.bus_data_key, "fake-tago")
+        self.assertNotIn("fake-seoul", repr(settings))
+
     def test_loading_does_not_mutate_process_environment(self):
         self.write_env("TMAP_APP_KEY='file-fake'\n")
         with patch.dict(os.environ, {}, clear=True):

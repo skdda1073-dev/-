@@ -37,6 +37,10 @@
     {
       "name": "평창군 도시계획시설 장평터미널 고시",
       "url": "https://m.pc.go.kr/egf/bp/board/article/download?fileSeq=147859"
+    },
+    {
+      "name": "경기고속 송탄터미널 폐업 및 시외버스정류장 운영 안내",
+      "url": "https://www.buspia.co.kr/terminal/songtan/notice.php"
     }
   ],
   "terminals": [
@@ -341,18 +345,6 @@
         "pti_id": "16800",
         "pti_name": "성남시외버스터미널",
         "url": "https://chuncheon-pti.kr/index.php?mt=data&cm=road&oxid=1&cmd=road&subcmd=getcate&showtype=1&starttsid=16652&tid=2&id=193&srch=0"
-      }
-    },
-    {
-      "source_id": "1011",
-      "source_name": "송탄",
-      "city": "경기",
-      "display_name": "송탄",
-      "kind": "terminal",
-      "evidence": {
-        "pti_id": "16822",
-        "pti_name": "송탄시외버스터미널",
-        "url": "https://chuncheon-pti.kr/index.php?mt=data&cm=road&oxid=1&cmd=road&subcmd=getcate&showtype=1&starttsid=16652&tid=2&id=211&srch=0"
       }
     },
     {

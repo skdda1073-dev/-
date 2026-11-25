@@ -1,6 +1,5 @@
 /* Route candidates, nearby stops and result states. */
 .result-card { min-width: 0; margin: 0 0 14px; padding: 20px; color: var(--ink, #18352b); background: var(--surface, #fff); border: 1px solid var(--line, #e2eae4); border-radius: var(--radius-card, 22px); box-shadow: 0 5px 18px rgba(18, 56, 32, .035); overflow-wrap: anywhere; }
-.route-card--first { border-color: #a7dcb0; box-shadow: 0 5px 22px rgba(24, 117, 38, .08); }
 .route-card { cursor: pointer; }
 .route-card.is-selected { border-color: var(--green-dark); box-shadow: 0 0 0 1px var(--green-dark); background: #f4fbf2; }
 .result-card.national-itinerary { padding: 0; overflow: hidden; color: #243532; background: #fff; }

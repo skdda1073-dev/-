@@ -1,6 +1,7 @@
 """Adapt MOTIS v6 transit itineraries to the national journey service."""
 
 from datetime import datetime, timedelta
+from math import ceil, isfinite
 from urllib.parse import urlsplit
 
 import requests
@@ -145,6 +146,39 @@ class MotisJourneyProvider:
         self.url = url.geturl().rstrip("/") + "/api/v6/plan"
         self.user_agent = user_agent
         self.requester = requester if requester is not None else requests.get
+
+    def walking_time(self, start_lat, start_lon, start_name, end_lat, end_lon, end_name):
+        origin = {"lat": start_lat, "lon": start_lon, "name": start_name}
+        destination = {"lat": end_lat, "lon": end_lon, "name": end_name}
+        if not _place(origin) or not _place(destination):
+            return -1, -1
+        if (start_lat, start_lon) == (end_lat, end_lon):
+            return 0, 0
+        params = {"fromPlace": f"{start_lat},{start_lon}", "toPlace": f"{end_lat},{end_lon}",
+                  "directModes": "WALK", "transitModes": "", "detailedLegs": "false", "maxMatchingDistance": 75}
+        try:
+            response = self.requester(self.url, params=params, timeout=(1.5, 4.0), allow_redirects=False,
+                                      headers={"Accept": "application/json", "User-Agent": self.user_agent})
+            if response.status_code != 200:
+                return -1, -1
+            direct = response.json()["direct"]
+            if not isinstance(direct, list):
+                return -1, -1
+            for itinerary in direct:
+                legs = itinerary.get("legs") if isinstance(itinerary, dict) else None
+                if not isinstance(legs, list) or len(legs) != 1 or not isinstance(legs[0], dict):
+                    continue
+                leg = legs[0]
+                start, end = _place(leg.get("from")), _place(leg.get("to"))
+                if (leg.get("mode") != "WALK" or not start or not end or not _matches_endpoint(start, origin)
+                        or not _matches_endpoint(end, destination)):
+                    continue
+                seconds, distance = leg.get("duration"), leg.get("distance")
+                if all(type(value) in (int, float) and isfinite(value) and value > 0 for value in (seconds, distance)):
+                    return seconds / 60, ceil(distance)
+        except (requests.RequestException, ValueError, TypeError, KeyError, OverflowError):
+            pass
+        return -1, -1
 
     def plan(self, origin, destination, query_at):
         # MOTIS truncates search times to whole minutes. Round upwards to avoid offering a departed trip.

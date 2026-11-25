@@ -82,14 +82,16 @@ class TravelRecommendationTests(unittest.TestCase):
         self.assertEqual((result["preferred_mode"], result["reason"], result["time_saved_min"]), ("transit", "transit_faster", 2))
         self.assertEqual(result["scooter"]["status"], "not_suggested")
 
-    def test_walk_policy_does_not_override_complete_comparison(self):
+    def test_shorter_walk_stays_available_and_long_walk_prefers_timed_transit(self):
         at_margin = self.recommend(journeys=[bus(9, access=1, egress=1, wait=3, ride=4)])
         self.assertEqual(at_margin["time_saved_min"], 2)
         for minutes, distance in ((25, 2000), (25.01, 2000), (25, 2000.01), (26, 2100)):
             with self.subTest(minutes=minutes, distance=distance):
                 result = self.recommend(walk(minutes, distance), [bus(40, access=1, egress=1, wait=8, ride=30)])
-                self.assertEqual(result["preferred_mode"], "walk")
-                self.assertAlmostEqual(result["time_saved_min"], 40 - minutes)
+                self.assertEqual((result["preferred_mode"], result["reason"]), ("transit", "less_walking"))
+                self.assertIsNone(result["time_saved_min"])
+        result = self.recommend(walk(25, 2000), [bus(40, access=20, egress=1, wait=8, ride=11)])
+        self.assertEqual((result["preferred_mode"], result["reason"]), ("walk", "walk_faster"))
 
     def test_one_minute_faster_transit_beats_short_walk(self):
         result = self.recommend(journeys=[bus(6, access=1, egress=1, wait=1, ride=3)])

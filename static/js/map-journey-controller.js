@@ -15,8 +15,6 @@
 
     function renderSelection() {
         const ready = modules().map?.isReady() === true;
-        const shortcut = byId('map-point-shortcut');
-        if (shortcut) shortcut.disabled = !ready;
         ['origin', 'destination'].forEach(kind => {
             const point = kind === 'origin' ? origin : destination;
             const button = byId('map-pick-' + kind), label = byId('map-' + kind + '-label');
@@ -115,10 +113,34 @@
     function moveWidget(left, top) {
         const widget = byId('map-journey-widget'), stage = byId('map-stage');
         const area = stage.getBoundingClientRect(), box = widget.getBoundingClientRect();
-        const maxLeft = Math.max(0, area.width - box.width - 8);
-        const maxTop = Math.max(0, area.height - box.height - 8);
-        widget.style.left = Math.max(Math.min(8, maxLeft), Math.min(maxLeft, left)) + 'px';
-        widget.style.top = Math.max(Math.min(8, maxTop), Math.min(maxTop, top)) + 'px';
+        const style = window.getComputedStyle?.(widget);
+        const clearance = parseFloat(style?.getPropertyValue?.('--map-journey-weather-clearance')) || 0;
+        const gap = 8;
+        const maxLeft = Math.max(0, area.width - box.width - gap);
+        const maxTop = Math.max(0, area.height - box.height - gap);
+        const minLeft = Math.min(gap, maxLeft);
+        const minTop = Math.min(Math.max(gap, clearance), maxTop);
+        left = Math.max(minLeft, Math.min(maxLeft, left));
+        top = Math.max(minTop, Math.min(maxTop, top));
+        const weather = ['commute-advice-panel', 'commute-advice-details'].map(byId)
+            .filter(panel => panel && !panel.hidden && window.getComputedStyle?.(panel)?.position === 'fixed')
+            .map(panel => panel.getBoundingClientRect());
+        const isClear = ([x, y]) => weather.every(bounds =>
+            area.left + x + box.width <= bounds.left - gap || area.left + x >= bounds.right + gap
+            || area.top + y + box.height <= bounds.top - gap || area.top + y >= bounds.bottom + gap);
+        if (!isClear([left, top])) {
+            const candidates = weather.flatMap(bounds => [
+                [bounds.left - area.left - box.width - gap, top],
+                [left, bounds.top - area.top - box.height - gap],
+                [left, bounds.bottom - area.top + gap],
+            ]).filter(([x, y]) => x >= minLeft && x <= maxLeft && y >= minTop && y <= maxTop)
+                .filter(isClear);
+            candidates.sort(([ax, ay], [bx, by]) =>
+                Math.abs(ax - left) + Math.abs(ay - top) - Math.abs(bx - left) - Math.abs(by - top));
+            if (candidates.length) [left, top] = candidates[0];
+        }
+        widget.style.left = left + 'px';
+        widget.style.top = top + 'px';
         widgetMoved = true;
     }
 
@@ -186,6 +208,8 @@
             const observer = new window.ResizeObserver(constrainWidget);
             observer.observe(byId('map-stage'));
             observer.observe(widget);
+            ['commute-advice-panel', 'commute-advice-details'].map(byId).filter(Boolean)
+                .forEach(panel => observer.observe(panel));
         }
     }
 
@@ -194,9 +218,6 @@
         initialized = true;
         initWidgetMovement();
         ['origin', 'destination'].forEach(kind => byId('map-pick-' + kind).addEventListener('click', () => armSelection(kind)));
-        byId('map-point-shortcut')?.addEventListener('click', () => {
-            if (armSelection('origin')) byId('map-pick-origin').focus({ preventScroll: true });
-        });
         byId('map-journey-reset').addEventListener('click', () => {
             modules().api?.cancelPendingRequests({ keepMapJourney: true });
             reset();
