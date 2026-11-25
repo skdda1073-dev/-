@@ -47,6 +47,30 @@ def _parallel(items, function, workers=6):
         return dict(zip(items, pool.map(function, items)))
 
 
+def _gyeonggi_directions(rows, schedule):
+    def stop_name(value):
+        return "".join(str(value or "").split())
+
+    if not rows or schedule is None or not schedule.start or not schedule.end:
+        return []
+    try:
+        ordered = sorted(rows, key=lambda row: int(row["nodeord"]))
+        orders = [int(row["nodeord"]) for row in ordered]
+    except (KeyError, TypeError, ValueError):
+        return []
+    if orders != list(range(1, len(orders) + 1)) or stop_name(ordered[0].get("nodenm")) != stop_name(schedule.start):
+        return []
+    turns = [index for index, row in enumerate(ordered) if stop_name(row.get("nodenm")) == stop_name(schedule.end)]
+    if len(turns) != 1 or turns[0] == 0:
+        return []
+    turn = turns[0]
+    if any(str(row.get("updowncd")) in {"0", "1"} and str(row["updowncd"]) != str(int(index > turn))
+           for index, row in enumerate(ordered) if index != turn):
+        return []
+    return ([{**row, "updowncd": "0"} for row in ordered[:turn + 1]]
+            + ([{**row, "updowncd": "1"} for row in ordered[turn:]] if turn < len(ordered) - 1 else []))
+
+
 @dataclass(frozen=True)
 class _Frequency:
     first: time
@@ -67,13 +91,14 @@ class RailBusTransfers:
     """Reuse TAGO stop and arrival data, with separately verified frequency estimates."""
 
     def __init__(self, data_dir, service_key, walking_time, *, now=None, gyeonggi_arrivals=None, walking_fallback=None,
-                 seoul_arrivals=None, seoul_routes=None):
+                 seoul_arrivals=None, seoul_routes=None, gyeonggi_schedules=None):
         self.data = Path(data_dir) / "normalized"
         self.service_key = service_key
         self.walking_time = walking_time
         self.walking_fallback = walking_fallback
         self.now = now or (lambda: datetime.now(KST))
         self.gyeonggi_arrivals = gyeonggi_arrivals
+        self.gyeonggi_schedules = gyeonggi_schedules
         self.seoul_arrivals = seoul_arrivals
         self.seoul_routes = seoul_routes
 
@@ -156,8 +181,14 @@ class RailBusTransfers:
         try:
             client = self._client(city)
             rows = client.route_stops(route)
-            if not rows or any(str(row.get("updowncd")) not in {"0", "1"} for row in rows):
+            if not rows:
                 return None
+            if any(str(row.get("updowncd")) not in {"0", "1"} for row in rows):
+                schedule = self.gyeonggi_schedules.route(city, route) if self.gyeonggi_schedules is not None else None
+                rows = _gyeonggi_directions(rows, schedule)
+                if not rows or (numbers and schedule.name not in numbers):
+                    return None
+                return {"route_no": schedule.name, "stops": rows}
             number = next(iter(numbers)) if len(numbers) == 1 else str(client.route_info(route)["routeno"])
             return {"route_no": number, "stops": rows}
         except PublicDataError:
@@ -190,7 +221,9 @@ class RailBusTransfers:
     def _links(self, stations, point, requested, *, toward_rail=False):
         live_requested = self._live_requested(requested)
         seoul_requested = self._seoul_requested(requested)
-        if not stations or (not live_requested and not seoul_requested and not self._official_sequences):
+        published_requested = (self.gyeonggi_schedules is not None and bool(self.service_key.strip())
+                               and requested.astimezone(KST).date() >= self.now().astimezone(KST).date())
+        if not stations or (not live_requested and not seoul_requested and not published_requested and not self._official_sequences):
             return {}
         endpoint_radius = BOARD_RADIUS_M if toward_rail else DESTINATION_RADIUS_M
         nearby = self._nearby_stops(point, endpoint_radius, skip_seoul=seoul_requested)
@@ -200,9 +233,11 @@ class RailBusTransfers:
         reviewed = [key for key, rows in self._official_sequences.items()
                     if any(row["nodeid"] in by_city[key[0]] for row in rows)]
         routes = {key: set() for key in reviewed}
-        if live_requested:
-            serving = _parallel([(city, node) for _, city, node in nearby], self._serving)
-            for _, city, node in nearby:
+        discovery = [(city, node) for _, city, node in nearby
+                     if live_requested or (published_requested and self.gyeonggi_schedules.supports(city))]
+        if discovery:
+            serving = _parallel(discovery, self._serving)
+            for city, node in discovery:
                 for row in serving[(city, node)]:
                     if route := row.get("routeid"):
                         numbers = routes.setdefault((city, str(route)), set())
@@ -279,10 +314,14 @@ class RailBusTransfers:
 
     def _frequency_departure(self, link, ready):
         day = ready.date()
-        category = "sunday_or_holiday" if day in self._holidays or day.weekday() == 6 else (
-            "saturday" if day.weekday() == 5 else "weekday")
-        key = link.city_code, link.leg.route_id, link.leg.board.direction, category
+        category = "holiday" if day in self._holidays else {5: "saturday", 6: "sunday"}.get(day.weekday(), "weekday")
+        static_category = "sunday_or_holiday" if category in {"sunday", "holiday"} else category
+        key = link.city_code, link.leg.route_id, link.leg.board.direction, static_category
         schedule = self._frequencies.get(key)
+        if schedule is None and self.gyeonggi_schedules is not None:
+            route = self.gyeonggi_schedules.route(link.city_code, link.leg.route_id)
+            if route is not None:
+                schedule = route.frequencies.get((link.leg.board.direction, category))
         if schedule is None or day < schedule.observed:
             return None
         first = datetime.combine(day, schedule.first, KST) + timedelta(minutes=link.minutes_from_terminal)
@@ -343,7 +382,9 @@ class RailBusTransfers:
             gyeonggi_stops = dict.fromkeys((link.leg.board.id, link.leg.route_id, link.leg.board.order)
                                           for _, _, _, arrival, link in rides
                                           if arrival <= now + LIVE_PREDICTION_WINDOW
-                                          and (link.city_code, link.leg.route_id) in self._official_sequences)
+                                          and ((link.city_code, link.leg.route_id) in self._official_sequences
+                                               or (self.gyeonggi_schedules is not None
+                                                   and self.gyeonggi_schedules.supports(link.city_code))))
         seoul_routes = dict.fromkeys(link.leg.route_id for _, _, _, arrival, link in rides
                                    if seoul_requested and link.city_code == SEOUL_CITY_CODE
                                    and arrival <= now + LIVE_PREDICTION_WINDOW)

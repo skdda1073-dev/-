@@ -66,9 +66,11 @@ class ChuncheonBusTiming:
         if not isinstance(route_number, str) or not isinstance(details, dict):
             return None
         filename, count = details.get("file"), details.get("matched_departure_count")
+        inline_clocks = details.get("source_departure_times")
         approach = details.get("approach_stop_ids")
         board, alight = details.get("boarding_offset_minutes"), details.get("alighting_offset_minutes")
-        if (not isinstance(filename, str) or not _DEPARTURES_FILE.fullmatch(filename)
+        if ((filename is None) == (inline_clocks is None)
+                or (filename is not None and (not isinstance(filename, str) or not _DEPARTURES_FILE.fullmatch(filename)))
                 or type(count) is not int or count <= 0
                 or not isinstance(approach, list)
                 or not all(isinstance(stop, str) and _TAGO_ID.fullmatch(stop) for stop in approach)
@@ -76,21 +78,28 @@ class ChuncheonBusTiming:
                 or alight - board != estimate[0]):
             return None
         try:
-            with self._path.with_name(filename).open(encoding="utf-8-sig", newline="") as stream:
-                rows = sorted((int(row["sequence_in_table"]), row["local_departure_time"])
-                              for row in csv.DictReader(stream)
-                              if row.get("route_label") == route_number
-                              and row.get("day_type") == "source_unspecified"
-                              and row.get("departure_role") == "published_times_departure_point_unlabelled"
-                              and row.get("departure_stop_label") == "" and row.get("variant_label") == ""
-                              and row.get("effective_from") == details.get("effective_from"))
-            if len(rows) != count or any(order != i for i, (order, _) in enumerate(rows, 1)):
+            if filename is not None:
+                with self._path.with_name(filename).open(encoding="utf-8-sig", newline="") as stream:
+                    rows = sorted((int(row["sequence_in_table"]), row["local_departure_time"])
+                                  for row in csv.DictReader(stream)
+                                  if row.get("route_label") == route_number
+                                  and row.get("day_type") == "source_unspecified"
+                                  and row.get("departure_role") == "published_times_departure_point_unlabelled"
+                                  and row.get("departure_stop_label") == "" and row.get("variant_label") == ""
+                                  and row.get("effective_from") == details.get("effective_from"))
+                if any(order != i for i, (order, _) in enumerate(rows, 1)):
+                    return None
+                clocks = [clock for _, clock in rows]
+            else:
+                clocks = inline_clocks
+            if not isinstance(clocks, list) or len(clocks) != count:
                 return None
-            clocks = [clock for _, clock in rows]
-            # All source clocks must still match the sequence independently confirmed against PTI.
+            # Keep the dated origin sequence tied to the independently checked stop times.
             if sha256("\n".join(clocks).encode("ascii")).hexdigest() != details.get("clock_sequence_sha256"):
                 return None
             departures = tuple(time.fromisoformat(clock) for clock in clocks)
+            if any(first >= second for first, second in zip(departures, departures[1:])):
+                return None
         except (OSError, UnicodeError, KeyError, TypeError, ValueError, csv.Error):
             return None
         return PublishedBusTiming(tuple(approach), departures, board, alight, estimate[1])

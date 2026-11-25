@@ -3,6 +3,7 @@
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta
 from functools import partial
+from itertools import groupby
 import json
 from math import isfinite, sqrt
 from pathlib import Path
@@ -132,6 +133,13 @@ def _measured_walk(walking_time, start, end):
     return None
 
 
+def _walk_with_fallback(primary, fallback, *arguments):
+    minutes, meters = primary(*arguments)
+    if _quantity(minutes) is not None and _quantity(meters) is not None:
+        return minutes, meters
+    return fallback(*arguments)
+
+
 def _mode(segment):
     return {"city_bus": "bus", "rail": "train", "metro": "subway", "coach": "intercity_bus", "transfer_walk": "walk"}.get(
         segment.get("mode"), segment.get("mode")
@@ -255,13 +263,14 @@ def _journey_order(journey):
             journey["transfer_count"], walk_seconds, -sum(leg.get("realtime") is True for leg in journey["segments"]))
 
 
+def _long_walk_minutes(journey):
+    blocks = (sum(segment["duration_min"] or 0 for segment in segments)
+              for walking, segments in groupby(journey["segments"], key=lambda leg: leg["mode"] == "walk") if walking)
+    return sum(minutes for minutes in blocks if minutes >= LONG_WALK_MIN)
+
+
 def _has_long_walk(journey):
-    minutes = 0
-    for segment in journey["segments"]:
-        minutes = minutes + (segment["duration_min"] or 0) if segment["mode"] == "walk" else 0
-        if minutes >= LONG_WALK_MIN:
-            return True
-    return False
+    return _long_walk_minutes(journey) > 0
 
 
 def _prioritize_transit(options):
@@ -269,7 +278,9 @@ def _prioritize_transit(options):
     short_walk_transit_at = None
     for journey in options:
         order = _journey_order(journey)
-        long_walk = _has_long_walk(journey)
+        long_walk_minutes = _long_walk_minutes(journey)
+        long_walk = long_walk_minutes > 0
+        order = (*order[:2], long_walk_minutes, *order[2:])
         transit = any(leg["mode"] not in ("walk", "wait", "connection") for leg in journey["segments"])
         ranked.append((order, long_walk, transit, journey))
         if journey["complete"] and not long_walk and transit:
@@ -302,6 +313,20 @@ def _journey_signature(journey):
     return tuple((leg["mode"], leg.get("route_name"), leg.get("service_name"),
                   leg["from_place"]["lat"], leg["from_place"]["lon"], leg["to_place"]["lat"], leg["to_place"]["lon"],
                   leg["departure_at"], leg["arrival_at"]) for leg in legs)
+
+
+def _journey_shortlist(journeys, limit=5):
+    if len(journeys) <= limit:
+        return journeys
+    first_by_modes = {}
+    for index, journey in enumerate(journeys):
+        if journey["complete"]:
+            vehicles = (leg["mode"] for leg in journey["segments"] if leg["mode"] not in ("walk", "wait", "connection"))
+            first_by_modes.setdefault(tuple(mode for mode, _ in groupby(vehicles)), index)
+    preferred = set(list(first_by_modes.values())[:limit])
+    fillers = [index for index in range(len(journeys)) if index not in preferred]
+    chosen = sorted(preferred.union(fillers[:limit - len(preferred)]))
+    return [journeys[index] for index in chosen]
 
 
 def _terminal_key(name):
@@ -487,9 +512,10 @@ class RegionalBusJourneyProvider:
     SHUTTLE_CONNECTOR_RADIUS_M = 800
 
     def __init__(self, repository, walking_time, local_transit=None, now=None, *, shuttle_service=None,
-                 regional_bus_plan=None):
+                 regional_bus_plan=None, walking_fallback=None):
         self.repository = repository
-        self.walking_time = walking_time
+        self.walking_time = (partial(_walk_with_fallback, walking_time, walking_fallback)
+                             if walking_fallback is not None else walking_time)
         self.local_transit = local_transit
         self.now = now or (lambda: datetime.now(KST))
         self.shuttle_service = shuttle_service
@@ -548,15 +574,31 @@ class RegionalBusJourneyProvider:
 
     def connections(self, origin, destination, query_at, *, include_shuttle_references=False):
         options = self.shuttle_connections(origin, destination, query_at, include_references=include_shuttle_references)
-        providers = []
+        live_options = []
+        failure = None
         if self.live_available(origin, destination, query_at):
-            providers.append(partial(self.live, station_access=True))
-        elif self.repository is not None:
-            providers.append(lambda start, end, when: self.repository.plan(
-                start, end, when, self.walking_time, use_published_timing=True, timed_only=True))
+            try:
+                live_options = self.live(origin, destination, query_at, station_access=True)
+            except (OSError, ValueError, PublicDataError) as error:
+                failure = error
+        options.extend(live_options)
+        live_routes = {leg.get("route_id") or leg.get("route_name") for option in live_options
+                       if all(_time(item.get("departure_at")) and _time(item.get("arrival_at"))
+                              for item in option["segments"])
+                       for leg in option["segments"] if _mode(leg) == "bus"}
+
+        def published(start, end, when):
+            candidates = self.repository.plan(start, end, when, self.walking_time,
+                                              use_published_timing=True, timed_only=True)
+            return [option for option in candidates if not any(
+                _mode(leg) == "bus" and (leg.get("route_id") or leg.get("route_name")) in live_routes
+                for leg in option["segments"])]
+
+        providers = []
+        if self.repository is not None:
+            providers.append(published)
         if self.regional_bus_plan is not None and _regional_bus_scope(origin, destination):
             providers.append(self.regional_bus_plan)
-        failure = None
         for provider in providers:
             try:
                 options += provider(origin, destination, query_at)
@@ -625,6 +667,7 @@ class RegionalBusJourneyProvider:
                                              (start - current).total_seconds() / 60))
                 segments.append(_segment("shuttle" if is_shuttle else "bus", leg.get("route_no") or "버스",
                                          leg["board"], leg["alight"], start, end, ride if start else None,
+                                         route_id=leg.get("route_id"),
                                          path=leg.get("path", []), estimated=True, source="학교 셔틀" if is_shuttle else "TAGO",
                                          ride_time_basis=leg.get("ride_time_basis"), ride_time_source=leg.get("ride_time_source"),
                                          realtime=not is_shuttle and start is not None and end is not None))
@@ -642,9 +685,8 @@ class NationalJourneyService:
     def __init__(self, repository, walking_time, local_transit=None, intercity=None, bus_repository=None, now=None,
                  *, motis=None, ktdb_reference=None, regional_bus=None, rail_bus_transfers=None, walking_fallback=None):
         self.repository = repository
-        self.primary_walking_time = walking_time
-        self.walking_fallback = walking_fallback
-        self.walking_time = self._walk_time_with_fallback if walking_fallback is not None else walking_time
+        self.walking_time = (partial(_walk_with_fallback, walking_time, walking_fallback)
+                             if walking_fallback is not None else walking_time)
         self.intercity = intercity
         self.bus_repository = bus_repository
         self.now = now or (lambda: datetime.now(KST))
@@ -655,12 +697,6 @@ class NationalJourneyService:
             bus_repository, self.walking_time, local_transit, self.now,
             regional_bus_plan=rail_bus_transfers.plan_direct if rail_bus_transfers is not None else None,
         )
-
-    def _walk_time_with_fallback(self, *arguments):
-        minutes, meters = self.primary_walking_time(*arguments)
-        if _quantity(minutes) is not None and _quantity(meters) is not None:
-            return minutes, meters
-        return self.walking_fallback(*arguments)
 
     def _walk(self, origin, destination, query_at):
         measured = _measured_walk(self.walking_time, origin, destination)
@@ -874,19 +910,22 @@ class NationalJourneyService:
             if signature not in seen:
                 seen.add(signature)
                 distinct.append(journey)
-        options = distinct[:5]
+        options = _journey_shortlist(distinct)
         has_timed_transit = any(
             journey["complete"] and any(leg["mode"] not in ("walk", "wait", "connection")
                                         for leg in journey["segments"])
             for journey in options
         )
-        if self.ktdb_reference is not None and not has_timed_transit:
+        needs_bus_reference = has_timed_transit and all(_has_long_walk(journey) for journey in options if journey["complete"])
+        if self.ktdb_reference is not None and (not has_timed_transit or needs_bus_reference):
             try:
                 references = self.ktdb_reference.plan_reference(origin, destination, query_at)
             except MotisProviderError:
                 references = []
             for reference in references:
                 journey = _finalize(reference, query_at, origin=origin, destination=destination)
+                if needs_bus_reference and journey is not None and not any(leg["mode"] == "bus" for leg in journey["segments"]):
+                    continue
                 if journey is not None and _journey_signature(journey) not in seen:
                     options = [*options[:4], journey]
                     break

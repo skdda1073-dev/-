@@ -17,6 +17,8 @@ import re
 from threading import RLock
 from zoneinfo import ZoneInfo
 
+from services.travel_recommendation import LONG_WALK_MIN
+
 
 KST = ZoneInfo("Asia/Seoul")
 DAY = 24 * 60 * 60
@@ -705,6 +707,43 @@ def _journey(segments, warnings, departure_at, midnight, final_time):
             "estimated": any(segment.get("estimated") for segment in segments)}
 
 
+def _rail_options(timetable, departure_at, midnight, connections):
+    results, shortest_exit = [], {}
+    for final_time, _, label, walk in connections:
+        signature, segments, warnings = _render(timetable, midnight, final_time, label, walk)
+        if not signature:
+            continue
+        # Later arrivals from the same train sequence only help when they save walking.
+        boarding_sequence = (*signature[:-1], signature[-1][:-1])
+        if boarding_sequence in shortest_exit and walk.seconds >= shortest_exit[boarding_sequence]:
+            continue
+        shortest_exit[boarding_sequence] = walk.seconds
+        results.append(_journey(segments, warnings, departure_at, midnight, final_time))
+        if len(results) == 3:
+            break
+    return results
+
+
+def _station_options(timetable, departure_at, midnight, targets, connections):
+    arrivals = defaultdict(list)
+    results = []
+    for final_time, key, label, walk in connections:
+        target = targets[key]
+        previous = arrivals[_station_place_key(target)]
+        if len(previous) >= MAX_BUS_CONNECTION_ARRIVALS or (previous and previous[-1] <= label.preference):
+            continue
+        signature, segments, warnings = _render(timetable, midnight, final_time, label, walk)
+        if signature:
+            previous.append(label.preference)
+            results.append((target, _journey(segments, warnings, departure_at, midnight, final_time)))
+    return results
+
+
+def _starts_with_long_walk(route):
+    first = route["segments"][0]
+    return first["mode"] == "walk" and first["duration_min"] >= LONG_WALK_MIN
+
+
 class NationalTransitRepository:
     """Connect published rail service to walking and time-checked station access."""
 
@@ -822,25 +861,20 @@ class NationalTransitRepository:
         if not seeds:
             return []
 
-        connections = _search(timetable, departure_at.date(), started, seeds, exits)
-        results, shortest_exit = [], {}
-        for final_time, _, label, walk in connections:
-            signature, segments, warnings = _render(timetable, midnight, final_time, label, walk)
-            if not signature:
-                continue
-            # Later arrivals from the same train sequence only help when they save walking.
-            boarding_sequence = (*signature[:-1], signature[-1][:-1])
-            if boarding_sequence in shortest_exit and walk.seconds >= shortest_exit[boarding_sequence]:
-                continue
-            shortest_exit[boarding_sequence] = walk.seconds
-            results.append(_journey(segments, warnings, departure_at, midnight, final_time))
-            if len(results) == 3:
-                break
+        service_date = departure_at.date()
+        results = _rail_options(timetable, departure_at, midnight, _search(timetable, service_date, started, seeds, exits))
+        feeder_seeds = seeds[len(walks_in):]
+        if feeder_seeds and any(_starts_with_long_walk(route) for route in results):
+            # When both reach the same train, the normal scan keeps the access with fewer boardings.
+            connections = _search(timetable, service_date, started, feeder_seeds, exits)
+            feeders = _rail_options(timetable, departure_at, midnight, connections)
+            results.extend(route for route in feeders if route not in results)
+            results.sort(key=itemgetter("arrival_at"))
         return results
 
     def plan_to_stations(self, origin, destination, departure_at, walking_time, stations, *, access_routes=(),
                          latest_arrival=None):
-        """Return timed rail arrivals at all requested transfer points in one scan."""
+        """Return timed arrivals at the requested bus transfer stations."""
         departure_at = _seoul_time(departure_at)
         limit = _seoul_time(latest_arrival) if latest_arrival is not None else None
         origin, destination = _routing_place(origin), _routing_place(destination)
@@ -865,17 +899,15 @@ class NationalTransitRepository:
         if not seeds:
             return []
         deadline = int((limit - midnight).total_seconds()) if limit is not None else None
-        connections = _search(timetable, departure_at.date(), started, seeds, exits, early_exit=False,
-                              latest_arrival=deadline)
-        arrivals = defaultdict(list)
-        results = []
-        for final_time, key, label, walk in connections:
-            target = targets[key]
-            previous = arrivals[_station_place_key(target)]
-            if len(previous) >= MAX_BUS_CONNECTION_ARRIVALS or (previous and previous[-1] <= label.preference):
-                continue
-            signature, segments, warnings = _render(timetable, midnight, final_time, label, walk)
-            if signature:
-                previous.append(label.preference)
-                results.append((target, _journey(segments, warnings, departure_at, midnight, final_time)))
+        service_date = departure_at.date()
+        connections = _search(timetable, service_date, started, seeds, exits, early_exit=False, latest_arrival=deadline)
+        results = _station_options(timetable, departure_at, midnight, targets, connections)
+        feeder_seeds = seeds[len(walks_in):]
+        if feeder_seeds and any(_starts_with_long_walk(route) for _, route in results):
+            # Keep a bus or shuttle to the first rail station when the last rail station also needs a bus.
+            connections = _search(timetable, service_date, started, feeder_seeds, exits, early_exit=False,
+                                  latest_arrival=deadline)
+            feeders = _station_options(timetable, departure_at, midnight, targets, connections)
+            results.extend(candidate for candidate in feeders if candidate not in results)
+            results.sort(key=lambda candidate: candidate[1]["arrival_at"])
         return results

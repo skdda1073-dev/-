@@ -1,7 +1,7 @@
 """Use synthetic bus predictions and verified walking times to check bus connections."""
 
 import csv
-from datetime import datetime, timedelta
+from datetime import datetime, time, timedelta
 from pathlib import Path
 from tempfile import TemporaryDirectory
 import unittest
@@ -9,6 +9,7 @@ from unittest.mock import Mock, patch
 from zoneinfo import ZoneInfo
 
 from services.gyeonggi_bus_arrivals import GyeonggiBusArrivals
+from services.gyeonggi_bus_schedules import GyeonggiBusSchedule, GyeonggiFrequency
 from services.national_journey_service import NationalJourneyService, _segment
 from services.national_bus_repository import NationalBusRepository
 from services.rail_bus_transfer import RailBusTransfers
@@ -82,6 +83,29 @@ class RailBusTransferTests(unittest.TestCase):
         links = self.transfers.links([STATION], DESTINATION, NOW)
         self.assertEqual([(leg.leg.board.id, leg.leg.alight.id, leg.leg.board.direction)
                           for leg in links[self.station_key]], [(BOARD[0], ALIGHT[0], "1")])
+
+    def test_future_search_considers_a_route_outside_the_local_frequency_file(self):
+        route_id = "GGB222000055"
+        requested = NOW + timedelta(days=1)
+        schedule = GyeonggiBusSchedule("7", BOARD[1], ALIGHT[1], {
+            ("0", "weekday"): GyeonggiFrequency(time(6), time(22), 10, 20, NOW.date()),
+        })
+        self.transfers.gyeonggi_schedules = Mock()
+        self.transfers.gyeonggi_schedules.supports.side_effect = lambda city: city == CITY
+        self.transfers.gyeonggi_schedules.route.side_effect = lambda city, route: schedule if (city, route) == (CITY, route_id) else None
+        self.client.station_routes.return_value = [{"routeid": route_id, "routeno": "7"}]
+        self.client.route_stops.return_value = [{"nodeid": node, "nodenm": name, "nodeord": index,
+                                                "gpslati": lat, "gpslong": lon}
+                                               for index, (node, name, lat, lon) in enumerate((BOARD, ALIGHT), start=1)]
+
+        links = self.transfers.links([STATION], DESTINATION, requested)
+        result = self.onward(links, requested, requested + timedelta(minutes=50))
+        buses = [segment for _, onward in result for segment in onward["segments"] if segment["mode"] == "bus"]
+        self.assertEqual(len(buses), 1)
+        self.assertEqual(buses[0]["route_name"], "7")
+        self.assertEqual(buses[0]["ride_time_basis"], "published_headway_estimate")
+        self.assertFalse(buses[0]["realtime"])
+        self.client.arrivals.assert_not_called()
 
     def test_bus_feeder_boards_after_walking_and_ends_at_the_exact_station(self):
         self.client.arrivals.return_value = [

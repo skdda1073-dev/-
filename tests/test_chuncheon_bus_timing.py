@@ -23,7 +23,7 @@ class ChuncheonBusTimingTests(unittest.TestCase):
             schedules = timing.published_for_date(date(2026, 11, day))
             self.assertEqual(timing.for_date(date(2026, 11, day))[KEY], (5.0, SOURCE))
             self.assertEqual({(key[1], key[2][0], key[2][-1], value.board_offset, value.alight_offset)
-                              for key, value in schedules.items()}, {
+                              for key, value in schedules.items() if key[0] == KEY[0]}, {
                 ("0", "CCB250001275", "CCB250001295", 6, 11),
                 ("0", "CCB250001357", "CCB250001275", 0, 6),
                 ("0", "CCB250001275", "CCB250026559", 6, 24),
@@ -33,25 +33,47 @@ class ChuncheonBusTimingTests(unittest.TestCase):
         self.assertEqual(timing.for_date(date(2026, 11, 19)), {})
         self.assertEqual(timing.for_date(date(2026, 12, 1)), {})
 
-    def test_12_ride_estimate_only_applies_to_verified_regular_route_and_dates(self):
+    def test_12_published_timing_only_applies_to_verified_regular_route_and_dates(self):
         timing = ChuncheonBusTiming(DATA)
         stops = (*STATION_APPROACH, "CCB250026552")
         regular = ("CCB250001200", "0", stops)
         variant = ("CCB250001201", "0", stops)
         self.assertNotIn(regular, timing.for_date(date(2026, 11, 24)))
+        self.assertNotIn(regular, timing.published_for_date(date(2026, 12, 1)))
         for day in (25, 26, 28, 30):
             service_date = date(2026, 11, day)
             self.assertEqual(timing.for_date(service_date)[regular], (7.0, SOURCE))
             self.assertNotIn(variant, timing.for_date(service_date))
-            self.assertNotIn(regular, timing.published_for_date(service_date))
+            schedules = timing.published_for_date(service_date)
+            self.assertNotIn(variant, schedules)
+            schedule = schedules[regular]
+            self.assertEqual((schedule.board_offset, schedule.alight_offset), (13, 20))
+            self.assertEqual(len(schedule.departure_times), 18)
+            self.assertEqual(schedule.departure_times[8].isoformat(timespec="minutes"), "12:20")
+
+    def test_12_can_reach_the_station_before_the_noon_train(self):
+        repo = NationalBusRepository(DATA.parents[2])
+        origin = {"name": "한림대학교 Campus Life Center", "lat": 37.88632, "lon": 127.73812}
+        station = {"name": "춘천역", "lat": 37.884391, "lon": 127.716603}
+        requested = datetime.fromisoformat("2026-11-26T12:13:00+09:00")
+        trip, *_ = repo.plan(origin, station, requested, lambda *_: (5, 350),
+                           use_published_timing=True, timed_only=True)
+        access, bus, egress = trip["segments"]
+        self.assertEqual(access["to_place"]["name"], "한림대학교")
+        self.assertEqual(bus["route_name"], "12")
+        self.assertEqual(bus["departure_at"], "2026-11-26T12:33:00+09:00")
+        self.assertEqual(bus["arrival_at"], "2026-11-26T12:40:00+09:00")
+        self.assertEqual(egress["to_place"], station)
+        self.assertEqual(trip["arrival_at"], "2026-11-26T12:45:00+09:00")
 
     def test_300_uses_published_stop_before_station_and_walks_the_last_segment(self):
         repo = NationalBusRepository(DATA.parents[2])
         origin = {"name": "한림대학교", "lat": 37.88355, "lon": 127.73840}
         destination = {"name": "춘천역", "lat": 37.884391, "lon": 127.716603}
         requested = datetime.fromisoformat("2026-11-25T07:20:00+09:00")
-        trip, = repo.plan(origin, destination, requested, lambda *_: (5, 350),
-                         use_published_timing=True, timed_only=True)
+        trips = repo.plan(origin, destination, requested, lambda *_: (5, 350),
+                          use_published_timing=True, timed_only=True)
+        trip, = (trip for trip in trips if trip["segments"][1]["route_name"] == "300")
         _, bus, walk = trip["segments"]
         self.assertEqual((bus["route_name"], bus["to_place"]["name"]), ("300", "꿈자람어린이공원"))
         self.assertEqual((bus["departure_at"], bus["arrival_at"]),
@@ -98,5 +120,18 @@ class ChuncheonBusTimingTests(unittest.TestCase):
             self.assertNotEqual(data, changed)
             path.with_name(csv_name).write_text(changed, encoding="utf-8")
             loader = ChuncheonBusTiming(path)
-            self.assertEqual(loader.published_for_date(query_date), {})
+            self.assertFalse(any(key[0] == KEY[0] for key in loader.published_for_date(query_date)))
             self.assertEqual(loader.for_date(query_date)[KEY], (5.0, SOURCE))
+
+    def test_inline_projection_requires_verified_clocks(self):
+        query_date = date(2026, 11, 26)
+        data = json.loads(DATA.read_text(encoding="utf-8"))
+        entry = next(row for row in data["estimates"] if row["route_number"] == "12")
+        entry["published_departures"]["source_departure_times"][8] = "12:25"
+        key = ("CCB250001200", "0", (*STATION_APPROACH, "CCB250026552"))
+        with TemporaryDirectory() as directory:
+            path = Path(directory) / DATA.name
+            path.write_text(json.dumps({"estimates": [entry]}), encoding="utf-8")
+            loader = ChuncheonBusTiming(path)
+            self.assertEqual(loader.published_for_date(query_date), {})
+            self.assertEqual(loader.for_date(query_date)[key], (7.0, SOURCE))
