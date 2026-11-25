@@ -33,6 +33,7 @@ from services.national_journey_service import (
 )
 from services.national_transit_repository import NationalTransitRepository
 from services.gyeonggi_bus_arrivals import GyeonggiBusArrivals
+from services.gyeonggi_bus_schedules import GyeonggiBusSchedules
 from services.seoul_bus_arrivals import SeoulBusArrivals
 from services.rail_bus_transfer import RailBusTransfers
 from services.commute_advice_service import CommuteAdviceService
@@ -138,12 +139,13 @@ seoul_bus_arrivals = SeoulBusArrivals(settings.seoul_arrival_key) if settings.se
 rail_bus_transfers = RailBusTransfers(
     national_data_dir, settings.bus_data_key, walking_service.get_precise_time,
     gyeonggi_arrivals=GyeonggiBusArrivals(settings.gbis_api_key) if settings.gbis_api_key else None,
+    gyeonggi_schedules=GyeonggiBusSchedules(),
     walking_fallback=walking_fallback,
     seoul_arrivals=seoul_bus_arrivals, seoul_routes=national_bus_repository.nearby_seoul_routes,
 )
 regional_bus_journey_provider = RegionalBusJourneyProvider(
     national_bus_repository, walking_service.get_precise_time, local_transit=transit_service,
-    shuttle_service=shuttle_service, regional_bus_plan=rail_bus_transfers.plan_direct,
+    shuttle_service=shuttle_service, regional_bus_plan=rail_bus_transfers.plan_direct, walking_fallback=walking_fallback,
 )
 national_journey_service = NationalJourneyService(
     national_transit_repository, walking_service.get_precise_time,

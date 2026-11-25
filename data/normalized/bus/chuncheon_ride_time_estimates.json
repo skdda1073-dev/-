@@ -203,7 +203,17 @@
         {"date": "2026-11-25", "boarding": "05:48", "alighting": "05:55"},
         {"date": "2026-11-28", "boarding": "08:13", "alighting": "08:20"}
       ],
-      "notes": "상공회의소 기점(TAGO 방향 0)으로부터 예정 시각 차이가 한림대학교 2104에서 13분, 춘천역 2288에서 20분으로 같은 운행편 18회에서 일치했다. 일반 12번의 탑승 시간에만 적용한다."
+      "published_departures": {
+        "source_url": "https://www.chuncheon-pti.kr/index.php?mt=page&mp=p2_3_1&mm=road&oxid=1&cmd=table&subcmd=view&id=14248&artpp=10&navinum=5&cpage=1&tid=1&sdate=20261126",
+        "matched_departure_count": 18,
+        "clock_sequence_sha256": "51fcb274dbd40aa22f456b0843d42016f5ba9c20d26e28245a584a4855763f1d",
+        "source_origin_id": "66443",
+        "approach_stop_ids": ["CCB265000793", "CCB250026779", "CCB250026778", "CCB250026830", "CCB250001211", "CCB250001377", "CCB250001563", "CCB250001540", "CCB250002229", "CCB250002124", "CCB250001547"],
+        "boarding_offset_minutes": 13,
+        "alighting_offset_minutes": 20,
+        "source_departure_times": ["05:35", "06:10", "07:00", "08:00", "08:50", "09:40", "10:40", "11:30", "12:20", "13:20", "14:10", "15:00", "16:00", "16:50", "17:40", "18:40", "19:30", "20:20"]
+      },
+      "notes": "상공회의소 기점(TAGO 방향 0)으로부터 예정 시각 차이가 한림대학교 2104에서 13분, 춘천역 2288에서 20분으로 같은 운행편 18회에서 일치했다. 공개 기점과 승하차 시각을 대조한 일반 12번의 날짜와 방향에만 적용한다."
     }
   ]
 }

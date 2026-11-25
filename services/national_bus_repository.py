@@ -188,7 +188,7 @@ class NationalBusRepository:
             "mode": "walk", "route_name": "도보", "from_place": start, "to_place": end,
             "departure_at": start_at.isoformat() if start_at else None,
             "arrival_at": end_at.isoformat() if end_at else None,
-            "duration_min": minutes, "fare_won": 0, "source": "TMAP 보행자 경로",
+            "duration_min": minutes, "fare_won": 0, "source": "보행 경로",
         }, end_at
 
     def _timed_journey(self, origin, destination, now, walking_time, route, path, timing):

@@ -289,6 +289,28 @@ class NationalLine8IntegrationTests(unittest.TestCase):
         self.assertEqual(fewer_transfers["arrival_at"], by_bus["arrival_at"])
         self.assertEqual(fewer_transfers["segments"][0]["mode"], "walk")
 
+    def test_dasan_keeps_the_bus_alternative_when_a_long_walk_catches_the_same_train(self):
+        origin = {"name": "한림대학교 Campus Life Center", "lat": 37.88632, "lon": 127.73812}
+        departure = datetime.fromisoformat("2026-11-26T09:00:00+09:00")
+        station_arrival = datetime.fromisoformat("2026-11-26T09:31:00+09:00")
+        bus = {"mode": "bus", "route_name": "300", "from_place": origin, "to_place": self.chuncheon,
+               "departure_at": "2026-11-26T09:11:00+09:00", "arrival_at": station_arrival.isoformat(),
+               "duration_min": 20, "estimated": True}
+        feeder = {"gateway": self.chuncheon, "segments": [bus], "arrival_at": station_arrival}
+
+        def walking(_lat1, _lon1, start, _lat2, _lon2, end):
+            return (34, 2400) if (start, end) == (origin["name"], "춘천역") else (-1, -1)
+
+        options = self.repository.plan(origin, self.dasan, departure, walking, access_routes=[feeder])
+        fastest = [journey for journey in options if journey["arrival_at"] == "2026-11-26T11:05:10+09:00"]
+        self.assertEqual({journey["segments"][0]["mode"] for journey in fastest}, {"walk", "bus"})
+        self.assertTrue(all(self.rides(journey) == [("경춘선", "춘천역", "별내역"), ("8호선", "별내역", "다산역")]
+                            for journey in fastest))
+        connections = self.repository.plan_to_stations(origin, self.dasan, departure, walking,
+                                                        [self.dasan], access_routes=[feeder])
+        same_train = [journey for _, journey in connections if journey["arrival_at"] == fastest[0]["arrival_at"]]
+        self.assertEqual({journey["segments"][0]["mode"] for journey in same_train}, {"walk", "bus"})
+
 
 if __name__ == "__main__":
     unittest.main()
