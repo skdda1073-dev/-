@@ -280,7 +280,6 @@
         });
         byId('tool-reopen').addEventListener('click', openTool);
         byId('app-reload').addEventListener('click', reload);
-        byId('taxi-edit-selection').addEventListener('click', () => openJourney());
         byId('results-show').addEventListener('click', showResults);
         byId('results-reopen').addEventListener('click', showResults);
         byId('results-close').addEventListener('click', closeResults);

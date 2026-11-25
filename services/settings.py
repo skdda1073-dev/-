@@ -32,6 +32,7 @@ class Settings:
     airkorea_data_key: str = field(default="", repr=False)
     airkorea_station_name: str = "중앙로"
     motis_base_url: str = field(default="", repr=False)
+    gbis_api_key: str = field(default="", repr=False)
 
     @property
     def bus_data_key(self):
@@ -105,6 +106,7 @@ def load_settings(base_dir, environ=None):
         tmap_app_key=value("TMAP_APP_KEY"),
         public_data_key=value("PUBLIC_DATA_KEY"),
         tago_api_key=value("TAGO_API_KEY"),
+        gbis_api_key=value("GBIS_API_KEY"),
         intercity_data_key=value("INTERCITY_DATA_KEY") or value("PUBLIC_DATA_KEY"),
         weather_data_key=value("WEATHER_DATA_KEY") or value("PUBLIC_DATA_KEY"),
         airkorea_data_key=value("AIRKOREA_DATA_KEY") or value("PUBLIC_DATA_KEY"),

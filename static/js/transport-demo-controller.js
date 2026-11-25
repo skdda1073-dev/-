@@ -202,10 +202,18 @@
         byId('demo-title').focus();
         window.AppModules.shell?.refreshUnloadGuard();
     });
-    byId('demo-go-create').addEventListener('click', () => {
-        window.AppModules.shell.select('taxi');
+    function openCreate(destination = '') {
+        const { shell, workspaceSheet } = window.AppModules;
+        if (!shell.select('taxi')) return;
+        if (window.matchMedia('(max-width: 799px)').matches) workspaceSheet?.reveal('full');
+        const input = byId('demo-destination');
+        if (destination && !input.value.trim()) {
+            input.value = destination;
+            shell.refreshUnloadGuard();
+        }
         byId('demo-title').focus();
-    });
+    }
+    byId('demo-go-create').addEventListener('click', () => openCreate());
     join.addEventListener('click', () => {
         if (!room || room.joined) return;
         room.joined = true;
@@ -270,6 +278,6 @@
     window.AppModules.shell.onMenuSelect((_, options) => { if (options.source !== 'demo-auto') cancelAutoMove(); });
     const hasUnsavedData = () => rooms.size > 0 || ['title', 'destination', 'from']
         .some(name => Boolean(byId('demo-' + name).value));
-    window.AppModules.demo = { hasUnsavedData };
+    window.AppModules.demo = { hasUnsavedData, openCreate };
     window.AppModules.shell.setDirtyProvider(hasUnsavedData);
 })();

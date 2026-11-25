@@ -542,13 +542,14 @@ class RegionalBusJourneyProvider:
 
 class NationalJourneyService:
     def __init__(self, repository, walking_time, local_transit=None, intercity=None, bus_repository=None, now=None,
-                 *, motis=None, regional_bus=None):
+                 *, motis=None, regional_bus=None, rail_bus_transfers=None):
         self.repository = repository
         self.walking_time = walking_time
         self.intercity = intercity
         self.bus_repository = bus_repository
         self.now = now or (lambda: datetime.now(KST))
         self.motis = motis
+        self.rail_bus_transfers = rail_bus_transfers
         self.regional_bus = regional_bus if regional_bus is not None else RegionalBusJourneyProvider(
             bus_repository, walking_time, local_transit, self.now,
         )
@@ -621,10 +622,11 @@ class NationalJourneyService:
         live_access = local_origin and _distance_km(origin, CHUNCHEON_CENTER) < CHUNCHEON_RAIL_ACCESS_RADIUS_KM
         live_access = live_access and not local_destination and bus.live_available(origin, origin, query_at)
         scheduled = bus.repository is not None and (local_origin or local_destination)
-        if not live_access and not scheduled:
+        remote_transfer = self.rail_bus_transfers if not local_destination else None
+        if not live_access and not scheduled and remote_transfer is None:
             return self._rail_to(origin, destination, query_at, [])
 
-        gateways = self.repository.chuncheon_gateways()
+        gateways = self.repository.chuncheon_gateways() if live_access or scheduled else []
         service_date = query_at.astimezone(KST).date()
 
         def station_access(gateway):
@@ -663,8 +665,10 @@ class NationalJourneyService:
                 connections.extend(_join_journeys(route, option) for option in onward)
             return connections
 
-        with ThreadPoolExecutor(max_workers=2) as executor:
+        with ThreadPoolExecutor(max_workers=3) as executor:
             access_routes = [route for routes in executor.map(station_access, gateways) for route in routes]
+            stations = self.repository.transfer_stations(destination) if remote_transfer else []
+            transfer_job = executor.submit(remote_transfer.links, stations, destination, query_at) if stations else None
             arrival_jobs = [executor.submit(station_egress, gateway, access_routes) for gateway in gateways] if local_destination else []
             options = self._rail_to(origin, destination, query_at, access_routes)
             for future in arrival_jobs:
@@ -672,6 +676,21 @@ class NationalJourneyService:
                     options += future.result()
                 except (OSError, ValueError, PublicDataError):
                     continue
+            if transfer_job is not None:
+                try:
+                    links = transfer_job.result()
+                    targets = [station for station in stations if (station["lat"], station["lon"]) in links]
+                    if targets:
+                        reference = [_time(route.get("arrival_at")) for route in options]
+                        earliest = min((arrival for arrival in reference if arrival is not None), default=None)
+                        deadline = earliest + timedelta(minutes=30) if earliest is not None else None
+                        arrivals = self.repository.plan_to_stations(origin, destination, query_at, self.walking_time,
+                                                                    targets, access_routes=access_routes,
+                                                                    latest_arrival=deadline)
+                        options += [_join_journeys(rail, onward) for rail, onward
+                                    in remote_transfer.connections(links, arrivals, destination, query_at)]
+                except (OSError, ValueError, PublicDataError):
+                    pass
         return options
 
     def plan(self, origin, destination, query_at):

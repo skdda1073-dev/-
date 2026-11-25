@@ -17,8 +17,8 @@ var startMarker = null;
 var stationMarkers = [];
 
 var campusCenter = {
-    hallym: { lat: 37.8863, lon: 127.7381 },
-    knu: { lat: 37.8691, lon: 127.7442 }
+    hallym: { lat: 37.88665, lon: 127.7391, zoom: 16 },
+    knu: { lat: 37.8691, lon: 127.7442, zoom: 15 }
 };
 var buildingData = window.BUILDING_DATA || { hallym: [], knu: [] };
 

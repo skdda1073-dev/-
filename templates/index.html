@@ -339,34 +339,32 @@
                     </div>
                 </section>
                 <section id="transport-panel-taxi" class="transport-panel" role="tabpanel" aria-labelledby="transport-tab-taxi" tabindex="0" hidden>
-                    <section id="taxi-section" class="taxi-section" aria-labelledby="taxi-heading">
-                        <div class="taxi-card">
-                            <div class="taxi-top"><h2 id="taxi-heading">택시 예상요금</h2><span class="taxi-provider">TMAP</span></div>
-                            <p id="taxi-route" class="taxi-route">길찾기에서 출발지와 도착할 장소를 선택해 주세요.</p>
-                            <p id="taxi-selection" class="taxi-caption" aria-live="polite"></p>
-                            <button id="taxi-edit-selection" class="taxi-button taxi-button--secondary" type="button">출발·도착 수정</button>
-                            <button id="taxi-refresh" class="taxi-button" type="button" aria-describedby="taxi-route">택시 예상요금 조회</button>
-                            <div id="taxi-content" aria-live="polite"><p class="taxi-status">예상 시간·거리·요금과 2~4명 분담액을 확인할 수 있어요.</p></div>
-                            <p class="taxi-caption">차량 주행시간 기준 · 택시 대기시간 제외<br>실제 미터요금은 달라질 수 있어요.</p>
-                            <div id="taxi-room-actions" class="taxi-actions" hidden><button id="taxi-find-room" class="taxi-button taxi-button--secondary" type="button">같이 탈 사람 찾기</button><button id="taxi-create-room" class="taxi-button" type="button">모집방 만들기</button></div>
-                        </div>
-                    </section>
                     <section class="taxi-party" aria-labelledby="demo-party-heading">
-                        <h3 id="demo-party-heading">택시팟 구해요!</h3>
-                        <p class="demo-caption">UI 시연용 · 실제 모집이나 참가가 아닙니다</p>
-                        <p class="demo-caption">다른 참가자 한 명이 들어오는 상황을 시연해요. 새로고침하면 방·참가 상태·대화가 초기화됩니다.</p>
+                        <h2 id="demo-party-heading">택시 모집방 만들기</h2>
+                        <p class="demo-caption">시연용 · 새로고침하면 모집방이 초기화돼요.</p>
                         <form id="demo-party-form" novalidate>
-                            <label class="demo-field" for="demo-title">제목<input id="demo-title" type="text" required aria-describedby="demo-title-error" placeholder="오늘 저녁 남춘천역 같이 가실 분!"></label><p id="demo-title-error" class="demo-error" aria-live="polite"></p>
+                            <label class="demo-field" for="demo-title">제목<input id="demo-title" type="text" required aria-describedby="demo-title-error" placeholder="예: 남춘천역 같이 가요"></label><p id="demo-title-error" class="demo-error" aria-live="polite"></p>
                             <label class="demo-field" for="demo-destination">목적지<input id="demo-destination" type="text" required aria-describedby="demo-destination-error" placeholder="예: 남춘천역"></label><p id="demo-destination-error" class="demo-error" aria-live="polite"></p>
-                            <label class="demo-field" for="demo-from">출발 예정 시각 · 한국 시간<input id="demo-from" type="datetime-local" required aria-describedby="demo-from-error"></label><p id="demo-from-error" class="demo-error" aria-live="polite"></p>
+                            <label class="demo-field" for="demo-from">출발 시각 · 한국 시간<input id="demo-from" type="datetime-local" required aria-describedby="demo-from-error"></label><p id="demo-from-error" class="demo-error" aria-live="polite"></p>
                             <button class="demo-button" type="submit">모집하기</button>
                             <button id="demo-new-post" class="demo-button demo-button--secondary" type="button" hidden>새 모집글 작성</button>
                             <p id="demo-create-status" class="demo-caption" role="status"></p>
                         </form>
                     </section>
+                    <section id="taxi-section" class="taxi-section" aria-labelledby="taxi-heading">
+                        <div class="taxi-card">
+                            <h2 id="taxi-heading">택시 예상요금</h2>
+                            <p id="taxi-route" class="taxi-route">길찾기에서 출발지와 도착할 장소를 선택해 주세요.</p>
+                            <p id="taxi-selection" class="taxi-caption" aria-live="polite"></p>
+                            <button id="taxi-refresh" class="taxi-button" type="button" aria-describedby="taxi-route">택시 예상요금 조회</button>
+                            <div id="taxi-content" aria-live="polite"><p class="taxi-status">예상 시간·거리·요금과 2~4명 분담액을 확인할 수 있어요.</p></div>
+                            <p class="taxi-caption">대기 시간은 별도이며 실제 요금은 달라질 수 있어요.</p>
+                            <div id="taxi-room-actions" class="taxi-actions" hidden><button id="taxi-find-room" class="taxi-button taxi-button--secondary" type="button">같이 탈 사람 찾기</button><button id="taxi-create-room" class="taxi-button" type="button">모집방 만들기</button></div>
+                        </div>
+                    </section>
                 </section>
                 <section id="transport-panel-rooms" class="transport-panel" role="tabpanel" aria-labelledby="transport-tab-rooms" tabindex="0" hidden>
-                    <h2>방 찾기</h2><p class="demo-caption">이 페이지에서 만든 시연 게시물입니다. 새로고침하면 방·참가 상태·대화가 초기화됩니다.</p>
+                    <h2>방 찾기</h2><p class="demo-caption">이 페이지에서 만든 시연 모집방이에요.</p>
                     <div id="demo-room-empty"><p>아직 모집 중인 택시팟이 없어요.</p><button id="demo-go-create" class="demo-button" type="button">모집하러 가기</button></div>
                     <ul id="demo-room-list" class="demo-room-list" aria-label="택시팟 모집 게시물"></ul>
                 </section>
@@ -454,9 +452,8 @@
         </div>
     </div>
     <dialog id="demo-party-dialog" class="party-dialog" aria-labelledby="demo-dialog-heading" aria-describedby="demo-dialog-disclaimer">
-        <header class="party-dialog-header"><h2 id="demo-dialog-heading">택시팟 구해요!</h2><button id="demo-close" class="demo-button demo-button--secondary" type="button" aria-label="모집방 닫기" autofocus>닫기</button></header>
-        <p id="demo-dialog-disclaimer" class="demo-caption">UI 시연용 · 실제 모집이나 참가가 아닙니다</p>
-        <p class="demo-caption">다른 참가자 한 명의 입장을 시연합니다. 새로고침하면 방·참가 상태·대화가 초기화됩니다.</p>
+        <header class="party-dialog-header"><h2 id="demo-dialog-heading">택시 모집방</h2><button id="demo-close" class="demo-button demo-button--secondary" type="button" aria-label="모집방 닫기" autofocus>닫기</button></header>
+        <p id="demo-dialog-disclaimer" class="demo-caption">시연용 · 새로고침하면 모집방이 초기화돼요.</p>
         <section class="party-info" aria-label="모집 정보"><span class="party-state">모집 중</span><h3 id="demo-room-title"></h3><dl><dt>목적지</dt><dd id="demo-room-destination"></dd><dt>출발 예정 시각 · 한국 시간</dt><dd id="demo-room-time"></dd></dl></section>
         <section class="party-members" aria-labelledby="demo-members-heading"><h3 id="demo-members-heading">참가 현황 <span id="demo-count" role="status">1/4명</span></h3><ul id="demo-members"></ul></section>
         <section class="party-chat" aria-labelledby="demo-chat-heading">

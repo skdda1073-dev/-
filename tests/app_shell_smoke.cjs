@@ -960,7 +960,7 @@ test('single departure validates real Korean calendar times without erasing othe
     const app = await readyDemo();
     assert.equal(app.el('demo-to'), undefined); assert.equal(app.el('demo-to-error'), undefined);
     assert.equal(app.el('demo-party-form').querySelectorAll('input').length, 3);
-    assert.match(app.el('demo-from').parentElement.textContent, /출발 예정 시각 · 한국 시간/);
+    assert.match(app.el('demo-from').parentElement.textContent, /출발 시각 · 한국 시간/);
     for (const from of ['', 'invalid', '2030-02-29T18:00', '2030-02-30T18:00', '2030-13-01T18:00', '2030-10-21T24:00', '2030-10-21T18:60']) {
         await fillDemo(app, { from }); await app.el('demo-party-form').emit('submit');
         assert.equal(app.el('demo-room-list').children.length, 0);
@@ -1276,7 +1276,7 @@ test('unavailable or malformed direct walking leaves shared bus cards usable', a
     }
 });
 
-test('empty and failed map transit queries show the shared walking alternative without taxi requests', async () => {
+test('empty and failed map transit queries suggest a taxi using the measured walk without requesting one', async () => {
     for (const kind of ['empty', 'error', 'http-502']) {
         const data = mapJourneyFixture(); data.journeys = [];
         data.direct_walk = { status: 'ok', minutes: 12, distance_m: 840, source: 'tmap' };
@@ -1285,7 +1285,9 @@ test('empty and failed map transit queries show the shared walking alternative w
             journey: () => kind === 'http-502' ? { ok: false, status: 502, json: async () => data } : data });
         await routing.pickPair(); await flush(); await flush();
         const card = app.el('result-container').querySelector('.route-walk-card');
-        assert.ok(card); assert.match(card.textContent, /전체 도보 약 12분/); assert.match(card.textContent, /840m/);
+        assert.ok(card); assert.match(card.textContent, /택시를 타는 것을 추천해요/);
+        assert.match(card.textContent, /도보 약 12분/); assert.match(card.textContent, /840m/);
+        assert.equal(card.querySelector('.taxi-room-banner').getAttribute('data-destination'), '지도 목적지');
         assert.doesNotMatch(card.textContent, /걸어서 가는 편이.*빨라요|가까운 스쿠터도/);
         if (kind !== 'empty') assert.match(app.el('result-container').textContent, /합성 버스 공급자 오류/);
         assert.equal(routing.requests.length, 1); assert.equal(routing.taxiRequests.length, 0);
@@ -1614,9 +1616,10 @@ test('walking advice never confirms a faster bus comparison when waiting or live
     }
 });
 
-test('a measured walk leads when every bus has an unknown arrival without a faster-time claim', async () => {
+test('a 110-minute walk to Yongsan Reservoir leads with a taxi suggestion and preserves the bus candidates', async () => {
     const data = mapMobilityRecommendationFixture();
-    data.direct_walk.minutes = 17.75;
+    data.destination = { name: '용산저수지', lat: 37.9434239, lon: 127.71852598 };
+    data.direct_walk = { status: 'ok', minutes: 110, distance_m: 8637, source: 'tmap' };
     data.journeys[0].wait_min = null;
     data.journeys[0].total_min = null;
     Object.assign(data.recommendation, { preferred_mode: 'undetermined', reason: 'comparison_unknown', time_saved_min: null });
@@ -1624,12 +1627,14 @@ test('a measured walk leads when every bus has an unknown arrival without a fast
     const app = harness(), routing = app.loadMapJourney({ journey: () => data });
     await routing.pickPair(); await flush();
     const container = app.el('result-container');
-    const walk = container.querySelector('.route-mobility-recommendation');
+    const taxi = container.querySelector('.route-taxi-recommendation');
     const bus = container.querySelector('.route-card');
-    assert.ok(container.children.indexOf(walk) < container.children.indexOf(bus));
-    assert.match(walk.textContent, /확인된 도보 경로/);
-    assert.match(walk.textContent, /버스의 도착 시각은 미확인/);
-    assert.doesNotMatch(walk.textContent, /빨라요|가장 빠|짧아요/);
+    assert.ok(taxi && bus && container.children.indexOf(taxi) < container.children.indexOf(bus));
+    assert.match(taxi.textContent, /택시를 타는 것을 추천해요/);
+    assert.match(taxi.textContent, /도보 약 110분/);
+    assert.match(taxi.textContent, /버스 도착 시각을 확인하지 못했어요/);
+    assert.equal(taxi.querySelector('.taxi-room-banner').getAttribute('data-destination'), '용산저수지');
+    assert.doesNotMatch(taxi.textContent, /도보 우선|확인된 도보 경로|빨라요|가장 빠|짧아요/);
 });
 
 test('scooter advice stays conditional without an ETA and absent or transit recommendations keep legacy cards', async () => {

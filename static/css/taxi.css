@@ -1,13 +1,11 @@
 /* Independent taxi estimates; common planner and transit rules stay unchanged. */
 .taxi-section { margin-top: 18px; min-width: 0; }
 .taxi-card { padding: 18px; color: var(--ink); background: #fff; border: 1px solid #d8e6da; border-radius: 20px; overflow-wrap: anywhere; }
-#transport-panel-taxi .taxi-section { margin-top: 0; }
+#transport-panel-taxi .taxi-section { margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--line); }
 #transport-panel-taxi .taxi-card { padding: 0; border: 0; border-radius: 0; }
-.taxi-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 8px; }
-.taxi-top h2 { font-size: 18px; }
-.taxi-provider { padding: 4px 8px; border-radius: 7px; color: var(--green-dark); background: var(--green-soft); font-size: 11px; font-weight: 700; }
+.taxi-card > h2 { font-size: 18px; margin-bottom: 8px; }
 .taxi-route { margin-bottom: 12px; color: var(--muted); font-size: 12px; line-height: 1.6; }
-#taxi-refresh { width: 100%; margin-bottom: 12px; }
+#taxi-refresh { width: 100%; margin: 8px 0 12px; }
 #taxi-content { min-width: 0; }
 .taxi-fare { margin: 0 0 18px; }
 #taxi-content .taxi-fare-label { display: block; margin-bottom: 4px; font-size: 14px; line-height: 1.5; color: var(--muted); }
@@ -32,5 +30,4 @@
 .taxi-button--secondary { color: var(--green-dark); background: var(--green-soft); }
 .taxi-button:disabled { opacity: .55; }
 .taxi-button:focus-visible { outline: 3px solid var(--green-dark); outline-offset: 3px; }
-.taxi-top .taxi-button { flex-shrink: 0; }
 @media (max-width: 420px) { .taxi-card { padding: 15px; } #taxi-content .taxi-split-amount { font-size: 24px; } }

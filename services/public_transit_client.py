@@ -24,10 +24,11 @@ class PublicTransitClient:
     PAGE_SIZE = 100
     MAX_PAGES = 20
 
-    def __init__(self, service_key, city_code, requester=None):
+    def __init__(self, service_key, city_code, requester=None, *, timeout=(3, 8)):
         self.service_key = unquote(service_key)
         self.city_code = str(city_code)
         self.requester = requester or requests.get
+        self.timeout = timeout
         self._cache = {}
         self._lock = RLock()
 
@@ -70,7 +71,7 @@ class PublicTransitClient:
             response = self.requester(
                 f"{self.BASE_URL}/{service}/{operation}",
                 params=params,
-                timeout=(3, 8),
+                timeout=self.timeout,
                 allow_redirects=False,
             )
         except requests.RequestException:

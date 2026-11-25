@@ -98,6 +98,32 @@
 .route-mobility-reason { font-size: 13px; line-height: 1.7; }
 .route-mobility-saving { margin-top: 8px; color: #276335; font-size: 13px; font-weight: 750; line-height: 1.6; }
 .route-mobility-scooter { margin-top: 10px; padding-top: 9px; border-top: 1px solid #d6e6d1; color: #45634a; font-size: 12px; line-height: 1.65; }
+.route-taxi-recommendation { border-color: #e8d2a0; background: #fffdf7; }
+.route-taxi-recommendation > .route-mobility-kicker { color: #785722; }
+.route-taxi-recommendation h3 { margin: 0; font-size: 19px; font-weight: 800; line-height: 1.4; }
+.taxi-room-walk-reference { display: flex; align-items: center; gap: 6px; margin: 7px 0 0; color: var(--muted); font-size: 13px; }
+.taxi-room-walk-reference .icon { width: 15px; height: 15px; }
+.taxi-room-banner {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    min-height: 64px;
+    margin-top: 12px;
+    padding: 10px 12px;
+    border: 1px solid #e8d2a0;
+    border-radius: 12px;
+    background: #fff5db;
+    color: #614515;
+    text-align: left;
+}
+.taxi-room-banner:hover { background: #feebc1; border-color: #d5b16b; }
+.taxi-room-banner:focus-visible { outline-color: #8d6017; outline-offset: 2px; }
+.taxi-room-banner-icon { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 9px; background: #f8e2ad; }
+.taxi-room-banner-icon > .icon { width: 21px; height: 21px; }
+.taxi-room-banner > .icon { width: 16px; height: 16px; }
+.taxi-room-banner > strong { font-size: 14px; font-weight: 750; line-height: 1.45; overflow-wrap: anywhere; }
 .route-details { margin-top: 13px; border-top: 1px solid var(--line, #e2eae4); }
 .route-details > summary, .station-more > summary, .results-notes > summary { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 44px; padding: 12px 1px 0; list-style: none; color: var(--ink, #18352b); font-size: 11px; font-weight: 700; cursor: pointer; }
 .route-details > summary::-webkit-details-marker, .station-more > summary::-webkit-details-marker, .results-notes > summary::-webkit-details-marker { display: none; }

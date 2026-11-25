@@ -77,7 +77,7 @@
             const center = campusCenter[selectedCampus] || campusCenter.hallym;
             map = new naver.maps.Map(element, {
                 center: new naver.maps.LatLng(center.lat, center.lon),
-                zoom: 15,
+                zoom: center.zoom,
                 zoomControl: false
             });
             if (naver.maps.Event && typeof naver.maps.Event.addListener === 'function') {
@@ -388,6 +388,7 @@
         clearStationMarkers();
         if (!map || authenticationFailed || !campusCenter[campus]) return;
         const center = campusCenter[campus];
+        map.setZoom?.(center.zoom);
         map.panTo(new naver.maps.LatLng(center.lat, center.lon));
     }
 

@@ -110,6 +110,37 @@ class NationalTransitRepositoryTests(unittest.TestCase):
         self.assertEqual(best[2].move.start, 1)
         self.assertEqual(best[2].walk_seconds, 60)
 
+    def test_rail_to_bus_stations_keep_later_arrivals_and_use_exact_exits(self):
+        self.write_csv(
+            "rail_station_locations.csv",
+            ("source_record", "station_name", "address", "latitude", "longitude"),
+            [("1", "출발역", "강원도 시험로 1", 37.89, 127.72),
+             ("2", "가까운역", "경기도 시험로 2", 37.63, 127.20),
+             ("3", "다른역", "경기도 시험로 3", 37.59, 127.22)],
+        )
+        repository = self.trains([
+            ("101", "하행", "출발", "가까운", "08:12", "09:00", "화"),
+            ("103", "하행", "출발", "다른", "09:52", "10:20", "화"),
+        ])
+        destination = {"name": "버스 목적지", "lat": 37.61, "lon": 127.22}
+        stations = repository.transfer_stations(destination)
+        self.assertCountEqual([station["name"] for station in stations], ["가까운역", "다른역"])
+
+        def walking(_lat1, _lon1, start, _lat2, _lon2, end):
+            self.assertEqual((start, end), ("첫 건물", "출발역"))
+            return (6, 400)
+
+        requested = "2026-11-24T08:00+09:00"
+        arrivals = repository.plan_to_stations(self.campus_a, destination, requested, walking, stations)
+        self.assertEqual([(place["name"], journey["arrival_at"]) for place, journey in arrivals],
+                         [("가까운역", "2026-11-24T09:00:00+09:00"), ("다른역", "2026-11-24T10:20:00+09:00")])
+        for place, journey in arrivals:
+            self.assertEqual([leg["mode"] for leg in journey["segments"]], ["walk", "train"])
+            self.assertEqual(journey["segments"][-1]["to_place"], place)
+        limited = repository.plan_to_stations(self.campus_a, destination, requested, walking, stations,
+                                              latest_arrival="2026-11-24T10:19+09:00")
+        self.assertEqual(limited, arrivals[:1])
+
 
 class NationalLine8IntegrationTests(unittest.TestCase):
     @classmethod
@@ -159,6 +190,18 @@ class NationalLine8IntegrationTests(unittest.TestCase):
         journeys = self.repository.plan(self.dasan, self.chuncheon, "2026-11-24T09:32:00+09:00", lambda *_: (-1, -1))
         self.assertTrue(journeys)
         self.assertEqual(self.rides(journeys[0]), [("8호선", "다산역", "별내역"), ("경춘선", "별내역", "춘천역")])
+
+    def test_deokso_transfer_candidates_include_geumgok_on_the_gyeongchun_line(self):
+        destination = {"name": "덕소아이파크", "lat": 37.5871, "lon": 127.222}
+        stations = self.repository.transfer_stations(destination)
+        self.assertLessEqual(len(stations), 8)
+        self.assertEqual(stations, self.repository.transfer_stations(destination))
+        station, = (place for place in stations if place["name"] == "금곡역")
+        arrivals = self.repository.plan_to_stations(self.chuncheon, destination, "2026-11-24T09:32+09:00",
+                                                     lambda *_: (-1, -1), stations)
+        journey = next(journey for place, journey in arrivals if place == station)
+        self.assertEqual(self.rides(journey), [("경춘선", "춘천역", "금곡역")])
+        self.assertEqual(journey["segments"][-1]["to_place"], station)
 
     def test_station_bus_access_can_catch_a_train_the_walk_misses(self):
         origin = {"name": "학교 건물", "lat": 37.89, "lon": 127.737}

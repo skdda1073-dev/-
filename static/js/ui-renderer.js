@@ -2,6 +2,7 @@
 (function () {
     'use strict';
 
+    const TAXI_SUGGESTION_MINUTES = 10;
     const boundContainers = new WeakSet();
     let lastJourneyResponse = null;
     let validJourneyIndices = new Set(), selectedJourneyIndex = null;
@@ -50,6 +51,7 @@
         const message = text(value) || text(record(value).message);
         if (/PUBLIC_DATA_KEY/.test(message)) return '실시간 버스 도착정보를 확인할 수 없어 대기 시간과 전체 도착 시간은 표시하지 않아요.';
         if (/TMAP_APP_KEY|TMAP_KEY_MISSING/.test(message)) return '도보·장소 정보를 연결하지 못했어요. 잠시 후 다시 시도해 주세요.';
+        if (message.startsWith('MOTIS 경로를 확인하지 못했습니다.')) return '일부 경로를 확인하지 못해 확인된 운행편을 표시해요.';
         return message.replace(/CSV/g, '노선 데이터');
     }
 
@@ -157,10 +159,28 @@
             + (faster ? `<p class="route-walk-advice">걸어서 가는 편이 약 ${minutes(timing.duration - walk.minutes)} 빨라요. 가까운 스쿠터도 확인해 보세요.</p>` : '');
     }
 
+    function taxiRecommendation(walkMinutes, walkDistance, destination, lookupReason = '', warnings = []) {
+        if (walkMinutes === null || walkMinutes < TAXI_SUGGESTION_MINUTES) return '';
+        const name = text(record(destination).name).trim();
+        const walkLength = distance(walkDistance);
+        return `<article class="result-card route-taxi-recommendation${lookupReason ? ' route-walk-card' : ''}" aria-labelledby="taxi-recommendation-title">
+            <span class="route-mobility-kicker">이동 추천</span>
+            <h3 id="taxi-recommendation-title">택시를 타는 것을 추천해요</h3>
+            <p class="taxi-room-walk-reference">${icon('walk')}<span>도보 약 ${minutes(walkMinutes)}${walkLength ? ` · ${walkLength}` : ''}</span></p>
+            <button class="taxi-room-banner" type="button" data-destination="${escapeHtml(name)}">
+                <span class="taxi-room-banner-icon">${icon('taxi')}</span>
+                <strong>택시 모집방을 만드시겠어요?</strong>${icon('arrow-right')}</button>
+            ${routeWarnings([lookupReason, ...warnings], '경로 확인 안내')}</article>`;
+    }
+
     function mobilityRecommendation(response, lookupReason = '') {
         const recommendation = record(response.recommendation), walk = directWalk(response);
         const onlyTimedWalk = recommendation.preferred_mode === 'undetermined' && recommendation.reason === 'comparison_unknown';
         if (recommendation.status !== 'ok' || (recommendation.preferred_mode !== 'walk' && !onlyTimedWalk) || !walk) return '';
+        const warnings = Array.isArray(response.warnings) ? response.warnings : [];
+        const taxiWarnings = onlyTimedWalk ? ['버스 도착 시각을 확인하지 못했어요.', ...warnings] : warnings;
+        const taxi = taxiRecommendation(walk.minutes, walk.distance_m, response.destination, lookupReason, taxiWarnings);
+        if (taxi) return taxi;
         const transit = record(recommendation.transit), index = transit.candidate_index;
         const journey = Number.isInteger(index) && Array.isArray(response.journeys) ? record(response.journeys[index]) : {};
         const validLegs = Array.isArray(journey.legs) && journey.legs.length && journey.legs.every(leg => leg && typeof leg === 'object' && !Array.isArray(leg));
@@ -182,7 +202,7 @@
         const scooter = !onlyTimedWalk && record(recommendation.scooter).status === 'conditional';
         const title = onlyTimedWalk ? '확인된 도보 경로' : '도보 우선';
         const notes = [lookupReason, '이번 조회의 버스 후보와 전체 보행 경로를 기준으로 추천해요. 대기나 방향이 미확인이면 전체 시간을 비교하지 않아요.',
-            ...(Array.isArray(response.warnings) ? response.warnings : [])];
+            ...warnings];
         return `<article class="result-card route-mobility-recommendation${lookupReason ? ' route-walk-card' : ''}" aria-labelledby="mobility-recommendation-title">
             <div class="route-mobility-heading"><span class="route-mobility-icon">${icon('walk')}</span><div><span class="route-mobility-kicker">이동 추천</span><h3 id="mobility-recommendation-title">${title}${scooter ? ' · 가까운 킥보드도 대안' : ''}</h3></div></div>
             <div class="route-mobility-times"><div class="route-mobility-time route-mobility-time--preferred"><span>전체 도보</span><strong>약 ${minutes(walk.minutes)}</strong><small>${escapeHtml(distance(walk.distance_m))}</small></div>
@@ -195,15 +215,19 @@
 
     function walkingAlternative(response, reason) {
         const walk = directWalk(response);
-        if (!walk) return '';
+        if (!walk) return null;
+        const warnings = Array.isArray(response.warnings) ? response.warnings : [];
+        const taxi = taxiRecommendation(walk.minutes, walk.distance_m, response.destination, reason, warnings);
+        if (taxi) return { heading: '이동 추천', markup: taxi };
         const recommendation = mobilityRecommendation(response, reason);
-        if (recommendation) return recommendation;
+        if (recommendation) return { heading: '도보 대안', markup: recommendation };
         const origin = text(record(response.origin).name) || '출발지', destination = text(record(response.destination).name) || '목적지';
-        return `<article class="result-card route-walk-card"><span class="route-rank">도보 대안</span><h3>목적지까지 걸어가기</h3>
+        const markup = `<article class="result-card route-walk-card"><span class="route-rank">도보 대안</span><h3>목적지까지 걸어가기</h3>
             <p class="route-walk-endpoints">${escapeHtml(origin)} → ${escapeHtml(destination)}</p>${directWalkMarkup(response)}
             <p class="route-walk-distance">${escapeHtml(distance(walk.distance_m))} · 보행 경로 기준</p>
             <p class="route-walk-note">이번 조회에서 버스 경로는 확인하지 못했어요.</p>
-            ${routeWarnings([reason, ...(Array.isArray(response.warnings) ? response.warnings : [])], '버스 조회 안내')}</article>`;
+            ${routeWarnings([reason, ...warnings], '버스 조회 안내')}</article>`;
+        return { heading: '도보 대안', markup };
     }
 
     function timeHeadline(timing) {
@@ -371,7 +395,8 @@
             const mode = text(leg.mode);
             const presentation = travelModes[mode];
             const [baseLabel, symbol, tone] = Array.isArray(presentation) ? presentation : ['이동', 'route', 'wait'];
-            let label = mode === 'wait' && leg.route_name === '출발까지 대기' ? leg.route_name : baseLabel;
+            const headwayEstimate = leg.ride_time_basis === 'published_headway_estimate';
+            let label = mode === 'wait' && (leg.route_name === '출발까지 대기' || headwayEstimate) ? leg.route_name : baseLabel;
             if (tone === 'walk' && mode !== 'transfer_walk' && segments.length > 1) {
                 label = index === firstMovement ? '출발 도보' : index === segments.length - 1 ? '도착 도보' : '환승 도보';
             }
@@ -383,14 +408,15 @@
             const fare = charge === null ? '요금 미확인' : Math.round(charge).toLocaleString('ko-KR') + '원';
             const depart = arrivalLabel(leg.departure_at, journey.departure_at);
             const arrive = arrivalLabel(leg.arrival_at, journey.departure_at);
-            const sourceName = text(leg.source) || text(record(leg.source).name);
+            const sourceName = (text(leg.source) || text(record(leg.source).name)).trim();
+            const sourceLabel = sourceName === 'MOTIS' ? '' : sourceName;
             const rideTimeSource = leg.ride_time_basis === 'published_segment_estimate' ? text(leg.ride_time_source) : '';
-            const source = [sourceName, leg.realtime === true ? (sourceName === 'TAGO' ? '실시간 출발 반영' : '실시간 운행 정보 반영') : '', rideTimeSource]
+            const source = [sourceLabel, leg.realtime === true ? (sourceName === 'TAGO' ? '실시간 출발 반영' : '실시간 운행 정보 반영') : '', rideTimeSource]
                 .filter(Boolean).join(' · ');
             const endpoints = origin === destination ? escapeHtml(origin)
                 : `${escapeHtml(origin)} <span class="national-endpoint-arrow" aria-label="에서">→</span> ${escapeHtml(destination)}`;
             const timed = depart || arrive
-                ? `<p class="national-segment-clock">${escapeHtml([depart, arrive].filter(Boolean).join(' → '))}</p>` : '';
+                ? `<p class="national-segment-clock">${headwayEstimate ? '예상 ' : ''}${escapeHtml([depart, arrive].filter(Boolean).join(' → '))}</p>` : '';
             const walkDistance = tone === 'walk' ? distance(leg.distance_m) : '';
             const costs = tone === 'walk' ? [duration, walkDistance].filter(Boolean).join(' · ')
                 : tone === 'wait' ? duration : `${duration} · ${fare}`;
@@ -422,18 +448,21 @@
         return routes.length > 4 ? `${summary} 외 ${routes.length - 4}개` : summary;
     }
 
-    function nationalCard(journey, index, mapIndex, response) {
+    function nationalCard(journey, index, mapIndex, response, walkingReference = false) {
         const duration = wholeDuration(journey.total_min);
         const arrival = duration && journey.complete !== false ? arrivalLabel(journey.arrival_at, journey.departure_at || response.departure_at) : '';
         const complete = journey.complete !== false && Boolean(duration && arrival);
         const first = index === 0;
-        const priority = complete ? (first && response.status === 'ok' ? '추천 경로' : '통학 경로') : '확인된 구간';
+        const priority = walkingReference ? '도보 참고 경로'
+            : complete ? (first && response.status === 'ok' ? '추천 경로' : '통학 경로') : '확인된 구간';
         const transferCount = number(journey.transfer_count);
         const totalFare = number(journey.fare_won);
         const realtime = journey.segments.some(leg => leg.realtime === true);
+        const headway = complete && journey.segments.some(leg => leg.ride_time_basis === 'published_headway_estimate');
         const publishedBus = complete && journey.segments.some(leg => leg.ride_time_basis === 'published_segment_estimate');
         const scheduled = complete && journey.segments.some(leg => ['subway', 'train', 'intercity_bus', 'express_bus', 'shuttle'].includes(leg.mode));
-        const timingSource = realtime ? '일부 실시간 반영' : publishedBus ? '공개 시각표 기반 추정' : scheduled ? '시간표 기준' : '';
+        const timingSource = headway ? '버스 배차 간격 기반 추정'
+            : realtime ? '일부 실시간 반영' : publishedBus ? '공개 시각표 기반 추정' : scheduled ? '시간표 기준' : '';
         const requestedStart = first ? scheduleTime(response.departure_at) : null;
         const departure = requestedStart ? `${kstCalendar.format(requestedStart)} ${kstClock.format(requestedStart)} 출발 기준` : '';
         const meta = [departure, transferCount === null ? '' : transferCount === 0 ? '환승 없음' : `환승 ${transferCount}회`,
@@ -475,12 +504,16 @@
         lastJourneyResponse = payload;
         validJourneyIndices = new Set(candidates.map(item => item.index));
         setResultStatus(payload.status === 'ok' ? 'ready' : 'partial');
-        const [primary, ...alternatives] = candidates.map((item, index) => nationalCard(item.journey, index, item.index, payload));
+        const best = candidates[0].journey;
+        const walkOnly = best.complete === true && best.segments.every(leg => travelModes[leg.mode]?.[2] === 'walk');
+        const taxi = walkOnly ? taxiRecommendation(number(best.total_min), null, payload.destination) : '';
+        const [primary, ...alternatives] = candidates.map((item, index) =>
+            nationalCard(item.journey, index, item.index, payload, index === 0 && Boolean(taxi)));
         const moreRoutes = alternatives.length ? `<details class="national-alternatives">
             <summary><span>다른 경로 ${alternatives.length}개</span>${icon('chevron-down')}</summary>
             ${alternatives.join('')}
         </details>` : '';
-        container.innerHTML = primary + moreRoutes + resultsNotes(payload.warnings);
+        container.innerHTML = taxi + primary + moreRoutes + resultsNotes(payload.warnings);
         selectJourney(candidates[0].index, { present: options.present });
     }
 
@@ -556,9 +589,14 @@
         if (detail) detail.hidden = true;
         if (content) content.replaceChildren();
     }
-    function bindMapActions(container) {
+    function bindResultActions(container) {
         if (boundContainers.has(container) || typeof container.addEventListener !== 'function') return;
         container.addEventListener('click', event => {
+            const taxi = event.target?.closest?.('.taxi-room-banner');
+            if (taxi && container.contains(taxi)) {
+                window.AppModules.demo?.openCreate(taxi.dataset.destination);
+                return;
+            }
             if (event.target?.closest?.('.route-cautions, a')) return;
             const target = event.target && typeof event.target.closest === 'function' ? event.target.closest('[data-journey-index]') : null;
             if (!target || !container.contains(target) || !lastJourneyResponse) return;
@@ -572,7 +610,7 @@
     function renderResults(data, options = {}) {
         const container = document.getElementById('result-container');
         if (!container) return;
-        bindMapActions(container);
+        bindResultActions(container);
         const payload = record(data);
         const loading = document.getElementById('loading');
         container.hidden = false;
@@ -595,9 +633,9 @@
         if (payload.error) {
             const alternative = walkingAlternative(payload, payload.error);
             setResultStatus(alternative ? 'partial' : 'error');
-            setResultsState(alternative ? '도보 대안' : '다시 확인해 주세요', alternative ? 1 : null);
+            setResultsState(alternative?.heading || '다시 확인해 주세요', alternative ? 1 : null);
             container.innerHTML = alternative
-                ? alternative + sourceNotes(payload.source)
+                ? alternative.markup + sourceNotes(payload.source)
                 : stateCard('error', '정보를 불러오지 못했어요', friendlyMessage(payload.error) || '잠시 후 다시 시도해 주세요.') + resultsNotes(payload.warnings) + sourceNotes(payload.source);
             return;
         }
@@ -618,9 +656,9 @@
             if (!candidates.length) {
                 const alternative = walkingAlternative(payload, '검색 범위 안에서 연결 가능한 버스 경로를 확인하지 못했어요.');
                 setResultStatus(alternative ? 'partial' : 'empty');
-                if (alternative) setResultsState('도보 대안', 1);
+                if (alternative) setResultsState(alternative.heading, 1);
                 container.innerHTML = alternative
-                    ? alternative + sourceNotes(payload.source)
+                    ? alternative.markup + sourceNotes(payload.source)
                     : stateCard('empty', '검색 범위 안에서 경로를 찾지 못했어요', '출발지나 목적지를 바꿔 다시 찾아보세요. 가까운 정류장도 확인할 수 있어요.') + resultsNotes(payload.warnings) + sourceNotes(payload.source);
                 return;
             }

@@ -24,6 +24,10 @@ for (const width of [360, 390, 1440]) test(`${width}px ordinary taxi tab queries
         assert.equal(await page.locator('#taxi-section').isVisible(), true);
         assert.equal(await page.locator('#taxi-room-actions').isVisible(), false);
         assert.equal(await page.locator('#demo-party-form').isVisible(), true);
+        const panel = page.locator('#transport-panel-taxi');
+        assert.equal(await panel.getByRole('heading', { name: '택시 모집방 만들기' }).isVisible(), true);
+        assert.doesNotMatch(await panel.innerText(), /TMAP|출발·도착 수정/);
+        assert.equal(await panel.locator('section').first().getAttribute('aria-labelledby'), 'demo-party-heading');
         assert.equal(await page.locator('#ride-room-section').count(), 0);
         assert.equal(await page.locator('script[src$="/taxi-controller.js"]').count(), 1);
         assert.equal(app.taxiRequests.length, 0); assert.equal(app.roomRequests.length, 0);

@@ -575,6 +575,8 @@ test('390px initial layout, campus data, keyboard destination selection and clea
     try {
         const { page } = app;
         await page.locator('#map-status').waitFor({ state: 'hidden' });
+        assert.deepEqual(await page.evaluate(() => [map.getCenter().lat(), map.getCenter().lng(), map.getZoom()]),
+            [37.88665, 127.7391, 16], 'The first map view is centered on Hallym University');
         await noOverflow(page);
         assert.equal(await page.locator('#journey-scope-national').isVisible(), false, 'Optional controls start closed');
         assert.equal(await page.getByRole('button', { name: '지금 출발' }).getAttribute('aria-pressed'), 'true');
@@ -627,6 +629,69 @@ test('building journey request preserves campus and destination; known total ren
     } finally { await app.close(); }
 });
 
+test('walking advice shows taxi recruitment at ten minutes and opens the existing form', async browser => {
+    const app = await openApp(browser, { routeHandler: (route, payload, count) => {
+        const data = journeyFixture(payload);
+        const walkMinutes = [9.75, 36, 10][count - 1];
+        data.direct_walk = { status: 'ok', minutes: walkMinutes, distance_m: 820 };
+        data.recommendation = { status: 'ok', preferred_mode: count === 2 ? 'transit' : 'walk',
+            reason: count === 2 ? 'transit_faster' : 'stop_walk_overhead' };
+        return route.fulfill({ json: data });
+    } });
+    try {
+        const { page } = app;
+        await chooseBuilding(page); await selectDestination(page);
+        const banner = page.locator('.taxi-room-banner');
+        await page.locator('#route-submit').click();
+        await resultContains(page, '도보 우선');
+        assert.equal(await banner.count(), 0, 'Rounding up a walk shorter than ten minutes does not show the banner');
+        await page.locator('#results-edit').click(); await page.locator('#route-submit').click();
+        await resultContains(page, '전체 도보 약 36분');
+        assert.equal(await banner.count(), 0, 'A transit recommendation does not show the banner');
+        await page.locator('#results-edit').click(); await page.locator('#route-submit').click();
+        await banner.waitFor({ state: 'visible' });
+        const suggestion = page.locator('#result-container > article').first();
+        assert.match(await suggestion.innerText(), /택시를 타는 것을 추천해요[\s\S]*도보 약 10분/);
+        assert.match(await banner.innerText(), /택시 모집방을 만드시겠어요/);
+        await banner.click();
+        assert.equal(await page.locator('#demo-party-form').isVisible(), true);
+        assert.equal(await page.locator('#demo-destination').inputValue(), DESTINATION.name);
+        assert.equal(await page.evaluate(() => document.activeElement.id), 'demo-title');
+        assert.equal(await page.locator('#workspace-panel').getAttribute('data-position'), 'full');
+        await page.locator('#demo-destination').fill('기존 작성 중인 목적지');
+        await selectTool(page, 'journey');
+        await page.locator('#results-show').click(); await banner.click();
+        assert.equal(await page.locator('#demo-destination').inputValue(), '기존 작성 중인 목적지');
+        assert.equal(app.taxiRequests.length + app.roomRequests.length, 0, 'The banner only opens the form');
+    } finally { await app.close(); }
+});
+
+test('scheduled walking-only results also offer the taxi room form', async browser => {
+    const app = await openApp(browser, { viewport: { width: 1440, height: 900 }, fixedNow: '2030-10-21T01:00:00Z' });
+    try {
+        const { page } = app;
+        await page.route('**/api/journeys', route => {
+            const request = route.request().postDataJSON();
+            const origin = { ...request.origin, lat: 37.88665, lon: 127.7391 };
+            const destination = request.destination;
+            const departure_at = '2030-10-21T14:00:00+09:00', arrival_at = '2030-10-21T14:12:00+09:00';
+            const walk = { mode: 'walk', from_place: origin, to_place: destination,
+                departure_at, arrival_at, duration_min: 12 };
+            return route.fulfill({ json: { mode: 'national_journeys', status: 'ok', origin, destination, departure_at,
+                journeys: [{ complete: true, departure_at, arrival_at, total_min: 12, transfer_count: 0, segments: [walk] }] } });
+        });
+        await chooseBuilding(page); await selectDestination(page);
+        await page.locator('#journey-depart-later').click();
+        await page.locator('#national-departure').fill('2030-10-21T14:00');
+        await page.locator('#route-submit').click();
+        await page.locator('.national-itinerary--primary').getByText('도보', { exact: true }).waitFor();
+        assert.equal(await page.locator('.national-itinerary--primary .national-itinerary-kicker').innerText(), '도보 참고 경로');
+        assert.match(await page.locator('#result-container > article').first().innerText(), /택시를 타는 것을 추천해요/);
+        await page.locator('.taxi-room-banner').click();
+        assert.equal(await page.locator('#demo-destination').inputValue(), DESTINATION.name);
+    } finally { await app.close(); }
+});
+
 test('nationwide search shows a compact recommendation with walking, booking and alternatives on demand', async browser => {
     const busan = { name: '부산역', sub: '부산광역시 동구', lat: 35.115, lon: 129.041 };
     const app = await openApp(browser, { timezoneId: 'America/New_York',
@@ -644,7 +709,7 @@ test('nationwide search shows a compact recommendation with walking, booking and
             const depart = '2030-10-21T20:00:00+09:00', arrive = '2030-10-22T01:42:00+09:00';
             const primary = { departure_at: depart, arrival_at: arrive, total_min: 342, fare_won: null, transfer_count: 0, source: 'MOTIS',
                 segments: [
-                    { mode: 'walk', from_place: origin, to_place: station, duration_min: 25,
+                    { mode: 'walk', from_place: origin, to_place: station, duration_min: 25, source: 'MOTIS',
                         departure_at: depart, arrival_at: '2030-10-21T20:25:00+09:00' },
                     { mode: 'train', service_name: 'KTX', route_name: '경부선', from_place: station, to_place: busan, duration_min: 317,
                         departure_at: '2030-10-21T20:25:00+09:00', arrival_at: arrive,
@@ -655,6 +720,7 @@ test('nationwide search shows a compact recommendation with walking, booking and
                 segments: [primary.segments[0], { ...primary.segments[1], service_name: 'ITX-마음', duration_min: 337,
                     arrival_at: '2030-10-22T02:02:00+09:00', realtime: false }] };
             return route.fulfill({ json: { mode: 'national_journeys', status: 'ok', origin, destination: busan,
+                warnings: ['MOTIS 경로를 확인하지 못했습니다. 다른 운행 자료로 확인한 후보를 표시합니다.'],
                 journeys: [primary, null, alternative] } });
         });
         const building = await chooseBuilding(page);
@@ -670,6 +736,9 @@ test('nationwide search shows a compact recommendation with walking, booking and
         assert.match(await itinerary.innerText(), /일부 실시간 반영/);
         assert.equal(await itinerary.locator('.national-segment').count(), 0);
         assert.equal(await page.locator('.national-alternatives .route-select').isVisible(), false);
+        await page.locator('.results-notes > summary').click();
+        assert.match(await page.locator('.results-notes').innerText(), /일부 경로를 확인하지 못해/);
+        assert.doesNotMatch(await page.locator('.results-notes').innerText(), /MOTIS/);
         await screenshot(page, 'national-journey-preview.png');
         await itinerary.getByRole('button', { name: '경로 자세히 보기' }).click();
         await page.locator('#route-detail').waitFor({ state: 'visible' });
@@ -679,6 +748,7 @@ test('nationwide search shows a compact recommendation with walking, booking and
         assert.ok((await firstStep.innerText()).includes(building));
         assert.match(await detail.innerText(), /KTX 경부선[\s\S]*부산역/);
         assert.match(await detail.innerText(), /실시간 운행 정보 반영/);
+        assert.doesNotMatch(await detail.innerText(), /MOTIS/);
         assert.equal(await detail.getByRole('link', { name: /코레일 예매/ }).getAttribute('href'), 'https://www.korail.com/ticket');
         await page.locator('#route-detail-close').click();
         await page.locator('.national-alternatives > summary').press('Enter');

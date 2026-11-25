@@ -31,6 +31,8 @@ from services.national_journey_service import (
     IntercityJourneyProvider, NationalJourneyService, RegionalBusJourneyProvider, journey_departure, journey_point,
 )
 from services.national_transit_repository import NationalTransitRepository
+from services.gyeonggi_bus_arrivals import GyeonggiBusArrivals
+from services.rail_bus_transfer import RailBusTransfers
 from services.commute_advice_service import CommuteAdviceService
 from services.commute_advice_routes import create_commute_advice_blueprint
 
@@ -112,6 +114,10 @@ national_bus_repository = NationalBusRepository(national_data_dir)
 regional_bus_journey_provider = RegionalBusJourneyProvider(
     national_bus_repository, walking_service.get_precise_time, local_transit=transit_service,
 )
+rail_bus_transfers = RailBusTransfers(
+    national_data_dir, settings.bus_data_key, walking_service.get_precise_time,
+    gyeonggi_arrivals=GyeonggiBusArrivals(settings.gbis_api_key) if settings.gbis_api_key else None,
+)
 national_journey_service = NationalJourneyService(
     national_transit_repository, walking_service.get_precise_time,
     intercity=IntercityJourneyProvider(
@@ -120,6 +126,7 @@ national_journey_service = NationalJourneyService(
         regional_bus=regional_bus_journey_provider.connections, motis=motis_journey_provider,
     ),
     bus_repository=national_bus_repository, motis=motis_journey_provider, regional_bus=regional_bus_journey_provider,
+    rail_bus_transfers=rail_bus_transfers,
 )
 
 # Independent mobility APIs preserve the existing transit response contract.
