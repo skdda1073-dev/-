@@ -25,6 +25,7 @@
         }
         const element = document.getElementById('map');
         if (element) element.classList.toggle('is-ready', !visible);
+        document.querySelectorAll('[data-map-zoom]').forEach(button => { button.disabled = visible; });
     }
 
     function markReady() {
@@ -399,8 +400,18 @@
         }
     }
 
+    function init() {
+        document.querySelectorAll('[data-map-zoom]').forEach(button => {
+            button.addEventListener('click', () => {
+                if (!mapReady || typeof map?.getZoom !== 'function' || typeof map.setZoom !== 'function') return;
+                map.setZoom(map.getZoom() + Number(button.dataset.mapZoom));
+            });
+        });
+        return initMap();
+    }
+
     window.AppModules.map = {
-        init: initMap, initMap, panToCampus, clearStationMarkers, drawStationMarkersOnMap,
+        init, initMap, panToCampus, clearStationMarkers, drawStationMarkersOnMap,
         showJourneyOnMap, recenterPosition, resizeMap, setSelectionPoints, showMapJourney, clearMapJourney,
         isReady: function() { return mapReady; }
     };

@@ -15,6 +15,8 @@
 
     function renderSelection() {
         const ready = modules().map?.isReady() === true;
+        const shortcut = byId('map-point-shortcut');
+        if (shortcut) shortcut.disabled = !ready;
         ['origin', 'destination'].forEach(kind => {
             const point = kind === 'origin' ? origin : destination;
             const button = byId('map-pick-' + kind), label = byId('map-' + kind + '-label');
@@ -192,6 +194,9 @@
         initialized = true;
         initWidgetMovement();
         ['origin', 'destination'].forEach(kind => byId('map-pick-' + kind).addEventListener('click', () => armSelection(kind)));
+        byId('map-point-shortcut')?.addEventListener('click', () => {
+            if (armSelection('origin')) byId('map-pick-origin').focus({ preventScroll: true });
+        });
         byId('map-journey-reset').addEventListener('click', () => {
             modules().api?.cancelPendingRequests({ keepMapJourney: true });
             reset();

@@ -29,6 +29,8 @@ MAX_TRANSFERS = 6
 LOCAL_MODE = "subway"
 TRAIN_MODE = "train"
 BOARDING_SECONDS = {LOCAL_MODE: 60, TRAIN_MODE: 300}
+CHUNCHEON_TRAIN_IDS = ("NAT140873", "NAT140840")
+ITX_SEOUL_TRAIN_IDS = ("NAT130126", "NAT010032")  # 청량리, 용산
 
 
 @dataclass(frozen=True, slots=True)
@@ -97,6 +99,11 @@ class _Label:
     rides: int
     move: _Walk | _Access | _Ride
     previous: "_Label | None" = None
+    walk_seconds: int = 0
+
+    @property
+    def preference(self):
+        return self.rides, self.walk_seconds
 
 
 def _rows(path):
@@ -385,6 +392,7 @@ def _transfer_links(stations, by_name):
 class _Timetable:
     def __init__(self, data):
         self.stations, metro, rail_by_name, rail_by_id, by_name, crosswalk = _load_stations(data)
+        self.rail_by_id = rail_by_id
         self.transfers = _transfer_links(self.stations, by_name)
         self.trips = tuple(_load_metro_trips(data, metro, crosswalk)) + tuple(
             _load_rail_trips(data, rail_by_name, rail_by_id)
@@ -404,7 +412,7 @@ class _Timetable:
         self.connections = tuple(sorted(connections))
         self.routed = frozenset(routed)
         self.chuncheon_gateways = {}
-        for station_id in ("NAT140873", "NAT140840"):
+        for station_id in CHUNCHEON_TRAIN_IDS:
             if not (key := rail_by_id.get(station_id)):
                 continue
             hub = self.stations[key]
@@ -438,6 +446,28 @@ class _Timetable:
         last_day = end // DAY
         yield from heapq.merge(*(self._day_connections(service_date + timedelta(days=day), day * DAY, start, end)
                                  for day in range(first_day, last_day + 1)))
+
+
+class _TimetableWithITX:
+    """Merge confirmed departures for the queried service days into the rail graph."""
+
+    def __init__(self, timetable, trips):
+        self.base = timetable
+        self.stations = timetable.stations
+        self.transfers = timetable.transfers
+        self.chuncheon_gateways = timetable.chuncheon_gateways
+        self.routed = timetable.routed | {stop.station for trip in trips for stop in trip.stops}
+        self.trips = (*timetable.trips, *trips)
+        self.itx = tuple(enumerate(trips, start=len(timetable.trips)))
+
+    def connections_from(self, service_date, start, end):
+        dated = []
+        for index, trip in self.itx:
+            shift = (trip.only_on - service_date).days * DAY
+            departure = trip.stops[0].departure + shift
+            if start <= departure <= end:
+                dated.append((departure, index, 0, trip.stops[1].arrival + shift, shift))
+        yield from heapq.merge(self.base.connections_from(service_date, start, end), sorted(dated))
 
 
 def _walking(walking_time, start, end):
@@ -513,16 +543,16 @@ def _offer(timetable, labels, first):
     while pending:
         new = pending.popleft()
         station_labels = labels[new.station]
-        if any(old.time <= new.time and old.rides <= new.rides for old in station_labels):
+        if any(old.time <= new.time and old.preference <= new.preference for old in station_labels):
             continue
-        # A later arrival with fewer boardings can still catch the same train.
-        station_labels[:] = [old for old in station_labels if old.time < new.time or old.rides < new.rides]
+        # A later passenger with fewer boardings or less walking may catch the same service.
+        station_labels[:] = [old for old in station_labels if old.time < new.time or old.preference < new.preference]
         station_labels.append(new)
         source = timetable.stations[new.station]
         for key, allowance in timetable.transfers.get(new.station, ()):
             target = timetable.stations[key]
             walk = _Walk(source.place(), target.place(), allowance, None, True)
-            pending.append(_Label(new.time + allowance, key, new.rides, walk, new))
+            pending.append(_Label(new.time + allowance, key, new.rides, walk, new, new.walk_seconds + allowance))
 
 
 def _search(timetable, service_date, starting_at, seeds, exits):
@@ -541,12 +571,12 @@ def _search(timetable, service_date, starting_at, seeds, exits):
         riding = boarded.get(instance)
         if riding is not None and riding[2] != position:
             riding = None
-        if riding is None or riding[0].rides:
-            ride_limit = MAX_TRANSFERS if riding is None else riding[0].rides - 1
+        if riding is None or riding[0].preference != (0, 0):
             boarding_deadline = departure - BOARDING_SECONDS[trip.mode]
             here = min((label for label in labels.get(start.station, ())
-                        if label.rides <= ride_limit and label.time <= boarding_deadline),
-                       key=lambda label: (label.rides, label.time), default=None)
+                        if label.rides <= MAX_TRANSFERS and label.time <= boarding_deadline
+                        and (riding is None or label.preference < riding[0].preference)),
+                       key=lambda label: (label.preference, label.time), default=None)
             if here is not None:
                 riding = (here, position, position)
         if riding is None:
@@ -554,7 +584,7 @@ def _search(timetable, service_date, starting_at, seeds, exits):
         previous, boarding_position, _ = riding
         boarded[instance] = (previous, boarding_position, position + 1)
         label = _Label(arrival, end.station, previous.rides + 1,
-                       _Ride(trip_id, boarding_position, position + 1, shift), previous)
+                       _Ride(trip_id, boarding_position, position + 1, shift), previous, previous.walk_seconds)
         _offer(timetable, labels, label)
         if end.station in exits:
             end_at = arrival + exits[end.station].seconds
@@ -562,7 +592,7 @@ def _search(timetable, service_date, starting_at, seeds, exits):
     arrivals = ((label.time + exits[key].seconds, key, label, exits[key])
                 for key, station_labels in labels.items() if key in exits
                 for label in station_labels if label.rides)
-    return sorted(arrivals, key=lambda option: (option[0], option[2].rides, option[1]))
+    return sorted(arrivals, key=lambda option: (option[0], option[2].rides, option[2].walk_seconds + option[3].seconds, option[1]))
 
 
 def _iso(midnight, seconds):
@@ -619,10 +649,11 @@ def _render(timetable, initial, end_time, label, egress):
 class NationalTransitRepository:
     """Connect published rail service to walking and time-checked station access."""
 
-    def __init__(self, data_dir):
+    def __init__(self, data_dir, *, itx_schedule=None):
         self._normalized_path = Path(data_dir) / "normalized"
         self._lock = RLock()
         self._cached = None
+        self._itx_schedule = itx_schedule
 
     def _timetable(self):
         with self._lock:
@@ -634,6 +665,41 @@ class NationalTransitRepository:
         timetable = self._timetable()
         return [hub.place() for hub, _ in timetable.chuncheon_gateways.values()]
 
+    def _with_itx(self, timetable, origin, destination, departure_at):
+        if self._itx_schedule is None:
+            return timetable
+
+        def near_chuncheon(place):
+            return any(_distance(place["lat"], place["lon"], station.lat, station.lon) < 14000
+                       for station, _ in timetable.chuncheon_gateways.values())
+
+        start_local, end_local = near_chuncheon(origin), near_chuncheon(destination)
+        if start_local == end_local:
+            return timetable
+        starts, ends = (CHUNCHEON_TRAIN_IDS, ITX_SEOUL_TRAIN_IDS) if start_local else (ITX_SEOUL_TRAIN_IDS, CHUNCHEON_TRAIN_IDS)
+        dates = [departure_at.date()]
+        if departure_at.hour >= 21:
+            dates.append(dates[0] + timedelta(days=1))
+        queries = [(start, end, day) for day in dates for start in starts for end in ends
+                   if start in timetable.rail_by_id and end in timetable.rail_by_id]
+
+        def rides(query):
+            start, end, day = query
+            midnight = datetime.combine(day, time.min, KST)
+            result = []
+            for row in self._itx_schedule(start, end, day):
+                board = int((row["departure_at"] - midnight).total_seconds())
+                alight = int((row["arrival_at"] - midnight).total_seconds())
+                stops = (_StopTime(timetable.rail_by_id[start], None, board),
+                         _StopTime(timetable.rail_by_id[end], alight, None))
+                result.append(_Trip(TRAIN_MODE, "ITX-청춘", f"ITX-청춘 {row['train_number']}",
+                                    "TAGO 날짜 지정 열차 시간표", "korail", stops, EVERY_DAY, day, day, row["fare_won"]))
+            return result
+
+        with ThreadPoolExecutor(max_workers=4) as executor:
+            trips = [trip for itineraries in executor.map(rides, queries) for trip in itineraries]
+        return _TimetableWithITX(timetable, trips) if trips else timetable
+
     def plan(self, origin, destination, departure_at, walking_time, *, access_routes=()):
         if isinstance(departure_at, str):
             departure_at = datetime.fromisoformat(departure_at)
@@ -643,14 +709,14 @@ class NationalTransitRepository:
                 return []
         origin = {**origin, "lat": float(origin["lat"]), "lon": float(origin["lon"])}
         destination = {**destination, "lat": float(destination["lat"]), "lon": float(destination["lon"])}
-        timetable = self._timetable()
+        timetable = self._with_itx(self._timetable(), origin, destination, departure_at)
         walks_in, exits = _walk_access(timetable, walking_time, origin, destination)
         if not exits:
             return []
 
         midnight = datetime.combine(departure_at.date(), time.min, KST)
         started = ceil((departure_at - midnight).total_seconds())
-        seeds = [_Label(started + walk.seconds, station, 0, walk) for station, walk in walks_in.items()]
+        seeds = [_Label(started + walk.seconds, station, 0, walk, walk_seconds=walk.seconds) for station, walk in walks_in.items()]
         for route in access_routes:
             gateway, arrival = route["gateway"], route["arrival_at"]
             match = timetable.chuncheon_gateways.get(gateway["name"])
@@ -662,7 +728,8 @@ class NationalTransitRepository:
             arrived = ceil((arrival - midnight).total_seconds())
             access = _Access(tuple(route["segments"]), tuple(route.get("warnings", ())))
             boardings = sum(segment["mode"] in {"bus", "shuttle"} for segment in access.segments)
-            seeds.extend(_Label(arrived, station, boardings, access) for station in stations)
+            walking = sum((_number(segment.get("duration_min")) or 0) * 60 for segment in access.segments if segment["mode"] == "walk")
+            seeds.extend(_Label(arrived, station, boardings, access, walk_seconds=ceil(walking)) for station in stations)
         if not seeds:
             return []
 

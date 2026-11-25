@@ -72,10 +72,9 @@ function harness({ width = 1440, seen = false, storageFails = false, introFails 
         focus() { for (let item = this; item; item = item.parentElement) if (item.hidden || item.inert) return; document.activeElement = this; }
         getBoundingClientRect() {
             const shell = ids.get('app-shell');
-            const rail = shell?.classList.contains('menu-expanded') && width >= 1280 ? 208 : 72;
-            const tool = shell?.classList.contains('tool-closed') || (shell?.classList.contains('search-closed') && !shell?.classList.contains('results-replace')) ? 0 : 340;
-            const result = shell?.classList.contains('results-visible') && !shell?.classList.contains('results-replace') ? 360 : 0;
-            const stage = { left: width < 800 ? 0 : rail + tool, top: 64, width: mapSize?.width ?? (width < 800 ? width : width - rail - tool - result), height: mapSize?.height ?? (width < 800 ? 288 : 700) };
+            const rail = shell?.classList.contains('menu-expanded') && width >= 800 ? 196 : 72;
+            const panel = shell?.classList.contains('tool-closed') ? 0 : Math.min(408, Math.max(344, width * .28));
+            const stage = { left: width < 800 ? 0 : rail + panel, top: 64, width: mapSize?.width ?? (width < 800 ? width : width - rail - panel), height: mapSize?.height ?? (width < 800 ? 288 : 700) };
             stage.right = stage.left + stage.width; stage.bottom = stage.top + stage.height;
             if (this.id === 'map-stage' || this.id === 'map') return stage;
             if (this.id === 'route-detail' && this.parentElement?.id === 'route-detail-map') {
@@ -627,9 +626,7 @@ test('next-stop names are escaped and blank next stops preserve legacy direction
 test('wide, narrow and mobile result transitions preserve the query and selection', async () => {
     for (const width of [360, 390, 1024, 1440]) {
         const app = harness({ width }); app.loadRouting(() => routeFixture()); await app.context.findRoutes();
-        const replace = app.el('app-shell').classList.contains('results-replace');
-        assert.equal(replace, width < 1280);
-        assert.equal(app.el('planner-body').hidden, width < 1280);
+        assert.equal(app.el('planner-body').hidden, true);
         app.shell.editSearch();
         assert.equal(app.el('results-section').hidden, true); assert.equal(app.el('results-show').hidden, false);
         assert.equal(app.el('planner-body').hidden, false);
@@ -1615,6 +1612,24 @@ test('walking advice never confirms a faster bus comparison when waiting or live
         assert.doesNotMatch(container.querySelector('.route-card').textContent, /걸어서 가는 편이.*빨라요/);
         assert.equal(routing.taxiRequests.length, 0);
     }
+});
+
+test('a measured walk leads when every bus has an unknown arrival without a faster-time claim', async () => {
+    const data = mapMobilityRecommendationFixture();
+    data.direct_walk.minutes = 17.75;
+    data.journeys[0].wait_min = null;
+    data.journeys[0].total_min = null;
+    Object.assign(data.recommendation, { preferred_mode: 'undetermined', reason: 'comparison_unknown', time_saved_min: null });
+    data.recommendation.transit.total_min = null;
+    const app = harness(), routing = app.loadMapJourney({ journey: () => data });
+    await routing.pickPair(); await flush();
+    const container = app.el('result-container');
+    const walk = container.querySelector('.route-mobility-recommendation');
+    const bus = container.querySelector('.route-card');
+    assert.ok(container.children.indexOf(walk) < container.children.indexOf(bus));
+    assert.match(walk.textContent, /확인된 도보 경로/);
+    assert.match(walk.textContent, /버스의 도착 시각은 미확인/);
+    assert.doesNotMatch(walk.textContent, /빨라요|가장 빠|짧아요/);
 });
 
 test('scooter advice stays conditional without an ETA and absent or transit recommendations keep legacy cards', async () => {

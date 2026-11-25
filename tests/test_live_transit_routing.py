@@ -1,8 +1,9 @@
 """공식 노선 ID·번호·정류장 순서를 연결하는 회귀 검증. 외부 호출 없음."""
 
 from copy import deepcopy
+from datetime import datetime, timedelta, timezone
 import unittest
-from unittest.mock import Mock
+from unittest.mock import Mock, patch
 
 from services.public_transit_client import PublicDataError, PublicTransitClient
 from services.transit_service import TransitService
@@ -55,14 +56,14 @@ class LiveTransitRoutingTests(unittest.TestCase):
             "lat": stop["gpslati"], "lon": stop["gpslong"],
         }
 
-    def plan(self, board_index=1, alight_index=3):
+    def plan(self, board_index=1, alight_index=3, **options):
         board, alight = self.stops[board_index], self.stops[alight_index]
         origin, destination = self.point(board), self.point(alight)
         self.client.nearby_stops.side_effect = lambda lat, lon: (
             [deepcopy(board)] if (lat, lon) == (origin["lat"], origin["lon"])
             else [deepcopy(alight)]
         )
-        return self.service.plan(origin, destination)
+        return self.service.plan(origin, destination, **options)
 
     def test_official_number_overrides_station_label_and_route_id_suffix(self):
         result = self.plan()
@@ -95,6 +96,18 @@ class LiveTransitRoutingTests(unittest.TestCase):
         self.assertEqual(result["direct_walk"], {
             "status": "ok", "minutes": 3, "distance_m": 200, "source": "tmap",
         })
+
+    def test_live_countdown_is_relative_to_requested_departure_not_response_time(self):
+        requested = datetime(2026, 11, 25, 0, 0, tzinfo=timezone.utc)
+        self.client.route_stops.return_value = [{**stop, "updowncd": 0} for stop in self.stops]
+        self.client.arrivals.return_value = [{"routeid": self.route_id, "routeno": "300", "arrtime": 60}]
+        self.walk.return_value = (1, 90)
+        with patch("services.transit_service.datetime") as clock, patch("services.transit_service.monotonic", return_value=10):
+            clock.now.return_value = requested + timedelta(minutes=1)
+            result = self.plan(departure_at=requested)
+        leg = result["journeys"][0]["legs"][0]
+        self.assertEqual(leg["predicted_boarding_seconds"], 120)
+        self.assertEqual(leg["wait_min"], 1)
 
     def test_naver_reference_hallym_to_hupyeong_dt_uses_300_toward_seongsim(self):
         # 2026-11-21 네이버 지도 UI에서 관측한 번호·정류장 순서를 모사한다.

@@ -58,3 +58,48 @@ class NationalBusRepositoryTests(unittest.TestCase):
         journey, = self.repository.plan(self.start, self.end, departure_at, self.walk)
         self.assertIsNone(journey["segments"][1]["departure_at"])
         self.assertEqual(self.repository.plan(self.end, self.start, departure_at, self.walk), [])
+
+
+class PublishedChuncheonBusJourneyTests(unittest.TestCase):
+    def setUp(self):
+        self.repository = NationalBusRepository(Path(__file__).resolve().parents[1] / "data")
+        self.start = {"name": "출발", "lat": 37.88313, "lon": 127.73734}
+        self.end = {"name": "도착", "lat": 37.88152, "lon": 127.74856}
+        self.walk = lambda *args: (3, 270)
+
+    def _plan(self, departure, *, use_timing=True):
+        return self.repository.plan(self.start, self.end, departure, self.walk, use_published_timing=use_timing)
+
+    def test_published_ride_includes_walking_wait_and_only_boardable_runs(self):
+        departure = datetime(2026, 11, 28, 7, 12, tzinfo=KST)
+        first = self._plan(departure)[0]
+        self.assertEqual(first["status"], "ok")
+        walk, bus, egress = first["segments"]
+        self.assertEqual(walk["arrival_at"], "2026-11-28T07:15:00+09:00")
+        self.assertEqual(bus["departure_at"], "2026-11-28T07:16:00+09:00")
+        self.assertEqual(bus["arrival_at"], "2026-11-28T07:21:00+09:00")
+        self.assertEqual(bus["duration_min"], 5)
+        self.assertTrue(bus["estimated"])
+        self.assertFalse(bus["realtime"])
+        self.assertEqual(egress["departure_at"], bus["arrival_at"])
+        self.assertEqual(first["arrival_at"], "2026-11-28T07:24:00+09:00")
+        self.assertEqual(first["total_min"], 12)
+
+        later = self._plan(departure.replace(second=1))[0]
+        self.assertEqual(later["segments"][1]["departure_at"], "2026-11-28T07:46:00+09:00")
+        self.assertEqual(later["total_min"], 41.98)
+
+    def test_no_projected_departure_after_last_run_outside_date_or_in_reverse(self):
+        departure = datetime(2026, 11, 28, 22, 12, tzinfo=KST)
+        self.assertEqual(self._plan(departure)[0]["segments"][1]["departure_at"], "2026-11-28T22:16:00+09:00")
+        missed_last = self._plan(departure.replace(second=1))
+        for reference in missed_last:
+            ride = reference["segments"][1]
+            self.assertNotEqual((ride["route_name"], ride["from_place"]["lat"], ride["to_place"]["lat"]),
+                                ("300", 37.88310, 37.88150))
+        for results in (
+                missed_last,
+                self._plan(departure.replace(month=12, day=1, hour=7)),
+                self._plan(departure, use_timing=False),
+                self.repository.plan(self.end, self.start, departure, self.walk, use_published_timing=True)):
+            self.assertTrue(all(item["status"] == "partial" for item in results))

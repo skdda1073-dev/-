@@ -1,19 +1,24 @@
 """공공데이터 수집과 순서 기반 경로 탐색을 연결한다. Flask/UI에 의존하지 않는다."""
 
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from datetime import datetime, timezone
 from math import cos, hypot, radians, isfinite
 from time import monotonic
+from zoneinfo import ZoneInfo
 
 from services.public_transit_client import PublicDataError
 from services.route_planner import plan_journeys
 from services.travel_recommendation import build_recommendation
 
 
+KST = ZoneInfo("Asia/Seoul")
+
+
 class TransitService:
     MAX_STOPS = 8
     MAX_ROUTES = 32
 
-    def __init__(self, client, walking_time, topology_repository=None, shuttle_service=None):
+    def __init__(self, client, walking_time, topology_repository=None, shuttle_service=None, *, ride_timing=None):
         self.client = client
         # 운영 시내버스는 공식 API의 ID·번호·순서를 함께 사용한다.
         # 명시적으로 주입한 CSV는 기존 데이터 검증·셔틀 참조와 호환한다.
@@ -21,6 +26,7 @@ class TransitService:
         self.csv_mode = topology_repository is not None
         self.walking_time = walking_time
         self.shuttle_service = shuttle_service
+        self.ride_timing = ride_timing
 
     @staticmethod
     def _collect(keys, function):
@@ -214,18 +220,19 @@ class TransitService:
             })
         return sorted(result, key=lambda stop: stop["walk_min"])
 
-    def plan(self, origin, destination, *, max_transfers=1, include_direct_walk=True):
+    def plan(self, origin, destination, *, max_transfers=1, include_direct_walk=True, departure_at=None):
         """두 공급자를 독립 조회한다. 셔틀 미주입 호출의 기존 계약은 유지한다."""
+        requested_at = departure_at if departure_at is not None else datetime.now(timezone.utc)
         direct_walk = self._direct_walk(origin, destination) if include_direct_walk else None
         if self.shuttle_service is None:
-            response = self._plan_city(origin, destination, max_transfers=max_transfers)
+            response = self._plan_city(origin, destination, max_transfers=max_transfers, departure_at=requested_at)
             response["direct_walk"] = direct_walk
             response["recommendation"] = build_recommendation(origin, destination, direct_walk, response.get("journeys", []))
             return response
 
         city_status = {"status": "ok", "code": None}
         try:
-            response = self._plan_city(origin, destination, journey_limit=None, max_transfers=max_transfers)
+            response = self._plan_city(origin, destination, journey_limit=None, max_transfers=max_transfers, departure_at=requested_at)
         except Exception as error:
             safe_codes = {"CSV_DATA", "WALK_UNAVAILABLE", "ROUTE_PERMISSION", "ROUTE_DATA", "PUBLIC_DATA_KEY_MISSING", "NETWORK", "INCOMPLETE"}
             code = getattr(error, "code", None)
@@ -238,7 +245,8 @@ class TransitService:
         response["direct_walk"] = direct_walk
 
         try:
-            shuttle = self.shuttle_service.plan(origin, destination)
+            shuttle = (self.shuttle_service.plan(origin, destination, query_at=departure_at) if departure_at is not None
+                       else self.shuttle_service.plan(origin, destination))
         except Exception as error:
             code = "SHUTTLE_DATA" if getattr(error, "code", None) == "SHUTTLE_DATA" else "SHUTTLE_UNAVAILABLE"
             shuttle = {
@@ -261,7 +269,7 @@ class TransitService:
         response["warnings"].extend(shuttle.get("warnings", []))
         response["search"].update({
             "max_journeys": 3,
-            "selection_policy": "transport_diversity_then_confirmed_total",
+            "selection_policy": "confirmed_total_then_transfers_then_walk",
             "shuttle_max_transfers": 0,
         })
         if city_status["status"] == "error" and not response["journeys"]:
@@ -276,40 +284,34 @@ class TransitService:
 
     @staticmethod
     def _merge_journeys(city, shuttle, limit=3):
-        """완전한 총시간만 수단 간 비교하고, 각 수단의 첫 후보를 보존한다.
-
-        미확인 후보는 수단별 기존 순서를 유지한다. known_min은 서로 비교하지
-        않는다. 이 표시용 선택은 전체 최단 경로 또는 탑승 가능 확정이 아니다.
-        """
-        groups = [city, shuttle]
+        """완전한 총시간을 먼저 비교하고 미확인 후보는 수단별 순서를 유지한다."""
         ranked = []
-        for group_index, group in enumerate(groups):
+        for group_index, group in enumerate((city, shuttle)):
             for position, journey in enumerate(group):
                 total = journey.get("total_min")
                 confirmed = (isinstance(total, (int, float)) and not isinstance(total, bool)
                              and isfinite(total) and total >= 0)
-                ranked.append(((not confirmed, total if confirmed else 0, position, group_index), journey))
+                if confirmed:
+                    transfers = journey.get("transfer_count")
+                    walk = journey.get("walk_min")
+                    order = (False, total, transfers if transfers is not None else float("inf"),
+                             walk if walk is not None else float("inf"), position, group_index)
+                else:
+                    order = (True, position, group_index)
+                ranked.append((order, journey))
         ranked.sort(key=lambda pair: pair[0])
-        required = {id(group[0]) for group in groups if group}
-        selected = [pair for pair in ranked if id(pair[1]) in required]
-        for pair in ranked:
-            if len(selected) >= limit:
-                break
-            if id(pair[1]) not in required:
-                selected.append(pair)
-        selected.sort(key=lambda pair: pair[0])
-        return [journey for _, journey in selected[:limit]]
+        return [journey for _, journey in ranked[:limit]]
 
-    def _plan_city(self, origin, destination, journey_limit=3, *, max_transfers=1):
+    def _plan_city(self, origin, destination, journey_limit=3, *, max_transfers=1, departure_at):
         search_scope = "동일 정류장 내 1회 환승까지" if max_transfers else "직통 버스만"
         warnings = [
             f"출발·목적지 반경 500m 정류장 기준, {search_scope} 검색합니다.",
-            "버스 이동시간은 경유 정류장 좌표와 평균속도로 추정하며 실시간 교통·시간표를 반영하지 못합니다.",
+            "버스 이동시간은 공개 정류장 시각 자료 또는 경유 거리와 평균속도를 이용한 추정입니다.",
         ]
         response = {
             "mode": "journeys", "origin": origin, "destination": destination,
             "journeys": [], "warnings": warnings,
-            "search": {"max_transfers": max_transfers, "nearby_radius_m": 500, "max_stops_per_endpoint": self.MAX_STOPS, "max_routes": self.MAX_ROUTES, "max_refined_candidates": 80},
+            "search": {"max_transfers": max_transfers, "nearby_radius_m": 500, "max_stops_per_endpoint": self.MAX_STOPS, "max_routes": self.MAX_ROUTES, "max_reference_candidates": 80},
         }
         if self.csv_mode:
             source = self.topology.metadata()
@@ -435,14 +437,16 @@ class TransitService:
             if any(error.code == "ARRIVAL_KEY_MISSING" for error in errors):
                 warnings.append("PUBLIC_DATA_KEY가 없어 실시간 도착은 조회하지 않았습니다. CSV 경로 후보는 표시하되 배차·총 소요 시간은 미확인입니다.")
         now = monotonic()
+        elapsed_since_departure = (datetime.now(timezone.utc) - departure_at).total_seconds()
         arrivals = {}
         for node_id, (timestamp, rows) in captured.items():
             values = []
             for row in rows:
                 try:
                     seconds = float(row["arrtime"]) - (now - timestamp)
-                    if isfinite(seconds) and seconds >= 0:
-                        values.append({**row, "arrtime": seconds})
+                    remaining_from_departure = seconds + elapsed_since_departure
+                    if isfinite(seconds) and seconds >= 0 and remaining_from_departure >= 0:
+                        values.append({**row, "arrtime": remaining_from_departure})
                 except (TypeError, ValueError, KeyError, OverflowError):
                     continue
             arrivals[node_id] = values
@@ -467,11 +471,12 @@ class TransitService:
             }
         # 환승 정류장의 현재 도착정보로 미래 배차를 꾸며내지 않는다.
         # 2번째 승차 대기는 미확인으로 두며 총 ETA도 확정하지 않는다.
+        estimates = self.ride_timing.for_date(departure_at.astimezone(KST).date()) if self.ride_timing else None
         response["journeys"] = plan_journeys(
             origin, destination, valid_origins, valid_destinations,
             routes, arrivals, walking_time, max_transfers=max_transfers, use_transfer_arrivals=False,
-            limit=journey_limit,
+            limit=journey_limit, ride_estimates=estimates,
         )
-        warnings.append("후보 경로는 도보·버스 이동구간 추정으로 80개까지 비교합니다. CSV 후보의 배차·전체 도착시간은 확정하지 않습니다." if self.csv_mode
-                        else "후보 경로는 이동시간 추정으로 80개까지 비교하며, 확인된 배차가 있는 경로를 먼저 표시합니다.")
+        warnings.append("CSV 후보는 참고 경로 80개까지 비교합니다. 배차와 전체 도착시각은 미확인입니다." if self.csv_mode
+                        else "탑승 가능성이 확인된 직통 후보를 먼저 비교합니다. 미확인 참고 후보는 최대 80개를 검토합니다.")
         return response

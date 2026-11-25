@@ -329,8 +329,9 @@
     }
 
     function outsideLocalArea(point) {
-        return window.AppState.isValidPosition(point.lat, point.lon) &&
-            (Math.abs(Number(point.lat) - 37.88) > 0.28 || Math.abs(Number(point.lon) - 127.73) > 0.34);
+        if (!window.AppState.isValidPosition(point.lat, point.lon)) return false;
+        // Match the Chuncheon area used by the journey providers on the server.
+        return Math.hypot((Number(point.lat) - 37.878) * 111, (Number(point.lon) - 127.737) * 88) >= 14;
     }
 
     function destinationUsesNationalRoute(point) {

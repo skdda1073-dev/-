@@ -212,6 +212,7 @@ class WalkingServiceTests(unittest.TestCase):
         args = (37.8, 127.7, "A", 37.81, 127.71, "B")
         self.assertEqual(service.get_time(*args), (2, 101))
         self.assertEqual(service.get_time(*args), (2, 101))
+        self.assertEqual(service.get_precise_time(*args), (61 / 60, 101))
         self.assertEqual(len(calls), 1)
         self.assertEqual(calls[0]["json"]["reqCoordType"], "WGS84GEO")
         self.assertIn("timeout", calls[0])

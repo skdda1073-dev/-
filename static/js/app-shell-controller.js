@@ -11,6 +11,7 @@
     const mobile = () => window.matchMedia('(max-width: 799px)').matches;
     const wide = () => window.matchMedia('(min-width: 1280px)').matches && !expanded;
     const keyOf = tab => tab.id.replace('transport-tab-', '');
+    const sheet = () => mobile() ? window.AppModules.workspaceSheet : null;
     function resizeMap() {
         window.AppModules.map?.resizeMap();
         clearTimeout(resizeTimer);
@@ -58,12 +59,11 @@
     function render() {
         const shell = byId('app-shell'), sidebar = byId('app-sidebar');
         const resultsVisible = active === 'journey' && resultAvailable && resultOpen;
-        const toolVisible = toolOpen && (!resultsVisible || wide());
+        const toolVisible = toolOpen && !resultsVisible;
         shell.classList.toggle('menu-expanded', expanded);
         shell.classList.toggle('tool-closed', !toolVisible && !resultsVisible);
         shell.classList.toggle('search-closed', !toolVisible);
         shell.classList.toggle('results-visible', resultsVisible);
-        shell.classList.toggle('results-replace', resultsVisible && !wide());
         sidebar.inert = mobile() && !expanded;
         sidebar.setAttribute('aria-hidden', String(sidebar.inert));
         byId('sidebar-backdrop').hidden = !mobile() || !expanded;
@@ -73,6 +73,7 @@
         toggle.title = expanded ? '메뉴 접기' : '메뉴 펼치기';
         tabs.forEach(tab => {
             const current = keyOf(tab) === active, selected = current && toolVisible;
+            tab.classList.toggle('is-current', current && (toolVisible || resultsVisible));
             tab.setAttribute('aria-selected', String(selected));
             tab.tabIndex = current ? 0 : -1;
             byId(tab.getAttribute('aria-controls')).hidden = !selected;
@@ -87,7 +88,10 @@
         const heading = byId('tool-heading');
         heading.parentElement.parentElement.hidden = !toolVisible;
         const tab = tabs.find(item => keyOf(item) === active);
-        heading.textContent = active === 'journey' ? '어디로 갈까요?' : tab.getAttribute('aria-label');
+        heading.textContent = tab.getAttribute('aria-label');
+        const sheetLabel = byId('sheet-label');
+        if (sheetLabel) sheetLabel.textContent = resultsVisible || (!toolVisible && resultAvailable && active === 'journey')
+            ? '경로 결과' : heading.textContent;
         byId('tool-reopen').hidden = toolVisible || resultsVisible;
         byId('results-section').hidden = !resultsVisible;
         byId('results-reopen').hidden = !resultAvailable || resultsVisible || active !== 'journey' || toolVisible;
@@ -105,6 +109,7 @@
         active = name;
         toolOpen = true;
         if (mobile()) expanded = false;
+        sheet()?.reveal();
         render();
         resizeMap();
         if (options.focus || mobile()) byId('tool-heading').focus({ preventScroll: true });
@@ -113,6 +118,7 @@
     function closeTool() {
         navigation++;
         toolOpen = false;
+        sheet()?.setPosition('peek');
         render();
         resizeMap();
         (mobile() ? byId('tool-reopen') : byId('transport-tab-' + active)).focus({ preventScroll: true });
@@ -135,6 +141,7 @@
         resultAvailable = true; resultOpen = active === 'journey'; detailView = false;
         updateResultSummary(resultToken, payload);
         byId('results-section').dataset.state = 'loading';
+        if (resultOpen) sheet()?.reveal();
         render(); resizeMap();
         if (canPresent(resultToken)) byId('results-heading').focus({ preventScroll: true });
         return resultToken;
@@ -166,6 +173,7 @@
         if (!resultAvailable || active !== 'journey') return;
         resultOpen = true;
         if (resultToken) resultToken.navigation = navigation;
+        sheet()?.reveal();
         render(); resizeMap();
         const renderer = window.AppModules.renderer, index = renderer?.getSelectedIndex();
         if (Number.isInteger(index)) renderer.selectJourney(index);
@@ -173,21 +181,25 @@
     }
     function closeResults() {
         navigation++; resultOpen = false; detailView = false;
+        if (!toolOpen) sheet()?.setPosition('peek');
         render(); resizeMap();
         (toolOpen ? byId('results-show') : byId('results-reopen')).focus({ preventScroll: true });
     }
     function editSearch() {
         if (resultSource === 'map') {
             navigation++; resultOpen = false; toolOpen = false; detailView = false;
+            sheet()?.setPosition('peek');
             render(); resizeMap();
             window.AppModules.mapJourney?.armSelection('origin');
             return;
         }
         navigation++; resultOpen = false; toolOpen = true; detailView = false;
+        sheet()?.reveal();
         render(); resizeMap(); byId('tool-heading').focus({ preventScroll: true });
     }
     function showDetail(options = {}) {
         if (!canPresent()) return;
+        sheet()?.reveal('full');
         detailView = true; render();
         if (options.focus || mobile()) byId('route-detail-heading').focus({ preventScroll: true });
     }
@@ -218,6 +230,7 @@
     function showMap() {
         detailView = false;
         if (!wide()) { navigation++; resultOpen = false; toolOpen = false; }
+        sheet()?.setPosition('peek');
         render();
         resizeMap();
     }
@@ -278,6 +291,11 @@
         byId('route-detail').addEventListener('keydown', event => {
             if (event.key === 'Escape' && detailView) { event.preventDefault(); event.stopPropagation(); closeDetail(); }
         });
+        window.AppModules.workspaceSheet?.init({ onResize: resizeMap, onReveal: () => {
+            if (toolOpen || resultOpen) return;
+            if (active === 'journey' && resultAvailable) showResults();
+            else openTool();
+        } });
         if (typeof window.ResizeObserver === 'function') new window.ResizeObserver(layoutDetail).observe(byId('map-stage'));
         byId('skip-search').addEventListener('click', event => { event.preventDefault(); openJourney('tab-hallym'); });
         document.addEventListener('input', refreshUnloadGuard);

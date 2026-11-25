@@ -63,12 +63,16 @@ for (const width of [360, 390, 1024, 1440]) test(`${width}px menu, form, modal, 
                 buttons: form.querySelectorAll('#route-submit').length, styles };
         });
         assert.equal(formOrder.ordered, true); assert.equal(formOrder.buttons, 1);
-        assert.equal(formOrder.styles.length, 2); assert.deepEqual(formOrder.styles[0], formOrder.styles[1]);
+        assert.equal(formOrder.styles.length, 3); assert.deepEqual(formOrder.styles[0], formOrder.styles[1]);
         assert.equal(await page.locator('label[for="dest-input"]').count(), 1);
         await byId(page, 'origin-building').click();
         await byId(page, 'building-select').focus();
         await page.keyboard.press('Tab');
         assert.equal(await page.evaluate(() => document.activeElement.id), 'dest-input');
+        await page.keyboard.press('Tab');
+        assert.equal(await page.evaluate(() => document.activeElement.id), 'journey-depart-now');
+        await page.keyboard.press('Tab');
+        assert.equal(await page.evaluate(() => document.activeElement.id), 'journey-depart-later');
         await page.keyboard.press('Tab');
         assert.equal(await page.evaluate(() => document.activeElement.id), 'route-submit');
         assert.equal(app.itxRequests.filter(item => item.pathname === '/api/itx/stations').length, 0);

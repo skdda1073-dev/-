@@ -159,7 +159,8 @@
 
     function mobilityRecommendation(response, lookupReason = '') {
         const recommendation = record(response.recommendation), walk = directWalk(response);
-        if (recommendation.status !== 'ok' || recommendation.preferred_mode !== 'walk' || !walk) return '';
+        const onlyTimedWalk = recommendation.preferred_mode === 'undetermined' && recommendation.reason === 'comparison_unknown';
+        if (recommendation.status !== 'ok' || (recommendation.preferred_mode !== 'walk' && !onlyTimedWalk) || !walk) return '';
         const transit = record(recommendation.transit), index = transit.candidate_index;
         const journey = Number.isInteger(index) && Array.isArray(response.journeys) ? record(response.journeys[index]) : {};
         const validLegs = Array.isArray(journey.legs) && journey.legs.length && journey.legs.every(leg => leg && typeof leg === 'object' && !Array.isArray(leg));
@@ -168,23 +169,26 @@
         const access = number(recommendation.min_bus_access_min), stopWalk = number(recommendation.min_bus_walk_min);
         const approximate = value => value > 0 && value < 1 ? '1분 미만' : `${Math.round(value * 10) / 10}분`;
         let reason = '목적지까지 바로 걸어가는 경로를 우선 안내해요.';
-        if (access !== null && access >= walk.minutes) {
+        if (onlyTimedWalk) {
+            reason = '도보 소요 시간은 확인했어요. 버스의 도착 시각은 미확인입니다.';
+        } else if (access !== null && access >= walk.minutes) {
             reason = `목적지까지 도보 약 ${approximate(walk.minutes)}인데, 정류장까지 걷는 데만 약 ${approximate(access)}이 필요해요.`;
         } else if (recommendation.reason === 'stop_walk_overhead') {
             if (stopWalk !== null && stopWalk >= walk.minutes) reason = `목적지까지 도보 약 ${approximate(walk.minutes)}인데, 정류장 전후 도보만 약 ${approximate(stopWalk)}이 필요해요.`;
         } else if (recommendation.reason === 'short_trip') reason = '가까운 구간이라 정류장 우회와 버스 대기를 줄일 수 있어요.';
         else if (recommendation.reason === 'walk_only') reason = '버스 경로는 확인되지 않았지만 전체 보행 경로를 확인했어요.';
         else if (recommendation.reason === 'same_point') reason = '출발지와 목적지가 같은 지점이에요.';
-        const saved = total === null ? null : Math.min(number(recommendation.time_saved_min) || 0, total - walk.minutes);
-        const scooter = record(recommendation.scooter).status === 'conditional';
+        const saved = total === null || onlyTimedWalk ? null : Math.min(number(recommendation.time_saved_min) || 0, total - walk.minutes);
+        const scooter = !onlyTimedWalk && record(recommendation.scooter).status === 'conditional';
+        const title = onlyTimedWalk ? '확인된 도보 경로' : '도보 우선';
         const notes = [lookupReason, '이번 조회의 버스 후보와 전체 보행 경로를 기준으로 추천해요. 대기나 방향이 미확인이면 전체 시간을 비교하지 않아요.',
             ...(Array.isArray(response.warnings) ? response.warnings : [])];
         return `<article class="result-card route-mobility-recommendation${lookupReason ? ' route-walk-card' : ''}" aria-labelledby="mobility-recommendation-title">
-            <div class="route-mobility-heading"><span class="route-mobility-icon">${icon('walk')}</span><div><span class="route-mobility-kicker">근거리 이동 추천</span><h3 id="mobility-recommendation-title">도보 우선${scooter ? ' · 가까운 킥보드도 대안' : ''}</h3></div></div>
+            <div class="route-mobility-heading"><span class="route-mobility-icon">${icon('walk')}</span><div><span class="route-mobility-kicker">이동 추천</span><h3 id="mobility-recommendation-title">${title}${scooter ? ' · 가까운 킥보드도 대안' : ''}</h3></div></div>
             <div class="route-mobility-times"><div class="route-mobility-time route-mobility-time--preferred"><span>전체 도보</span><strong>약 ${minutes(walk.minutes)}</strong><small>${escapeHtml(distance(walk.distance_m))}</small></div>
                 <div class="route-mobility-time"><span>확인된 버스</span><strong>${total !== null ? `약 ${minutes(total)}` : timing ? (timing.waitUnknown ? '대기 미확인' : '총시간 미확인') : '경로 미확인'}</strong><small>${total !== null ? '도보·대기·탑승 포함' : '전체 시간 비교 미완료'}</small></div></div>
             <p class="route-mobility-reason">${escapeHtml(reason)}</p>
-            ${saved !== null && saved >= 2 ? `<p class="route-mobility-saving">확인된 버스 경로보다 약 ${minutes(saved)} 짧아요.</p>` : ''}
+            ${saved !== null && saved > 0 ? `<p class="route-mobility-saving">확인된 버스 경로보다 약 ${approximate(saved)} 짧아요.</p>` : ''}
             ${scooter ? '<p class="route-mobility-scooter">킥보드가 가까이 있다면 대안이에요. 기기 접근·주행 가능한 경로·반납을 확인해 주세요.</p>' : ''}
             ${routeWarnings(notes, lookupReason ? '추천·버스 조회 안내' : '추천 기준')}</article>`;
     }
@@ -233,6 +237,7 @@
         const facts = [];
         if (stopCount !== null) facts.push(`${Math.round(stopCount)}개 정류장`);
         facts.push(ride === null ? '탑승 시간 미확인' : `탑승 약 ${minutes(ride)}`);
+        if (leg.ride_time_basis === 'published_segment_estimate' && text(leg.ride_time_source)) facts.push(text(leg.ride_time_source));
         const waitText = shuttle ? '저장된 시간표 기준 · 실제 운행·탑승 보장 아님' : wait === null ? '대기 시간 미확인' : `승차 대기 약 ${minutes(wait)}`;
         const arrivalText = shuttle ? '' : arrival === null ? '' : ` · 조회 시점 기준 약 ${minutes(arrival)} 후 도착`;
         const routeId = leg.route_number_verified === false && text(leg.route_id)
@@ -379,7 +384,8 @@
             const depart = arrivalLabel(leg.departure_at, journey.departure_at);
             const arrive = arrivalLabel(leg.arrival_at, journey.departure_at);
             const sourceName = text(leg.source) || text(record(leg.source).name);
-            const source = [sourceName, leg.realtime === true ? (sourceName === 'TAGO' ? '실시간 출발 반영' : '실시간 운행 정보 반영') : '']
+            const rideTimeSource = leg.ride_time_basis === 'published_segment_estimate' ? text(leg.ride_time_source) : '';
+            const source = [sourceName, leg.realtime === true ? (sourceName === 'TAGO' ? '실시간 출발 반영' : '실시간 운행 정보 반영') : '', rideTimeSource]
                 .filter(Boolean).join(' · ');
             const endpoints = origin === destination ? escapeHtml(origin)
                 : `${escapeHtml(origin)} <span class="national-endpoint-arrow" aria-label="에서">→</span> ${escapeHtml(destination)}`;
@@ -406,8 +412,9 @@
         for (const leg of segments) {
             const mode = travelModes[text(leg.mode)];
             if (Array.isArray(mode) && mode[2] !== 'walk' && mode[2] !== 'wait') {
-                const line = mode[2] === 'metro' ? text(leg.route_name).trim() : '';
-                routes.push(line || nationalRouteName(leg, mode[0]) || mode[0]);
+                const label = mode[2] === 'metro' ? text(leg.route_name).trim()
+                    : mode[2] === 'coach' ? mode[0] : nationalRouteName(leg, mode[0]);
+                routes.push(label || mode[0]);
             }
         }
         if (!routes.length && segments.every(leg => travelModes[text(leg.mode)]?.[2] === 'walk')) return '도보';
@@ -424,8 +431,9 @@
         const transferCount = number(journey.transfer_count);
         const totalFare = number(journey.fare_won);
         const realtime = journey.segments.some(leg => leg.realtime === true);
+        const publishedBus = complete && journey.segments.some(leg => leg.ride_time_basis === 'published_segment_estimate');
         const scheduled = complete && journey.segments.some(leg => ['subway', 'train', 'intercity_bus', 'express_bus', 'shuttle'].includes(leg.mode));
-        const timingSource = realtime ? '일부 실시간 반영' : scheduled ? '시간표 기준' : '';
+        const timingSource = realtime ? '일부 실시간 반영' : publishedBus ? '공개 시각표 기반 추정' : scheduled ? '시간표 기준' : '';
         const requestedStart = first ? scheduleTime(response.departure_at) : null;
         const departure = requestedStart ? `${kstCalendar.format(requestedStart)} ${kstClock.format(requestedStart)} 출발 기준` : '';
         const meta = [departure, transferCount === null ? '' : transferCount === 0 ? '환승 없음' : `환승 ${transferCount}회`,

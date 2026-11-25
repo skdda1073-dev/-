@@ -1,10 +1,11 @@
 import csv
-from datetime import datetime
+from datetime import date, datetime
 from pathlib import Path
 from tempfile import TemporaryDirectory
+from types import SimpleNamespace
 import unittest
 
-from services.national_transit_repository import NationalTransitRepository
+from services.national_transit_repository import KST, NationalTransitRepository, _Label, _StopTime, _Walk, _search
 
 
 class NationalTransitRepositoryTests(unittest.TestCase):
@@ -94,6 +95,21 @@ class NationalTransitRepositoryTests(unittest.TestCase):
         self.assertFalse(repository.plan(self.campus_a, self.station_b, "2026-11-24T08:00:00+09:00",
                                          lambda *_: (-1, -1)))
 
+    def test_boarding_later_stop_of_same_trip_can_save_walk_with_same_arrival(self):
+        timetable = SimpleNamespace(
+            trips=[SimpleNamespace(mode="subway", stops=(_StopTime("first", None, 300),
+                _StopTime("second", 480, 540), _StopTime("terminal", 900, None)))],
+            connections_from=lambda *_: [(300, 0, 0, 480, 0), (540, 0, 1, 900, 0)],
+            stations={key: SimpleNamespace() for key in ("first", "second", "terminal")},
+            transfers={},
+        )
+        walk = _Walk({}, {}, 0, 0)
+        seeds = [_Label(120, "first", 0, walk, walk_seconds=120), _Label(60, "second", 0, walk, walk_seconds=60)]
+        best, = _search(timetable, datetime(2026, 11, 25).date(), 0, seeds, {"terminal": walk})
+        self.assertEqual(best[0], 900)
+        self.assertEqual(best[2].move.start, 1)
+        self.assertEqual(best[2].walk_seconds, 60)
+
 
 class NationalLine8IntegrationTests(unittest.TestCase):
     @classmethod
@@ -106,6 +122,27 @@ class NationalLine8IntegrationTests(unittest.TestCase):
     def rides(journey):
         return [(leg["route_name"], leg["from_place"]["name"], leg["to_place"]["name"])
                 for leg in journey["segments"] if leg["mode"] in {"subway", "train"}]
+
+    def test_dated_itx_uses_verified_gateway_and_preserves_midnight_arrival(self):
+        service_date = date(2026, 11, 26)
+
+        def itx_schedule(origin, destination, day):
+            if (origin, destination, day) != ("NAT130126", "NAT140873", service_date):
+                return ()
+            return ({"train_number": "02035", "fare_won": 8600,
+                     "departure_at": datetime(2026, 11, 26, 23, 8, tzinfo=KST),
+                     "arrival_at": datetime(2026, 11, 27, 0, 4, tzinfo=KST)},)
+
+        repository = NationalTransitRepository(self.repository._normalized_path.parent, itx_schedule=itx_schedule)
+        table = repository._timetable()
+        self.assertIn("NAT130126", table.rail_by_id)
+        cheongnyangni = table.stations[table.rail_by_id["NAT130126"]].place()
+        journeys = repository.plan(cheongnyangni, self.chuncheon, "2026-11-26T23:00+09:00", lambda *_: (-1, -1))
+        ride = next(leg for route in journeys for leg in route["segments"] if leg["mode"] == "train")
+        self.assertEqual((ride["service_name"], ride["arrival_at"], ride["fare_won"], ride["booking_provider"]),
+                         ("ITX-청춘 02035", "2026-11-27T00:04:00+09:00", 8600, "korail"))
+        next_day = repository.plan(cheongnyangni, self.chuncheon, "2026-11-27T23:00+09:00", lambda *_: (-1, -1))
+        self.assertFalse(any(leg.get("service_name") == "ITX-청춘 02035" for route in next_day for leg in route["segments"]))
 
     def test_chuncheon_to_dasan_uses_the_byeollae_interchange(self):
         def walking(_lat1, _lon1, start, _lat2, _lon2, end):

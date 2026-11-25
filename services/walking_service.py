@@ -15,6 +15,11 @@ class WalkingService:
         self._lock = RLock()
 
     def get_time(self, start_lat, start_lon, start_name, end_lat, end_lon, end_name):
+        minutes, distance = self.get_precise_time(start_lat, start_lon, start_name, end_lat, end_lon, end_name)
+        return ceil(minutes), distance
+
+    def get_precise_time(self, start_lat, start_lon, start_name, end_lat, end_lon, end_name):
+        """Keep the provider's seconds for boarding deadlines and arrival comparisons."""
         coords = (start_lat, start_lon, end_lat, end_lon)
         try:
             valid = all(isinstance(value, (int, float)) and not isinstance(value, bool) and isfinite(value) for value in coords)
@@ -51,9 +56,9 @@ class WalkingService:
             properties = response.json()["features"][0]["properties"]
             seconds = float(properties["totalTime"])
             distance = float(properties["totalDistance"])
-            if not isfinite(seconds) or not isfinite(distance) or seconds < 0 or distance < 0:
+            if not isfinite(seconds) or not isfinite(distance) or seconds <= 0 or distance <= 0:
                 return -1, -1
-            result = (max(1, ceil(seconds / 60)), ceil(distance))
+            result = (seconds / 60, ceil(distance))
         except (requests.RequestException, ValueError, TypeError, KeyError, IndexError, OverflowError):
             return -1, -1
         with self._lock:

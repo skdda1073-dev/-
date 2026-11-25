@@ -2,6 +2,7 @@
 
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta
+from functools import partial
 import json
 from math import isfinite, sqrt
 from pathlib import Path
@@ -11,6 +12,7 @@ from zoneinfo import ZoneInfo
 from services.intercity_client import IntercityError
 from services.mobility_validation import MobilityInputError, clean_text, coordinate
 from services.motis_journey_provider import MotisProviderError
+from services.national_transit_repository import BOARDING_SECONDS
 from services.place_search_service import PlaceSearchError
 from services.public_transit_client import PublicDataError
 from services.route_planner import BOARDING_MARGIN_MIN
@@ -33,6 +35,8 @@ CHUNCHEON_CENTER = {"lat": 37.878, "lon": 127.737}
 LIVE_DEPARTURE_WINDOW = timedelta(minutes=2)
 CHUNCHEON_LOCAL_RADIUS_KM = 14
 CHUNCHEON_RAIL_ACCESS_RADIUS_KM = 6
+ENDPOINT_TOLERANCE_KM = 0.025
+RAIL_MODES = {"train", "subway"}
 PROVINCE_NAMES = {"충남": ("충남", "충청남도"), "충북": ("충북", "충청북도"),
                   "경남": ("경남", "경상남도"), "경북": ("경북", "경상북도"),
                   "전남": ("전남", "전라남도"), "전북": ("전북", "전라북도", "전북특별자치도")}
@@ -120,7 +124,7 @@ def _measured_walk(walking_time, start, end):
 
 
 def _mode(segment):
-    return {"city_bus": "bus", "rail": "train", "metro": "subway", "coach": "intercity_bus"}.get(
+    return {"city_bus": "bus", "rail": "train", "metro": "subway", "coach": "intercity_bus", "transfer_walk": "walk"}.get(
         segment.get("mode"), segment.get("mode")
     )
 
@@ -143,11 +147,22 @@ def _segment(mode, route, start, end, departure, arrival, duration, fare=None, *
             "fare_won": fare, **extra}
 
 
+def _train_identity(name):
+    service = (name or "").upper().rsplit(maxsplit=1)
+    if len(service) != 2 or not re.fullmatch(r"[A-Z]?[0-9]+", service[1]):
+        return None
+    kind, number = service
+    if kind == "ITX-청춘":
+        # The GTFS trip number uses S2005 where TAGO returns 02005.
+        number = number.removeprefix("S")
+    return kind, number.lstrip("0")
+
+
 def _scheduled_train_key(leg, *, original=False):
     if leg["mode"] != "train" or leg.get("booking_provider") not in {"korail", "srt"}:
         return None
-    service = (leg.get("service_name") or "").upper().rsplit(maxsplit=1)
-    if len(service) != 2 or not re.fullmatch(r"[A-Z]?[0-9]+", service[1]):
+    service = _train_identity(leg.get("service_name"))
+    if service is None:
         return None
     prefix = "scheduled_" if original else ""
     start, end = (_time(leg.get(prefix + field)) for field in ("departure_at", "arrival_at"))
@@ -157,17 +172,40 @@ def _scheduled_train_key(leg, *, original=False):
                      for field in ("from_place", "to_place"))
     # MOTIS exposes minute-level rail times; the published timetable can contain seconds.
     times = tuple(value.replace(second=0, microsecond=0) for value in (start, end))
-    return (leg["booking_provider"], service[0], service[1].lstrip("0"), stations, times)
+    return (leg["booking_provider"], service, stations, times)
 
 
-def _finalize(journey, query_at):
+def _connected(start, end):
+    # Published stop/platform coordinates can differ by survey precision. A real connection
+    # between different stops must have its own walking segment.
+    try:
+        return _distance_km(start, end) <= ENDPOINT_TOLERANCE_KM
+    except (TypeError, KeyError, OverflowError):
+        return False
+
+
+def _finalize(journey, query_at, *, origin=None, destination=None):
     current = query_at
     complete = True
     segments = []
+    previous_place = origin
+    previous_vehicle_end = None
     for given in journey.get("segments", []):
         segment = {**given, "mode": _mode(given)}
+        if segments and segment["mode"] == "wait" and segment.get("route_name") == "출발까지 대기":
+            segment["route_name"] = "승차 대기"
+        begin_place, end_place = segment.get("from_place"), segment.get("to_place")
+        if (not isinstance(begin_place, dict) or not isinstance(end_place, dict)
+                or (previous_place is not None and not _connected(previous_place, begin_place))):
+            return None
         start, end = _time(segment.get("departure_at")), _time(segment.get("arrival_at"))
         if (start and start < current) or (start and end and end < start) or (end and end < current):
+            return None
+        if segment["mode"] not in ("walk", "wait", "connection"):
+            if start is not None and previous_vehicle_end is not None and start < previous_vehicle_end + timedelta(minutes=BOARDING_MARGIN_MIN):
+                return None
+            previous_vehicle_end = end
+        if (segment["mode"] == "wait" or (start is not None and start == end)) and not _connected(begin_place, end_place):
             return None
         if complete and start is not None and start > current:
             stop = segment["from_place"]
@@ -177,8 +215,10 @@ def _finalize(journey, query_at):
             complete = False
         if end is not None:
             current = end
+        minutes = (round((end - start).total_seconds() / 60, 2) if start is not None and end is not None
+                   else _quantity(segment.get("duration_min")))
         segment.update(departure_at=start.isoformat() if start else None, arrival_at=end.isoformat() if end else None,
-                       duration_min=_quantity(segment.get("duration_min")), fare_won=_quantity(segment.get("fare_won")))
+                       duration_min=minutes, fare_won=_quantity(segment.get("fare_won")))
         if segment["mode"] in ("walk", "wait"):
             segment["fare_won"] = 0
         segment.pop("booking", None)
@@ -186,7 +226,8 @@ def _finalize(journey, query_at):
         if booking:
             segment["booking"] = booking
         segments.append(segment)
-    if not segments:
+        previous_place = end_place
+    if not segments or (destination is not None and not _connected(previous_place, destination)):
         return None
     complete = complete and journey.get("complete") is not False
     duration = round((current - query_at).total_seconds() / 60, 2) if complete else None
@@ -198,6 +239,36 @@ def _finalize(journey, query_at):
                                          for segment in segments) - 1)}
 
 
+def _journey_order(journey):
+    walk_seconds = sum((_time(leg["arrival_at"]) - _time(leg["departure_at"])).total_seconds()
+                       for leg in journey["segments"] if leg["mode"] == "walk") if journey["complete"] else 0
+    return (not journey["complete"], _time(journey["arrival_at"]) or datetime.max.replace(tzinfo=KST),
+            journey["transfer_count"], walk_seconds, -sum(leg.get("realtime") is True for leg in journey["segments"]))
+
+
+def _join_journeys(first, onward):
+    warnings = (*first.get("warnings", ()), *onward.get("warnings", ()))
+    return {**onward, "segments": [*first["segments"], *onward["segments"]],
+            "estimated": bool(first.get("estimated") or onward.get("estimated")),
+            "warnings": list(dict.fromkeys(warnings))}
+
+
+def _journey_signature(journey):
+    legs = journey["segments"]
+    if journey["complete"]:
+        # Two providers can describe the same service with a train number or a
+        # different walking connector. Keep the best complete version once.
+        vehicles = [leg for leg in legs if leg["mode"] not in ("walk", "wait", "connection")]
+        if len({leg["mode"] for leg in vehicles}) > 1:
+            return tuple(_scheduled_train_key(leg) or (
+                leg["mode"], leg.get("route_name"), leg["from_place"]["name"], leg["to_place"]["name"],
+                leg["departure_at"], leg["arrival_at"], leg.get("service_name") if leg["mode"] == "train" else None,
+            ) for leg in vehicles)
+    return tuple((leg["mode"], leg.get("route_name"), leg.get("service_name"),
+                  leg["from_place"]["lat"], leg["from_place"]["lon"], leg["to_place"]["lat"], leg["to_place"]["lon"],
+                  leg["departure_at"], leg["arrival_at"]) for leg in legs)
+
+
 def _terminal_key(name):
     # Same-region fingerprint from reviewed facility names. Never infer a match by substring.
     name = re.sub(r"\s+", "", name)
@@ -207,12 +278,19 @@ def _terminal_key(name):
 class IntercityJourneyProvider:
     """Join date-specific BusTago results using independently checked venue identity."""
 
-    def __init__(self, intercity_service, place_search, profile_path, walking_time, regional_transit=None):
+    CONNECTOR_RADIUS_KM = 12
+    COACH_CONNECTION_LIMIT = 3
+    TERMINAL_MARGIN = timedelta(minutes=5)
+
+    def __init__(self, intercity_service, place_search, profile_path, walking_time, regional_transit=None, *,
+                 regional_bus=None, motis=None):
         self.service = intercity_service
         self.place_search = place_search
         self.profile_path = Path(profile_path)
         self.walking_time = walking_time
         self.regional_transit = regional_transit
+        self.regional_bus = regional_bus
+        self.motis = motis
 
     def _venues(self, center):
         profile = json.loads(self.profile_path.read_text(encoding="utf-8"))
@@ -254,32 +332,44 @@ class IntercityJourneyProvider:
                     return {**poi, **CHUNCHEON_TERMINAL}
         return None
 
-    def _ground(self, start, end, when, label, regional):
+    def _ground(self, start, end, when, label):
         distance = _distance_km(start, end)
         measured = _measured_walk(self.walking_time, start, end) if distance <= 8 else None
-        direct = None
+        candidates = []
         if measured is not None and measured[1] <= 9000:
             minutes, meters = measured
             arrival = when + timedelta(minutes=minutes) if when else None
-            direct = [_segment("walk", label, start, end, when, arrival, minutes,
-                               distance_m=meters, source="TMAP 보행")]
-        if regional and when and self.regional_transit is not None and 2 <= distance <= 12 and (
-            direct is None or direct[0]["duration_min"] > 25
-        ):
-            try:
-                options = self.regional_transit.plan(start, end, when, self.walking_time)
-            except (OSError, ValueError, PublicDataError):
-                return direct
-            candidates = []
-            if direct:
-                candidates.append((_time(direct[-1]["arrival_at"]), direct))
-            for option in options:
-                arrival = _time(option.get("arrival_at"))
-                if arrival and option.get("segments") and timedelta(0) <= arrival - when <= timedelta(hours=2):
-                    candidates.append((arrival, option["segments"]))
-            if candidates:
-                return min(candidates, key=lambda pair: pair[0])[1]
-        return direct
+            candidates.append({"segments": [_segment("walk", label, start, end, when, arrival, minutes,
+                                                      distance_m=meters, source="TMAP 보행")]})
+        if when is None:
+            return candidates
+        if 0 < distance <= self.CONNECTOR_RADIUS_KM and (not candidates or minutes > BOARDING_MARGIN_MIN):
+            providers = []
+            if self.regional_bus is not None:
+                providers.append((self.regional_bus, (start, end, when)))
+            if self.regional_transit is not None:
+                providers.append((self.regional_transit.plan, (start, end, when, self.walking_time)))
+            if self.motis is not None:
+                providers.append((self.motis.plan, (start, end, when)))
+            for provider, arguments in providers:
+                try:
+                    candidates.extend(provider(*arguments))
+                except (OSError, ValueError, PublicDataError, MotisProviderError):
+                    continue
+        valid = []
+        for option in candidates:
+            timeline = _finalize(option, when, origin=start, destination=end)
+            if timeline is not None and timeline["complete"] and _time(timeline["arrival_at"]) <= when + timedelta(hours=2):
+                valid.append(timeline)
+        return sorted(valid, key=_journey_order)
+
+    @staticmethod
+    def _access_order(candidate):
+        # The intercity departure determines the final arrival. Among access routes that
+        # catch it, each connector vehicle is an extra transfer on the whole journey.
+        _, arrival, transfers, walking, realtime = _journey_order(candidate)
+        has_vehicle = any(leg["mode"] not in ("walk", "wait", "connection") for leg in candidate["segments"])
+        return transfers + has_vehicle, walking, arrival, realtime
 
     def _route(self, origin, destination, start, end, query_at):
         options = self.service.timetable(start["provider_id"], end["provider_id"], query_at.date().isoformat())
@@ -287,39 +377,40 @@ class IntercityJourneyProvider:
                     if (departure := _time(ride.get("departure_at"))) is not None and departure >= query_at]
         if not upcoming:
             return []
-        access = self._ground(origin, start, query_at, "승차 터미널까지", start["provider_id"] != "BUSTAGO_2037")
-        access_end = _time(access[-1]["arrival_at"]) if access else None
-        ready = access_end + timedelta(minutes=5) if access_end else query_at
-        approach = access or [_segment("connection", "터미널 연결편 확인 필요", origin, start, None, None, None)]
+        access = self._ground(origin, start, query_at, "승차 터미널까지")
+        unknown_access = {"segments": [_segment("connection", "터미널 연결편 확인 필요", origin, start, None, None, None)]}
+        unknown_egress = {"segments": [_segment("connection", "목적지 연결편 확인 필요", end, destination, None, None, None)]}
         boardable = []
         for departure, ride in upcoming:
             arrival = _time(ride.get("arrival_at"))
-            if departure < ready or (arrival is not None and departure > arrival):
+            if arrival is not None and departure > arrival:
                 continue
-            boardable.append((departure, arrival, ride))
+            can_board = [option for option in access if _time(option["arrival_at"]) + self.TERMINAL_MARGIN <= departure]
+            if access and not can_board:
+                continue
+            approach = min(can_board, key=self._access_order, default=unknown_access)
+            boardable.append((departure, arrival, ride, approach))
         boardable.sort(key=lambda trip: (trip[1] is None, trip[1] or trip[0], trip[0]))
         candidates = []
-        for departure, arrival, ride in boardable[:3]:
-            egress = self._ground(end, destination, arrival, "터미널에서 목적지까지",
-                                  end["provider_id"] != "BUSTAGO_2037")
-            waiting = ([_segment("wait", "승차 대기", start, start, access_end, departure,
-                                 (departure - access_end).total_seconds() / 60)] if access_end else [])
-            onward = egress or [_segment("connection", "목적지 연결편 확인 필요", end, destination, None, None, None)]
-            segments = [
-                *approach,
-                *waiting,
-                _segment("intercity_bus", "시외버스", start, end, departure, arrival,
-                         ride.get("duration_minutes"), ride.get("fare_krw"),
-                         service_name=ride.get("grade"), booking_provider="bustago", source="버스타고",
-                         estimated=ride.get("arrival_estimated") is True),
-                *onward,
-            ]
-            candidates.append({
-                "segments": segments, "estimated": ride.get("arrival_estimated") is True,
-                "warnings": ["도로 상황에 따라 도착 시각이 달라질 수 있습니다. 좌석과 운임은 버스타고에서 확인하세요."],
-            })
-        return sorted(candidates, key=lambda journey: _time(journey["segments"][-1]["arrival_at"])
-                      or datetime.max.replace(tzinfo=KST))[:2]
+        for departure, arrival, ride, approach in boardable[:self.COACH_CONNECTION_LIMIT]:
+            trip = _segment("intercity_bus", "시외버스", start, end, departure, arrival,
+                            ride.get("duration_minutes"), ride.get("fare_krw"), service_name=ride.get("grade"),
+                            booking_provider="bustago", source="버스타고", estimated=ride.get("arrival_estimated") is True)
+            egress = self._ground(end, destination, arrival, "터미널에서 목적지까지")
+            joined = []
+            for onward in (*egress, unknown_egress):
+                segments = [*approach["segments"], trip, *onward["segments"]]
+                warnings = [*approach.get("warnings", ()), *onward.get("warnings", ()),
+                            "도로 상황에 따라 도착 시각이 달라질 수 있습니다. 좌석과 운임은 버스타고에서 확인하세요."]
+                timeline = _finalize({"segments": segments, "warnings": warnings,
+                                      "estimated": bool(approach.get("estimated") or onward.get("estimated")
+                                                        or any(leg.get("estimated") for leg in segments))},
+                                     query_at, origin=origin, destination=destination)
+                if timeline is not None:
+                    joined.append(timeline)
+            if joined:
+                candidates.append(min(joined, key=_journey_order))
+        return sorted(candidates, key=_journey_order)[:2]
 
     def plan(self, origin, destination, query_at):
         departure_is_local = _distance_km(origin, CHUNCHEON_CENTER) < 14
@@ -350,41 +441,58 @@ class IntercityJourneyProvider:
         return results, gap
 
 
-class NationalJourneyService:
-    def __init__(self, repository, walking_time, local_transit=None, intercity=None, bus_repository=None, now=None, *, motis=None):
+class RegionalBusJourneyProvider:
+    """Provide timed ground connections from live or dated bus data."""
+
+    def __init__(self, repository, walking_time, local_transit=None, now=None):
         self.repository = repository
         self.walking_time = walking_time
         self.local_transit = local_transit
-        self.intercity = intercity
-        self.bus_repository = bus_repository
         self.now = now or (lambda: datetime.now(KST))
-        self.motis = motis
 
-    def _walk(self, origin, destination, query_at):
-        measured = _measured_walk(self.walking_time, origin, destination)
-        if measured is None:
+    def live_available(self, origin, destination, query_at):
+        return (self.local_transit is not None
+                and abs(query_at - self.now()) < LIVE_DEPARTURE_WINDOW
+                and _distance_km(origin, CHUNCHEON_CENTER) < CHUNCHEON_LOCAL_RADIUS_KM
+                and _distance_km(destination, CHUNCHEON_CENTER) < CHUNCHEON_LOCAL_RADIUS_KM)
+
+    def published_available(self, origin, destination, service_date):
+        return self.repository is not None and self.repository.has_published_connection(origin, destination, service_date)
+
+    def connections(self, origin, destination, query_at):
+        if self.live_available(origin, destination, query_at):
+            options = self.live(origin, destination, query_at, station_access=True)
+        elif self.repository is not None:
+            options = self.repository.plan(origin, destination, query_at, self.walking_time,
+                                           use_published_timing=True, timed_only=True)
+        else:
             return []
-        minutes, meters = measured
-        final = query_at + timedelta(minutes=minutes)
-        return [{"segments": [_segment("walk", "목적지까지 도보", origin, destination, query_at, final, minutes,
-                                      distance_m=meters, source="TMAP 보행")]}]
+        valid = []
+        for option in options:
+            result = _finalize(option, query_at, origin=origin, destination=destination)
+            if result is None or not result["complete"]:
+                continue
+            ready = query_at + timedelta(minutes=BOARDING_MARGIN_MIN)
+            for leg in result["segments"]:
+                if leg["mode"] == "walk":
+                    ready = _time(leg["arrival_at"]) + timedelta(minutes=BOARDING_MARGIN_MIN)
+                elif leg["mode"] in ("bus", "shuttle"):
+                    if _time(leg["departure_at"]) >= ready:
+                        valid.append(result)
+                    break
+        return sorted(valid, key=_journey_order)
 
-    def _live_local(self, origin, destination, query_at, *, station_access=False):
-        if self.local_transit is None or not (
-            _distance_km(origin, CHUNCHEON_CENTER) < CHUNCHEON_LOCAL_RADIUS_KM
-            and _distance_km(destination, CHUNCHEON_CENTER) < CHUNCHEON_LOCAL_RADIUS_KM
-            and abs(query_at - self.now()) < LIVE_DEPARTURE_WINDOW
-        ):
+    def live(self, origin, destination, query_at, *, station_access=False):
+        if not self.live_available(origin, destination, query_at):
             return []
         journeys = []
         try:
             if station_access:
-                local = self.local_transit.plan(origin, destination, max_transfers=0, include_direct_walk=False)
+                local = self.local_transit.plan(origin, destination, max_transfers=0, include_direct_walk=False, departure_at=query_at)
             else:
-                local = self.local_transit.plan(origin, destination)
+                local = self.local_transit.plan(origin, destination, include_direct_walk=False, departure_at=query_at)
         except PublicDataError:
             return journeys
-        snapshot_at = self.now()
         for option in local.get("journeys", []):
             legs = option.get("legs", [])
             if not legs:
@@ -398,72 +506,173 @@ class NationalJourneyService:
             transfer_margin = (_quantity(option.get("transfer_buffer_min")) or 0) / max(1, len(legs) - 1)
             for index, leg in enumerate(legs):
                 is_shuttle = leg.get("transport_type") == "shuttle"
-                eta, ride = _quantity(leg.get("arrival_min")), _quantity(leg.get("ride_min"))
+                ride = _quantity(leg.get("ride_min"))
                 if is_shuttle:
                     start = _time(leg.get("scheduled_departure_at")) if leg.get("service_date_confirmed") else None
                     end = _time(leg.get("scheduled_arrival_at")) if start else None
                 else:
-                    start = (snapshot_at + timedelta(minutes=eta)
+                    eta_seconds = _quantity(leg.get("predicted_boarding_seconds"))
+                    if eta_seconds is None and (estimated_minutes := _quantity(leg.get("arrival_min"))) is not None:
+                        eta_seconds = estimated_minutes * 60
+                    start = (query_at + timedelta(seconds=eta_seconds)
                              if leg.get("direction_verified") and leg.get("route_number_verified") is not False
-                             and eta is not None else None)
+                             and eta_seconds is not None else None)
                     end = start + timedelta(minutes=ride) if start and ride is not None else None
                 if current is not None and start is not None:
                     margin = BOARDING_MARGIN_MIN + (transfer_margin if index else 0)
                     if start < current + timedelta(minutes=margin):
-                        start, end = None, None
+                        break
                 if start is not None and current is not None and start > current:
                     segments.append(_segment("wait", "승차 대기", leg["board"], leg["board"], current, start,
                                              (start - current).total_seconds() / 60))
                 segments.append(_segment("shuttle" if is_shuttle else "bus", leg.get("route_no") or "버스",
                                          leg["board"], leg["alight"], start, end, ride if start else None,
                                          path=leg.get("path", []), estimated=True, source="학교 셔틀" if is_shuttle else "TAGO",
+                                         ride_time_basis=leg.get("ride_time_basis"), ride_time_source=leg.get("ride_time_source"),
                                          realtime=not is_shuttle and start is not None and end is not None))
                 current = end
-            total_at = current + timedelta(minutes=egress) if current else None
-            segments.append(_segment("walk", "하차 지점에서 목적지까지", legs[-1]["alight"], destination,
-                                     current, total_at, egress))
-            journeys.append({"segments": segments, "estimated": True,
-                             "warnings": ["지역버스 소요시간은 현재 정류장 도착 정보와 노선 거리 기준 예상치입니다."]})
+            else:
+                total_at = current + timedelta(minutes=egress) if current else None
+                segments.append(_segment("walk", "하차 지점에서 목적지까지", legs[-1]["alight"], destination,
+                                         current, total_at, egress))
+                journeys.append({"segments": segments, "estimated": True,
+                                 "warnings": ["지역버스는 정류장 도착 예측과 공개 예정 시각 또는 구간 거리로 소요시간을 계산합니다."]})
         return journeys
 
-    def _rail_with_access(self, origin, destination, query_at):
+
+class NationalJourneyService:
+    def __init__(self, repository, walking_time, local_transit=None, intercity=None, bus_repository=None, now=None,
+                 *, motis=None, regional_bus=None):
+        self.repository = repository
+        self.walking_time = walking_time
+        self.intercity = intercity
+        self.bus_repository = bus_repository
+        self.now = now or (lambda: datetime.now(KST))
+        self.motis = motis
+        self.regional_bus = regional_bus if regional_bus is not None else RegionalBusJourneyProvider(
+            bus_repository, walking_time, local_transit, self.now,
+        )
+
+    def _walk(self, origin, destination, query_at):
+        measured = _measured_walk(self.walking_time, origin, destination)
+        if measured is None:
+            return []
+        minutes, meters = measured
+        final = query_at + timedelta(minutes=minutes)
+        return [{"segments": [_segment("walk", "목적지까지 도보", origin, destination, query_at, final, minutes,
+                                      distance_m=meters, source="TMAP 보행")]}]
+
+    def _motis_after_bus(self, gateway, destination, feeder):
+        reached = _time(feeder["arrival_at"])
+        ready = reached + timedelta(minutes=BOARDING_MARGIN_MIN)
+        train_ready = reached + timedelta(seconds=BOARDING_SECONDS["train"])
+
+        def rail_boarding(option):
+            for leg in option["segments"]:
+                if _mode(leg) in RAIL_MODES:
+                    return _mode(leg), _time(leg.get("departure_at"))
+            return None, None
+
+        try:
+            options = self.motis.plan(gateway, destination, ready)
+        except MotisProviderError:
+            return []
+        valid = []
+        missed_train = False
+        for option in options:
+            mode, departure = rail_boarding(option)
+            if departure is None:
+                continue
+            if mode == "train" and departure < train_ready:
+                missed_train = True
+            else:
+                valid.append(option)
+        if missed_train:
+            try:
+                for option in self.motis.plan(gateway, destination, train_ready):
+                    _, departure = rail_boarding(option)
+                    if departure is not None and departure >= train_ready:
+                        valid.append(option)
+            except MotisProviderError:
+                pass
+        return [_join_journeys(feeder, option) for option in valid]
+
+    def _rail_to(self, origin, destination, query_at, access_routes, *, native_direct=False):
+        feeders = [route for route in access_routes if not _connected(route["gateway"], destination)]
         arguments = (origin, destination, query_at, self.walking_time)
-        if (self.local_transit is None or abs(query_at - self.now()) >= LIVE_DEPARTURE_WINDOW
-                or _distance_km(origin, CHUNCHEON_CENTER) >= CHUNCHEON_RAIL_ACCESS_RADIUS_KM
-                or _distance_km(destination, CHUNCHEON_CENTER) < CHUNCHEON_LOCAL_RADIUS_KM):
-            return self.repository.plan(*arguments)
+        options = self.repository.plan(*arguments, access_routes=feeders) if feeders else self.repository.plan(*arguments)
+        if self.motis is None:
+            return options
+        if native_direct:
+            try:
+                options = options + self.motis.plan(origin, destination, query_at)
+            except MotisProviderError:
+                pass
+        by_gateway = {}
+        for feeder in feeders:
+            by_gateway.setdefault(feeder["gateway"]["name"], feeder)
+        return options + [route for feeder in by_gateway.values()
+                          for route in self._motis_after_bus(feeder["gateway"], destination, feeder)]
+
+    def _rail_with_access(self, origin, destination, query_at):
+        bus = self.regional_bus
+        local_origin = _distance_km(origin, CHUNCHEON_CENTER) < CHUNCHEON_LOCAL_RADIUS_KM
+        local_destination = _distance_km(destination, CHUNCHEON_CENTER) < CHUNCHEON_LOCAL_RADIUS_KM
+        live_access = local_origin and _distance_km(origin, CHUNCHEON_CENTER) < CHUNCHEON_RAIL_ACCESS_RADIUS_KM
+        live_access = live_access and not local_destination and bus.live_available(origin, origin, query_at)
+        scheduled = bus.repository is not None and (local_origin or local_destination)
+        if not live_access and not scheduled:
+            return self._rail_to(origin, destination, query_at, [])
+
+        gateways = self.repository.chuncheon_gateways()
+        service_date = query_at.astimezone(KST).date()
 
         def station_access(gateway):
+            if _connected(origin, gateway) or not (live_access or bus.published_available(origin, gateway, service_date)):
+                return []
             try:
-                # Scheduled connections need a known departure for each feeder leg.
-                # TAGO only verifies the first bus in each candidate.
-                options = self._live_local(origin, gateway, query_at, station_access=True)
-            except (OSError, ValueError):
-                return [], []
-            routes = []
+                return [{**option, "gateway": gateway, "arrival_at": _time(option["arrival_at"])}
+                        for option in bus.connections(origin, gateway, query_at)]
+            except (OSError, ValueError, PublicDataError):
+                return []
+
+        def station_egress(gateway, access_routes):
+            if (_connected(origin, gateway) or _connected(gateway, destination)
+                    or not any(bus.published_available(gateway, destination, service_date + timedelta(days=offset))
+                               for offset in range(3))):
+                return []
+            options = self._rail_to(origin, gateway, query_at, access_routes, native_direct=True)
+            arriving = []
             for option in options:
-                timeline = _finalize(option, query_at)
-                if timeline is not None and timeline["complete"]:
-                    routes.append({**option, "gateway": gateway, "arrival_at": _time(timeline["arrival_at"])})
-            if not routes or self.motis is None:
-                return routes, []
-            fastest = min(routes, key=lambda route: route["arrival_at"])
-            ready = fastest["arrival_at"] + timedelta(minutes=BOARDING_MARGIN_MIN)
-            try:
-                onward = self.motis.plan(gateway, destination, ready)
-            except MotisProviderError:
-                return routes, []
-            combined = [{**ride, "segments": fastest["segments"] + ride["segments"], "estimated": True,
-                         "warnings": fastest["warnings"] + ride.get("warnings", [])} for ride in onward]
-            return routes, combined
+                timeline = _finalize(option, query_at, origin=origin, destination=gateway)
+                if timeline and timeline["complete"] and any(leg["mode"] in RAIL_MODES for leg in timeline["segments"]):
+                    arriving.append(timeline)
+            connections = []
+            checked = set()
+            for route in sorted(arriving, key=_journey_order):
+                ready = _time(route["arrival_at"])
+                if ready in checked:
+                    continue
+                if len(checked) == 3:
+                    break
+                checked.add(ready)
+                try:
+                    onward = bus.connections(gateway, destination, ready)
+                except (OSError, ValueError, PublicDataError):
+                    continue
+                connections.extend(_join_journeys(route, option) for option in onward)
+            return connections
 
         with ThreadPoolExecutor(max_workers=2) as executor:
-            results = list(executor.map(station_access, self.repository.chuncheon_gateways()))
-        access_routes = [route for routes, _ in results for route in routes]
-        if access_routes:
-            combined = [route for _, routes in results for route in routes]
-            return combined + self.repository.plan(*arguments, access_routes=access_routes)
-        return self.repository.plan(*arguments)
+            access_routes = [route for routes in executor.map(station_access, gateways) for route in routes]
+            arrival_jobs = [executor.submit(station_egress, gateway, access_routes) for gateway in gateways] if local_destination else []
+            options = self._rail_to(origin, destination, query_at, access_routes)
+            for future in arrival_jobs:
+                try:
+                    options += future.result()
+                except (OSError, ValueError, PublicDataError):
+                    continue
+        return options
 
     def plan(self, origin, destination, query_at):
         jobs = []
@@ -471,11 +680,17 @@ class NationalJourneyService:
             jobs.append((self.motis.plan, (origin, destination, query_at)))
         jobs.append((self._rail_with_access, (origin, destination, query_at)))
         if self.bus_repository is not None:
-            jobs.append((self.bus_repository.plan, (origin, destination, query_at, self.walking_time)))
+            bus_plan = self.bus_repository.plan
+            if abs(query_at - self.now()) >= LIVE_DEPARTURE_WINDOW:
+                bus_plan = partial(bus_plan, use_published_timing=True)
+            jobs.append((bus_plan, (origin, destination, query_at, self.walking_time)))
         if self.intercity is not None:
             jobs.append((self.intercity.plan, (origin, destination, query_at)))
         if _distance_km(origin, destination) <= 6:
-            jobs += [(self._walk, (origin, destination, query_at)), (self._live_local, (origin, destination, query_at))]
+            jobs.append((self._walk, (origin, destination, query_at)))
+        if (_distance_km(origin, CHUNCHEON_CENTER) < CHUNCHEON_LOCAL_RADIUS_KM
+                and _distance_km(destination, CHUNCHEON_CENTER) < CHUNCHEON_LOCAL_RADIUS_KM):
+            jobs.append((self.regional_bus.live, (origin, destination, query_at)))
         raw, warnings, source_unavailable = [], [], False
         with ThreadPoolExecutor(max_workers=4) as executor:
             futures = [(function, executor.submit(function, *args)) for function, args in jobs]
@@ -493,16 +708,9 @@ class NationalJourneyService:
                 except (OSError, ValueError, PublicDataError):
                     source_unavailable = True
         options = []
-        seen = set()
         for option in raw:
-            journey = _finalize(option, query_at)
-            if journey is None:
-                continue
-            signature = tuple((leg["mode"], leg.get("route_name"), leg.get("service_name"),
-                               leg["from_place"].get("name"), leg["to_place"].get("name"),
-                               leg["departure_at"], leg["arrival_at"]) for leg in journey["segments"])
-            if signature not in seen:
-                seen.add(signature)
+            journey = _finalize(option, query_at, origin=origin, destination=destination)
+            if journey is not None:
                 options.append(journey)
         adjusted_trains = set()
         for journey in options:
@@ -515,8 +723,14 @@ class NationalJourneyService:
             options = [journey for journey in options if not any(
                 leg.get("realtime") is not True and _scheduled_train_key(leg) in adjusted_trains
                 for leg in journey["segments"])]
-        options.sort(key=lambda value: (not value["complete"], _time(value["arrival_at"]) or datetime.max.replace(tzinfo=KST),
-                                        value["transfer_count"], -sum(leg.get("realtime") is True for leg in value["segments"])))
+        seen = set()
+        distinct = []
+        for journey in sorted(options, key=_journey_order):
+            signature = _journey_signature(journey)
+            if signature not in seen:
+                seen.add(signature)
+                distinct.append(journey)
+        options = distinct
         if source_unavailable:
             warnings.append("연결된 교통 데이터 일부를 불러오지 못했습니다.")
         if not options or not options[0]["complete"]:

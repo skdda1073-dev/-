@@ -5,11 +5,13 @@ from math import isfinite
 from werkzeug.exceptions import HTTPException
 import pandas as pd
 from services.itx_pair_service import bp as itx_pair_bp
+from services.itx_pair_service import planned_itx_trips
 
 from services.settings import load_settings
 from services.place_search_service import PlaceSearchError, PlaceSearchService
 from services.public_transit_client import PublicDataError, PublicTransitClient
 from services.csv_transit_repository import CsvTransitRepository
+from services.chuncheon_bus_timing import ChuncheonBusTiming
 from services.transit_service import TransitService
 from services.walking_service import WalkingService
 from services.shuttle_repository import ShuttleDataError, ShuttleRepository
@@ -25,7 +27,9 @@ from services.intercity_routes import create_intercity_blueprint
 from services.mobility_validation import MobilityInputError, require_json_object
 from services.motis_journey_provider import MotisJourneyProvider
 from services.national_bus_repository import NationalBusRepository
-from services.national_journey_service import IntercityJourneyProvider, NationalJourneyService, journey_departure, journey_point
+from services.national_journey_service import (
+    IntercityJourneyProvider, NationalJourneyService, RegionalBusJourneyProvider, journey_departure, journey_point,
+)
 from services.national_transit_repository import NationalTransitRepository
 from services.commute_advice_service import CommuteAdviceService
 from services.commute_advice_routes import create_commute_advice_blueprint
@@ -63,9 +67,10 @@ shuttle_profile = ShuttleProfile(
     shuttle_repository, os.path.join(base_dir, "data", "hallym_shuttle_profile.json"),
     os.path.join(campus_data_dir, "한림대학교 건물별 좌표.csv"), transit_repository,
 )
-shuttle_service = ShuttleService(shuttle_repository, walking_service.get_time, profile=shuttle_profile)
+shuttle_service = ShuttleService(shuttle_repository, walking_service.get_precise_time, profile=shuttle_profile)
 transit_service = TransitService(
-    transit_client, walking_service.get_time, shuttle_service=shuttle_service,
+    transit_client, walking_service.get_precise_time, shuttle_service=shuttle_service,
+    ride_timing=ChuncheonBusTiming(os.path.join(national_data_dir, "normalized", "bus", "chuncheon_ride_time_estimates.json")),
 )
 
 # ==========================================
@@ -99,18 +104,22 @@ except Exception as e:
     print("CSV 로드 오류:", e)
 
 place_search_service = PlaceSearchService(TMAP_APP_KEY, CAMPUS_BUILDINGS)
-national_transit_repository = NationalTransitRepository(national_data_dir)
+national_transit_repository = NationalTransitRepository(national_data_dir, itx_schedule=planned_itx_trips)
 motis_journey_provider = MotisJourneyProvider(
     settings.motis_base_url, user_agent="HallymCapstone/1.0 (+https://github.com/skdda1073-dev/-)",
 ) if settings.motis_base_url else None
+national_bus_repository = NationalBusRepository(national_data_dir)
+regional_bus_journey_provider = RegionalBusJourneyProvider(
+    national_bus_repository, walking_service.get_precise_time, local_transit=transit_service,
+)
 national_journey_service = NationalJourneyService(
-    national_transit_repository, walking_service.get_time, local_transit=transit_service,
+    national_transit_repository, walking_service.get_precise_time,
     intercity=IntercityJourneyProvider(
         intercity_service, place_search_service, os.path.join(national_data_dir, "chuncheon_intercity_terminals.json"),
-        walking_service.get_time, regional_transit=national_transit_repository,
+        walking_service.get_precise_time, regional_transit=national_transit_repository,
+        regional_bus=regional_bus_journey_provider.connections, motis=motis_journey_provider,
     ),
-    bus_repository=NationalBusRepository(national_data_dir),
-    motis=motis_journey_provider,
+    bus_repository=national_bus_repository, motis=motis_journey_provider, regional_bus=regional_bus_journey_provider,
 )
 
 # Independent mobility APIs preserve the existing transit response contract.

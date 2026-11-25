@@ -82,13 +82,28 @@ class TravelRecommendationTests(unittest.TestCase):
         self.assertEqual((result["preferred_mode"], result["reason"], result["time_saved_min"]), ("transit", "transit_faster", 2))
         self.assertEqual(result["scooter"]["status"], "not_suggested")
 
-    def test_walking_margin_and_reasonable_distance_boundaries(self):
+    def test_walk_policy_does_not_override_complete_comparison(self):
         at_margin = self.recommend(journeys=[bus(9, access=1, egress=1, wait=3, ride=4)])
         self.assertEqual(at_margin["time_saved_min"], 2)
-        for minutes, distance, expected in ((25, 2000, "walk"), (25.01, 2000, "undetermined"), (25, 2000.01, "undetermined")):
+        for minutes, distance in ((25, 2000), (25.01, 2000), (25, 2000.01), (26, 2100)):
             with self.subTest(minutes=minutes, distance=distance):
                 result = self.recommend(walk(minutes, distance), [bus(40, access=1, egress=1, wait=8, ride=30)])
-                self.assertEqual(result["preferred_mode"], expected)
+                self.assertEqual(result["preferred_mode"], "walk")
+                self.assertAlmostEqual(result["time_saved_min"], 40 - minutes)
+
+    def test_one_minute_faster_transit_beats_short_walk(self):
+        result = self.recommend(journeys=[bus(6, access=1, egress=1, wait=1, ride=3)])
+        self.assertEqual((result["preferred_mode"], result["reason"], result["time_saved_min"]),
+                         ("transit", "transit_faster", 1))
+
+    def test_equal_arrival_prefers_fewer_transfers_then_shorter_walk(self):
+        transfer = bus(7, access=1, egress=0, wait=2, ride=4)
+        transfer["legs"].append(dict(transfer["legs"][0], route_no="2", wait_min=1))
+        self.assertEqual(self.recommend(journeys=[transfer])["preferred_mode"], "walk")
+        result = self.recommend(journeys=[transfer, bus(7, access=3, wait=1), bus(7, access=2, wait=1, ride=4)])
+        self.assertEqual(result["transit"]["candidate_index"], 2)
+        self.assertEqual((result["preferred_mode"], result["reason"], result["time_saved_min"]),
+                         ("transit", "equal_total", None))
 
     def test_short_trip_boundaries_and_no_confirmed_transit(self):
         for minutes, distance, expected in ((15, 1000, "walk"), (15.01, 1000, "undetermined"), (15, 1000.01, "undetermined")):

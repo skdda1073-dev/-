@@ -203,11 +203,76 @@ class RoutePlannerTests(unittest.TestCase):
         indirect = self.plan({"R": compact_route("10", [self.a, detour, self.d])})[0]["ride_min"]
         self.assertGreater(indirect, direct * 3)
 
+    def test_published_ride_estimate_matches_exact_stop_pattern_and_direction(self):
+        detour = stop("DETOUR", 2, lat=37.889, lon=127.735)
+        routes = {"R": compact_route("300", [self.a, detour, self.d])}
+        arrivals = {"A": [{"routeid": "R", "arrtime": 300}]}
+        observations = {("R", "0", ("A", "DETOUR", "D")): (5, "춘천시 공개 운행 기록")}
+        before = self.plan(routes, arrivals=arrivals)[0]
+        after = self.plan(routes, arrivals=arrivals, ride_estimates=observations)[0]
+        self.assertEqual(before["legs"][0]["ride_time_basis"], "geometric_estimate")
+        self.assertEqual((before["ride_min"], before["total_min"]), (9.13, 16.13))
+        self.assertEqual((after["ride_min"], after["total_min"]), (5, 12))
+        self.assertEqual(after["legs"][0]["ride_time_basis"], "published_segment_estimate")
+        self.assertEqual(after["legs"][0]["ride_time_source"], "춘천시 공개 운행 기록")
+        self.assertTrue(after["is_estimate"])
+
+        for key in (("R", "1", ("A", "DETOUR", "D")), ("R", "0", ("A", "D")), ("OTHER", "0", ("A", "DETOUR", "D"))):
+            with self.subTest(key=key):
+                self.assertEqual(self.plan(routes, arrivals=arrivals, ride_estimates={key: (5, "운행 기록")})[0], before)
+
+        for invalid in ((False, "운행 기록"), (float("nan"), "운행 기록"), (-1, "운행 기록"), (5, "")):
+            with self.subTest(invalid=invalid):
+                key = next(iter(observations))
+                self.assertEqual(self.plan(routes, arrivals=arrivals, ride_estimates={key: invalid})[0], before)
+
     def test_fully_timed_catchable_journey_ranks_ahead_of_unknown_wait(self):
         routes = {"UNKNOWN": compact_route("10", [self.a, self.d]),
                   "KNOWN": route("20", [self.a, self.b, self.c, self.d])}
         journeys = self.plan(routes, arrivals={"A": [{"routeid": "KNOWN", "arrtime": 1200}]})
         self.assertEqual(journeys[0]["legs"][0]["route_id"], "KNOWN")
+
+    def test_direct_departure_is_kept_beyond_reference_heuristic_limit(self):
+        # Three alighting choices each exhaust the reference quota within the live API route cap.
+        first = stop("U1", 2, lon=127.744)
+        second = stop("U2", 3, lon=127.7445)
+        routes = {f"unknown{i}": route(str(i), [self.a, first, second, self.d]) for i in range(27)}
+        target = stop("FINAL", 3, lon=127.745)
+        detour = stop("DETOUR", 2, lat=37.889, lon=127.735)
+        routes["viable"] = route("300", [self.a, detour, target])
+        journeys = self.plan(routes, destinations=[first, second, self.d, target], max_transfers=0,
+                             arrivals={"A": [{"routeid": "viable", "routeno": "300", "updowncd": 0, "arrtime": 300}]},
+                             limit=None)
+        self.assertEqual(journeys[0]["legs"][0]["route_id"], "viable")
+        self.assertAlmostEqual(journeys[0]["total_min"], 16.13)
+        self.assertEqual(len(journeys), 81)
+
+    def test_equal_timed_bus_routes_prefer_shorter_measured_walking(self):
+        long = stop("LONG", 1, lat=37.879)
+        short = stop("SHORT", 1, lat=37.881)
+        routes = {"A-long": compact_route("10", [long, self.d]), "Z-short": compact_route("20", [short, self.d])}
+        arrivals = {"LONG": [{"routeid": "A-long", "arrtime": 300}], "SHORT": [{"routeid": "Z-short", "arrtime": 300}]}
+
+        def walking(slat, slon, sname, elat, elon, ename):
+            return (3 if ename == "LONG" else 1), 100
+
+        first, second = self.plan(routes, origins=[long, short], arrivals=arrivals, walking=walking)
+        self.assertEqual(first["total_min"], second["total_min"])
+        self.assertLess(first["walk_min"], second["walk_min"])
+        self.assertEqual(first["legs"][0]["route_id"], "Z-short")
+
+    def test_boarding_deadline_changes_timed_rank_and_last_bus_yields_references(self):
+        routes = {"R1": compact_route("10", [self.a, self.d]), "R2": compact_route("20", [self.a, self.d])}
+        timetable = {"R1": (6, 30), "R2": (8, 16)}
+
+        def at(elapsed):
+            records = [{"routeid": route_id, "arrtime": (departure - elapsed) * 60}
+                       for route_id, departures in timetable.items() for departure in departures]
+            return self.plan(routes, arrivals={"A": records})
+
+        self.assertEqual(at(0)[0]["legs"][0]["route_id"], "R1")
+        self.assertEqual(at(5)[0]["legs"][0]["route_id"], "R2")
+        self.assertTrue(all(journey["total_min"] is None for journey in at(31)))
 
     def test_failed_access_or_egress_walk_removes_candidate(self):
         for fail_name in ("출발지", "D"):

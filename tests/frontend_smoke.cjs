@@ -247,7 +247,8 @@ async function openApp(browser, options = {}) {
     const previewFontCSS = await loadPreviewFontCSS();
     const context = await browser.newContext({
         viewport: options.viewport || { width: 390, height: 844 },
-        deviceScaleFactor: 1, reducedMotion: 'reduce', locale: 'ko-KR', timezoneId: options.timezoneId || 'Asia/Seoul',
+        deviceScaleFactor: 1, hasTouch: !!options.hasTouch, reducedMotion: 'reduce', locale: 'ko-KR',
+        timezoneId: options.timezoneId || 'Asia/Seoul',
     });
     const requests = [], searches = [], taxiRequests = [], roomRequests = [], itxRequests = [], shuttleRequests = [], intercityRequests = [], adviceRequests = [], errors = [], blocked = [];
     await context.addInitScript(({ denyGPS, fixedNow }) => {
@@ -464,6 +465,110 @@ async function screenshot(page, name) {
 
 const tests = [];
 const test = (name, run) => tests.push({ name, run });
+
+test('desktop search and results use the same panel beside the map', async browser => {
+    const app = await openApp(browser, { viewport: { width: 1440, height: 900 } });
+    try {
+        const { page } = app;
+        const workspace = page.locator('#workspace-panel');
+        const map = page.locator('#map-stage');
+        const search = workspace.locator('#planner-panel');
+        const results = workspace.locator('#results-section');
+        assert.equal(await search.isVisible(), true);
+        assert.equal(await results.isVisible(), false);
+        assert.equal(await workspace.locator('#sheet-handle').isVisible(), false);
+        const before = await workspace.boundingBox();
+        assert.ok(before.x + before.width <= (await map.boundingBox()).x + 1, 'The workspace leaves the map unobstructed');
+
+        await chooseBuilding(page);
+        await selectDestination(page);
+        await page.locator('#route-submit').click();
+        await resultContains(page, '총 소요 추정');
+        assert.equal(await search.isVisible(), false, 'Results take the place of the search form');
+        assert.equal(await results.isVisible(), true);
+        assert.deepEqual(await workspace.boundingBox(), before, 'Searching keeps the dock and map geometry stable');
+        await page.locator('#results-edit').click();
+        assert.equal(await search.isVisible(), true);
+        assert.equal(await results.isVisible(), false);
+        assert.match(await search.locator('#dest-selected-text').innerText(), /남춘천역/);
+        assert.equal(app.requests.length, 1, 'Returning to the search form does not submit it again');
+    } finally { await app.close(); }
+});
+
+test('mobile sheet snaps by click, keys, mouse and touch while preserving route results', async browser => {
+    const app = await openApp(browser, { hasTouch: true });
+    try {
+        const { page } = app;
+        const panel = page.locator('#workspace-panel');
+        const handle = panel.locator('#sheet-handle');
+        const content = panel.locator('#workspace-content');
+        const map = page.locator('#map-stage');
+        async function expectPosition(position) {
+            await page.locator(`#workspace-panel[data-position="${position}"]`).waitFor();
+            assert.equal(await handle.getAttribute('aria-expanded'), String(position !== 'peek'));
+            assert.equal(await content.evaluate(element => element.inert), position === 'peek');
+        }
+
+        await expectPosition('half');
+        const half = await panel.boundingBox();
+        const mapBefore = await map.boundingBox();
+        assert.ok(mapBefore.y + mapBefore.height <= half.y + 1, 'The panel leaves its visible map area available for taps');
+        await handle.click();
+        await expectPosition('peek');
+        const peek = await handle.boundingBox();
+        assert.ok((await map.boundingBox()).height > mapBefore.height);
+        await handle.press('ArrowUp');
+        await expectPosition('half');
+        await handle.press('End');
+        await expectPosition('full');
+        const full = await handle.boundingBox();
+        assert.ok((await panel.boundingBox()).height > half.height);
+        assert.ok((await map.boundingBox()).height >= 131, 'The expanded panel still leaves room to use the map');
+        await handle.press('ArrowDown');
+        await expectPosition('half');
+
+        const grabber = await handle.boundingBox();
+        const x = grabber.x + grabber.width / 2, y = grabber.y + grabber.height / 2;
+        await page.mouse.move(x, y);
+        await page.mouse.down();
+        await page.mouse.move(x, 24, { steps: 8 });
+        assert.ok((await map.boundingBox()).height >= 131, 'Dragging past full does not cover the rest of the map');
+        await page.mouse.move(x, full.y + full.height / 2, { steps: 8 });
+        await page.mouse.up();
+        await expectPosition('full');
+
+        const touch = await app.context.newCDPSession(page);
+        const expandedGrabber = await handle.boundingBox();
+        const start = { x: Math.round(expandedGrabber.x + expandedGrabber.width / 2), y: Math.round(expandedGrabber.y + expandedGrabber.height / 2) };
+        const endY = Math.round(peek.y + peek.height / 2);
+        await touch.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [start] });
+        await touch.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ ...start, y: Math.round((start.y + endY) / 2) }] });
+        await touch.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ ...start, y: endY }] });
+        await touch.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+        await expectPosition('peek');
+        await touch.detach();
+
+        await handle.click();
+        await expectPosition('half');
+        await chooseBuilding(page);
+        await selectDestination(page);
+        await page.locator('#route-submit').click();
+        await resultContains(page, '총 소요 추정');
+        await handle.press('Home');
+        await expectPosition('peek');
+        await handle.press('ArrowUp');
+        await expectPosition('half');
+        await resultContains(page, '총 소요 추정');
+        assert.equal(app.requests.length, 1, 'Collapsing a panel leaves its result available');
+        await noOverflow(page);
+
+        await handle.press('Home');
+        await expectPosition('peek');
+        await page.setViewportSize({ width: 1024, height: 844 });
+        await page.waitForFunction(() => !document.getElementById('workspace-content').inert);
+        await resultContains(page, '총 소요 추정');
+    } finally { await app.close(); }
+});
 
 test('390px initial layout, campus data, keyboard destination selection and clear', async browser => {
     const app = await openApp(browser);
@@ -909,12 +1014,12 @@ for (const width of [360, 390, 1024, 1440]) test(`${width}px independent results
             const list = document.getElementById('results-section').getBoundingClientRect();
             return { docked: document.getElementById('app-shell').classList.contains('detail-docked'),
                 parent: detail.parentElement.id, insideMap: rect.left >= map.left && rect.right <= map.right && rect.top >= map.top && rect.bottom <= map.bottom,
-                beforeList: rect.right <= list.left, adequate: innerWidth >= 1280 && map.width >= 640 && map.height >= 480 };
+                besideList: rect.left >= list.right, adequate: innerWidth >= 1280 && map.width >= 640 && map.height >= 480 };
         });
         assert.equal(geometry.docked, geometry.adequate);
         assert.equal(geometry.parent, geometry.docked ? 'route-detail-map' : 'route-detail-inline');
         if (geometry.docked) {
-            assert.equal(geometry.insideMap, true); assert.equal(geometry.beforeList, true);
+            assert.equal(geometry.insideMap, true); assert.equal(geometry.besideList, true);
             assert.equal(await page.locator('#result-container').isVisible(), true);
         }
         await page.locator('.station-marker[title*="둘째 경로 승차"]').waitFor({ state: 'attached' });

@@ -68,6 +68,7 @@ def _candidate(journey, index):
     return {
         "candidate_index": index, "total_min": total if complete else None,
         "access_walk_min": access, "egress_walk_min": egress, "stop_walk_min": stop_walk, "wait_min": wait,
+        "transfer_count": len(legs) - 1,
     }
 
 
@@ -78,7 +79,8 @@ def build_recommendation(origin, destination, direct_walk, journeys):
         candidates = [candidate for index, journey in enumerate(journeys)
                       if (candidate := _candidate(journey, index)) is not None]
     complete = [candidate for candidate in candidates if candidate["total_min"] is not None]
-    best_complete = min(complete, key=lambda item: (item["total_min"], item["candidate_index"])) if complete else None
+    best_complete = min(complete, key=lambda item: (item["total_min"], item["transfer_count"], item["stop_walk_min"],
+                                                    item["candidate_index"]), default=None)
     least_walk = min(candidates, key=lambda item: (item["stop_walk_min"], item["candidate_index"])) if candidates else None
     result = {
         "status": "unavailable", "preferred_mode": "transit" if candidates else "undetermined",
@@ -107,13 +109,17 @@ def build_recommendation(origin, destination, direct_walk, journeys):
     short = minutes <= SHORT_WALK_MAX_MIN and distance <= SHORT_WALK_MAX_M
     reasonable = minutes <= REASONABLE_WALK_MAX_MIN and distance <= REASONABLE_WALK_MAX_M
     overhead = least_walk is not None and minutes + COMPARISON_MARGIN_MIN <= least_walk["stop_walk_min"]
-    if best_complete and best_complete["total_min"] + COMPARISON_MARGIN_MIN <= minutes:
-        result.update(preferred_mode="transit", reason="transit_faster",
-                      time_saved_min=round(minutes - best_complete["total_min"], 2))
-    elif best_complete and reasonable and minutes + COMPARISON_MARGIN_MIN <= best_complete["total_min"]:
-        result.update(preferred_mode="walk", reason="stop_walk_overhead" if overhead else "walk_faster",
-                      time_saved_min=round(best_complete["total_min"] - minutes, 2))
-    elif not best_complete and reasonable and overhead:
+    if best_complete:
+        bus_time = best_complete["total_min"]
+        if bus_time < minutes:
+            result.update(preferred_mode="transit", reason="transit_faster", time_saved_min=round(minutes - bus_time, 2))
+        elif minutes < bus_time:
+            result.update(preferred_mode="walk", reason="stop_walk_overhead" if overhead else "walk_faster",
+                          time_saved_min=round(bus_time - minutes, 2))
+        else:
+            transit_wins_tie = (best_complete["transfer_count"], best_complete["stop_walk_min"]) < (0, minutes)
+            result.update(preferred_mode="transit" if transit_wins_tie else "walk", reason="equal_total")
+    elif reasonable and overhead:
         result.update(preferred_mode="walk", reason="stop_walk_overhead")
     elif short:
         result.update(preferred_mode="walk", reason="short_trip" if candidates else "walk_only")
