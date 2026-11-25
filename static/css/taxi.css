@@ -4,6 +4,7 @@
 #transport-panel-taxi .taxi-section { margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--line); }
 #transport-panel-taxi .taxi-card { padding: 0; border: 0; border-radius: 0; }
 .taxi-card > h2 { font-size: 18px; margin-bottom: 8px; }
+.taxi-party > h2 { font-size: 18px; margin-bottom: 4px; }
 .taxi-route { margin-bottom: 12px; color: var(--muted); font-size: 12px; line-height: 1.6; }
 #taxi-refresh { width: 100%; margin: 8px 0 12px; }
 #taxi-content { min-width: 0; }

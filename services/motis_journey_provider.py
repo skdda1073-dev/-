@@ -1,8 +1,9 @@
 """Adapt MOTIS v6 transit itineraries to the national journey service."""
 
-from datetime import datetime, timedelta
+from datetime import date, datetime, time, timedelta
 from math import ceil, isfinite
 from urllib.parse import urlsplit
+from zoneinfo import ZoneInfo
 
 import requests
 
@@ -31,6 +32,9 @@ MODE_NAMES = {
 KORAIL_SERVICES = {"KTX", "KTX-산천", "KTX-이음", "KTX-청룡", "ITX-청춘", "ITX-새마을",
                    "ITX-마음", "무궁화", "무궁화호", "새마을", "새마을호", "누리로"}
 MAX_STATION_WALK_SECONDS = 3600
+# MOTIS uses this representative Wednesday for the one-day KTDB snapshot.
+KTDB_REFERENCE_DAY = date(2025, 3, 19)
+KTDB_REFERENCE_KIND = "ktdb_2025_03_weekday"
 
 
 class MotisProviderError(Exception):
@@ -147,7 +151,7 @@ class MotisJourneyProvider:
         self.user_agent = user_agent
         self.requester = requester if requester is not None else requests.get
 
-    def walking_time(self, start_lat, start_lon, start_name, end_lat, end_lon, end_name):
+    def walking_time(self, start_lat, start_lon, start_name, end_lat, end_lon, end_name, *, reference=False):
         origin = {"lat": start_lat, "lon": start_lon, "name": start_name}
         destination = {"lat": end_lat, "lon": end_lon, "name": end_name}
         if not _place(origin) or not _place(destination):
@@ -155,7 +159,11 @@ class MotisJourneyProvider:
         if (start_lat, start_lon) == (end_lat, end_lon):
             return 0, 0
         params = {"fromPlace": f"{start_lat},{start_lon}", "toPlace": f"{end_lat},{end_lon}",
-                  "directModes": "WALK", "transitModes": "", "detailedLegs": "false", "maxMatchingDistance": 75}
+                  "directModes": "WALK", "transitModes": "", "detailedLegs": "false",
+                  "maxMatchingDistance": 75, "maxDirectTime": MAX_STATION_WALK_SECONDS}
+        if reference:
+            reference_noon = datetime.combine(KTDB_REFERENCE_DAY, time(12), ZoneInfo("Asia/Seoul"))
+            params["time"] = reference_noon.isoformat()
         try:
             response = self.requester(self.url, params=params, timeout=(1.5, 4.0), allow_redirects=False,
                                       headers={"Accept": "application/json", "User-Agent": self.user_agent})
@@ -206,3 +214,21 @@ class MotisJourneyProvider:
             raise MotisProviderError("MOTIS returned an invalid planning response")
         journeys = (_journey(itinerary, origin, destination, query_at) for itinerary in data["itineraries"])
         return [journey for journey in journeys if journey is not None]
+
+    def plan_reference(self, origin, destination, query_at):
+        """Return stop sequences from the KTDB weekday feed without timetable claims."""
+        local_clock = query_at.astimezone(ZoneInfo("Asia/Seoul")).timetz()
+        reference_at = datetime.combine(KTDB_REFERENCE_DAY, local_clock)
+        journeys = self.plan(origin, destination, reference_at)
+        return [
+            {
+                "source": "국가교통DB", "reference_kind": KTDB_REFERENCE_KIND, "complete": False,
+                "segments": [{
+                    "mode": leg["mode"], "route_name": leg["route_name"],
+                    "from_place": leg["from_place"], "to_place": leg["to_place"],
+                    "departure_at": None, "arrival_at": None, "duration_min": None,
+                    "fare_won": None, "realtime": False, "bookable": False,
+                } for leg in journey["segments"]],
+            }
+            for journey in journeys
+        ]

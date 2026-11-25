@@ -1,10 +1,13 @@
-"""교내 CSV와 TMAP POI를 같은 결과 형식으로 제공한다."""
+"""교내·철도역 자료와 TMAP POI를 같은 검색 결과 형식으로 제공한다."""
 
 from math import isfinite
 import re
 import unicodedata
 
 import requests
+
+
+CHUNCHEON_ADDRESS = re.compile(r"(?:^|\s)춘천(?:시)?(?:\s|$)")
 
 
 class PlaceSearchError(Exception):
@@ -27,10 +30,11 @@ class PlaceSearchService:
         "knu": ("강원대학교", "강원대", "knu"),
     }
 
-    def __init__(self, app_key, campus_buildings, requester=None):
+    def __init__(self, app_key, campus_buildings, requester=None, *, station_lookup=None):
         self.app_key = str(app_key or "").strip()
         self.campus_buildings = campus_buildings
         self.requester = requester or requests.get
+        self.station_lookup = station_lookup
 
     @staticmethod
     def _text(value):
@@ -113,8 +117,7 @@ class PlaceSearchService:
         road = next((cls._text(row.get("fullAddressRoad")) for row in rows
                      if isinstance(row, dict) and cls._text(row.get("fullAddressRoad"))), "") if isinstance(rows, list) else ""
         old_address = " ".join(part for part in address_parts if part)
-        chuncheon = re.compile(r"(?:^|\s)춘천(?:시)?(?:\s|$)")
-        if not national and not chuncheon.search(old_address) and not chuncheon.search(road):
+        if not national and not CHUNCHEON_ADDRESS.search(old_address) and not CHUNCHEON_ADDRESS.search(road):
             return None
         return road or old_address or None
 
@@ -207,7 +210,7 @@ class PlaceSearchService:
         return self._remote_matches("버스터미널", national=True, center=center)
 
     def search(self, query, campus=None, scope="local"):
-        """배열 계약 유지. 외부 장애 시 교내 결과에는 search_warning을 표시한다."""
+        """외부 검색에 실패해도 보유 자료의 장소 결과를 제공한다."""
         if not isinstance(query, str):
             raise PlaceSearchError("INVALID_QUERY", "검색어는 문자열이어야 합니다.", 400)
         query = self._text(query)
@@ -219,7 +222,10 @@ class PlaceSearchService:
             raise PlaceSearchError("INVALID_SCOPE", "검색 범위를 확인해 주세요.", 400)
         if not query:
             return []
-        local = self._campus_matches(query, campus)
+        stations = self.station_lookup(query) if self.station_lookup is not None else []
+        if scope == "local":
+            stations = [station for station in stations if CHUNCHEON_ADDRESS.search(station["sub"])]
+        local = stations + self._campus_matches(query, campus)
         try:
             remote = self._remote_matches(query, national=scope == "national")
         except PlaceSearchError as error:

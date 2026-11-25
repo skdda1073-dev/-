@@ -149,6 +149,47 @@ class NationalTimelineTests(unittest.TestCase):
         self.assertEqual(result["journeys"][0]["total_min"], 100)
         self.assertTrue(any("MOTIS" in warning for warning in result["warnings"]))
 
+    def test_reference_fills_an_empty_search_but_is_skipped_when_a_timed_trip_resolves(self):
+        repository = Mock(**{"plan.return_value": []})
+        reference_provider = Mock(**{"plan_reference.return_value": [{
+            "reference_kind": "ktdb_2025_03_weekday", "complete": False,
+            "segments": [segment("bus", ORIGIN, DESTINATION, None, None)],
+        }]})
+        service = NationalJourneyService(repository, Mock(), ktdb_reference=reference_provider)
+        result = service.plan(ORIGIN, DESTINATION, AT)
+        self.assertEqual(result["status"], "partial")
+        [reference] = result["journeys"]
+        self.assertEqual(reference["reference_kind"], "ktdb_2025_03_weekday")
+        self.assertIsNone(reference["total_min"])
+        self.assertNotIn("확인 가능한 운행표 기준입니다.", " ".join(result["warnings"]))
+        reference_provider.plan_reference.assert_called_once_with(ORIGIN, DESTINATION, AT)
+
+        reference_provider.reset_mock()
+        repository.plan.return_value = [{"segments": [segment("train", ORIGIN, DESTINATION,
+                                                             AT, AT + timedelta(minutes=100))]}]
+        result = service.plan(ORIGIN, DESTINATION, AT)
+        self.assertEqual(result["status"], "ok")
+        [current] = result["journeys"]
+        self.assertEqual(current["total_min"], 100)
+        reference_provider.plan_reference.assert_not_called()
+
+    def test_reference_is_shown_after_a_measured_walk_and_its_outage_leaves_walk_available(self):
+        destination = {"name": "춘천역", "lat": 37.8844, "lon": 127.7166}
+        repository = Mock(**{"plan.return_value": []})
+        reference_provider = Mock(**{"plan_reference.return_value": [{
+            "reference_kind": "ktdb_2025_03_weekday", "complete": False,
+            "segments": [segment("bus", ORIGIN, destination, None, None)],
+        }]})
+        service = NationalJourneyService(repository, lambda *_: (30, 2000), ktdb_reference=reference_provider)
+        result = service.plan(ORIGIN, destination, AT)
+        walk, route = result["journeys"]
+        self.assertEqual(result["status"], "ok")
+        self.assertEqual(walk["total_min"], 30)
+        self.assertEqual(route["reference_kind"], "ktdb_2025_03_weekday")
+
+        reference_provider.plan_reference.side_effect = MotisProviderError("provider unavailable")
+        self.assertEqual(service.plan(ORIGIN, destination, AT)["journeys"], [walk])
+
     def test_duplicate_mixed_route_from_two_sources_occupies_one_result(self):
         station = {"name": "춘천역", "lat": 37.8844, "lon": 127.7166}
         rail = segment("subway", DESTINATION, station, AT + timedelta(minutes=3), AT + timedelta(minutes=61))

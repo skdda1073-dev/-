@@ -54,6 +54,7 @@ function harness(handler = async selected => fixture(selected), wideViewport = t
     for (const match of markup.matchAll(/id="([^"]+)"/g)) nodes.set(match[1], new Element('div', match[1]));
     for (const id of ['commute-advice-toggle', 'commute-advice-count', 'commute-advice-toggle-status']) nodes.set(id, new Element('button', id));
     const panel = nodes.get('commute-advice-panel'), details = nodes.get('commute-advice-details');
+    nodes.get('commute-advice-toggle').setAttribute('aria-controls', panel.id);
     for (const [id, node] of nodes) if (id !== panel.id && !['commute-advice-toggle', 'commute-advice-count', 'commute-advice-toggle-status'].includes(id)) {
         (id === 'commute-advice-body' ? details : panel).appendChild(node);
     }
@@ -102,8 +103,8 @@ function harness(handler = async selected => fixture(selected), wideViewport = t
 
 test('all simultaneous advice and measured/forecast labels render without focus theft', async () => {
     const app = harness(); await flush();
-    assert.equal(app.el('commute-advice-panel').hidden, false);
-    assert.equal(app.el('commute-advice-details').hidden, false);
+    assert.equal(app.el('commute-advice-panel').hidden, true);
+    assert.equal(app.el('commute-advice-details').hidden, true);
     assert.equal(app.document.activeElement.tagName, 'body');
     assert.equal(app.el('commute-advice-alerts').children.length, 3);
     assert.equal(app.el('commute-advice-count').textContent, '3');
@@ -112,10 +113,11 @@ test('all simultaneous advice and measured/forecast labels render without focus 
     assert.match(app.el('commute-weather-time').textContent, /예보.*발표/);
     assert.match(app.el('commute-air-time').textContent, /측정소.*춘천 참고값.*측정/);
 });
-test('folding details through the close button or Escape keeps weather visible', async () => {
+test('closing details restores launcher focus and keeps the forecast cached', async () => {
     const app = harness(); await flush(); app.api.init();
+    await app.click('commute-advice-toggle');
     await app.click('commute-advice-close');
-    assert.equal(app.el('commute-advice-panel').hidden, false);
+    assert.equal(app.el('commute-advice-panel').hidden, true);
     assert.equal(app.el('commute-advice-details').hidden, true);
     assert.equal(app.el('commute-advice-glance-temperature').textContent, '3℃');
     assert.equal(app.document.activeElement.id, 'commute-advice-toggle');
@@ -124,22 +126,23 @@ test('folding details through the close button or Escape keeps weather visible',
     app.document.dispatchEvent({ type: 'pointerdown', target: app.document });
     assert.equal(app.el('commute-advice-details').hidden, false);
     app.document.dispatchEvent({ type: 'keydown', key: 'Escape', preventDefault() {} });
-    assert.equal(app.el('commute-advice-panel').hidden, false);
+    assert.equal(app.el('commute-advice-panel').hidden, true);
     assert.equal(app.el('commute-advice-details').hidden, true);
     assert.equal(app.requests.length, 1);
     await app.click('commute-advice-toggle'); await app.click('commute-advice-refresh');
     assert.equal(app.requests.length, 2);
 });
-test('crossing the wide viewport breakpoint switches details and keeps the forecast ready', async () => {
+test('crossing the wide viewport breakpoint keeps the chosen panel state', async () => {
     const app = harness(undefined, false); await flush();
     assert.equal(app.el('commute-advice-details').hidden, true);
     assert.equal(app.el('commute-advice-glance-wind').textContent, '4.5m/s');
     app.viewport(true);
-    assert.equal(app.el('commute-advice-details').hidden, false);
+    assert.equal(app.el('commute-advice-details').hidden, true);
     assert.equal(app.document.activeElement.tagName, 'body');
+    await app.click('commute-advice-toggle');
     app.viewport(false);
     assert.equal(app.el('commute-advice-panel').hidden, false);
-    assert.equal(app.el('commute-advice-details').hidden, true);
+    assert.equal(app.el('commute-advice-details').hidden, false);
     assert.equal(app.requests.length, 1);
 });
 test('a late uncancellable campus response cannot replace the new campus or unfold details', async () => {
@@ -151,7 +154,7 @@ test('a late uncancellable campus response cannot replace the new campus or unfo
     release(fixture('hallym', { summary: '오래된 응답' })); await flush();
     assert.equal(app.el('commute-advice-campus').textContent, '강원대학교 기준');
     assert.doesNotMatch(app.el('commute-advice-status').textContent, /오래된/);
-    assert.equal(app.el('commute-advice-panel').hidden, false);
+    assert.equal(app.el('commute-advice-panel').hidden, true);
     assert.equal(app.el('commute-advice-details').hidden, true);
     await app.select('knu'); await app.select('invalid');
     assert.equal(app.requests.length, 2, 'Unchanged/invalid campus does not re-query');

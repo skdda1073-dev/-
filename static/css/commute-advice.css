@@ -101,3 +101,46 @@
     .commute-advice-body { padding: 14px 15px 10px; }
     .commute-advice-footer { padding-left: 15px; padding-right: 12px; }
 }
+
+.map-stage--compact-tools .commute-advice-toggle .commute-advice-count {
+    position: absolute;
+    top: -3px;
+    right: -3px;
+    min-width: 16px;
+    height: 16px;
+    padding-inline: 3px;
+    border: 1px solid #fff;
+    font-size: 9px;
+}
+.map-stage--compact-tools .commute-advice-panel {
+    position: absolute;
+    z-index: 4;
+    top: var(--map-control-gutter);
+    right: calc(var(--map-control-size) + var(--map-control-gutter) + 10px);
+    left: auto;
+    width: min(var(--commute-advice-panel-width), calc(100% - var(--map-control-size) - 3 * var(--map-control-gutter)));
+    max-height: min(660px, calc(100% - 2 * var(--map-control-gutter)));
+    overflow: hidden;
+    border-radius: 16px;
+}
+.map-stage--compact-tools .commute-advice-header { padding: 10px 12px 8px 15px; background: #f2f7e9; }
+.map-stage--compact-tools .commute-advice-header h2 { font-size: 16px; }
+.map-stage--compact-tools .commute-advice-icon-button { width: 40px; height: 40px; }
+.map-stage--compact-tools .commute-advice-glance { display: none; }
+.map-stage--compact-tools .commute-advice-details {
+    position: static;
+    flex: 1 1 auto;
+    width: auto;
+    max-height: none;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+}
+
+@media (max-width: 799px) {
+    .map-stage--compact-tools .commute-advice-panel {
+        right: var(--map-control-gutter);
+        width: min(var(--commute-advice-panel-width), calc(100% - 2 * var(--map-control-gutter)));
+        max-height: calc(100% - var(--map-control-size) - 2 * var(--map-control-gutter) - 6px);
+    }
+}

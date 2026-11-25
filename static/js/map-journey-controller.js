@@ -30,6 +30,28 @@
 
     function invalidate() { requestVersion++; }
 
+    function showPanel(visible, moveFocus = false) {
+        const launcher = byId('map-journey-toggle'), widget = byId('map-journey-widget');
+        if (!launcher || !widget) return;
+        const focusInside = widget.contains(document.activeElement);
+        if (visible) {
+            modules().commuteAdvice?.closePanel?.();
+            modules().renderer?.closeStationInfo?.();
+            modules().shell?.fitMapPanel?.();
+        } else if (armed) {
+            armed = null;
+            schoolPlaceCallback = null;
+            renderSelection();
+            status('출발·도착지를 지도에서 고르면 자동으로 길을 찾아요.');
+        }
+        widget.hidden = !visible;
+        launcher.setAttribute('aria-expanded', String(visible));
+        if (visible) constrainWidget();
+        if (moveFocus || (!visible && focusInside)) {
+            (visible ? widget.querySelector('.map-journey-heading') : launcher)?.focus({ preventScroll: true });
+        }
+    }
+
     function reset(options = {}) {
         invalidate();
         armed = null;
@@ -52,6 +74,7 @@
         schoolPlaceCallback = callback;
         modules().map.setSelectionPoints(origin, destination);
         modules().shell?.showMap();
+        showPanel(true);
         renderSelection();
         status((kind === 'origin' ? '출발할' : '도착할') + ' 곳을 지도에서 누르세요. Esc로 선택 취소.');
         return true;
@@ -66,6 +89,7 @@
             schoolPlaceCallback = null;
             armed = null;
             renderSelection();
+            showPanel(false);
             callback(point);
             return true;
         }
@@ -88,6 +112,7 @@
         const payload = { campus: window.AppState.getSelectedCampus(), selection_source: 'map',
             location: origin.name, lat: origin.lat, lon: origin.lon,
             dest_name: destination.name, dest_lat: destination.lat, dest_lon: destination.lon };
+        showPanel(false);
         modules().shell?.select('journey', { source: 'map' });
         status('경로를 조회하고 있어요. 결과 패널에서 확인해 주세요.');
         try {
@@ -115,9 +140,11 @@
         const area = stage.getBoundingClientRect(), box = widget.getBoundingClientRect();
         const style = window.getComputedStyle?.(widget);
         const clearance = parseFloat(style?.getPropertyValue?.('--map-journey-weather-clearance')) || 0;
+        const right = parseFloat(style?.getPropertyValue?.('--map-journey-right-clearance')) || 0;
+        const bottom = parseFloat(style?.getPropertyValue?.('--map-journey-bottom-clearance')) || 0;
         const gap = 8;
-        const maxLeft = Math.max(0, area.width - box.width - gap);
-        const maxTop = Math.max(0, area.height - box.height - gap);
+        const maxLeft = Math.max(0, area.width - box.width - gap - right);
+        const maxTop = Math.max(0, area.height - box.height - gap - bottom);
         const minLeft = Math.min(gap, maxLeft);
         const minTop = Math.min(Math.max(gap, clearance), maxTop);
         left = Math.max(minLeft, Math.min(maxLeft, left));
@@ -145,8 +172,9 @@
     }
 
     function constrainWidget() {
-        if (!widgetMoved) return;
-        const box = byId('map-journey-widget').getBoundingClientRect();
+        const widget = byId('map-journey-widget');
+        if (!widgetMoved || !widget || widget.hidden) return;
+        const box = widget.getBoundingClientRect();
         const area = byId('map-stage').getBoundingClientRect();
         moveWidget(box.left - area.left, box.top - area.top);
     }
@@ -168,7 +196,7 @@
         }
         handle.addEventListener('pointerdown', event => {
             if (drag || event.isPrimary === false || (event.button !== undefined && event.button !== 0)
-                || byId('map-journey-reset').contains(event.target)) return;
+                || byId('map-journey-reset').contains(event.target) || byId('map-journey-close')?.contains(event.target)) return;
             const box = widget.getBoundingClientRect(), area = byId('map-stage').getBoundingClientRect();
             drag = { id: event.pointerId, x: event.clientX, y: event.clientY,
                 left: box.left - area.left, top: box.top - area.top };
@@ -180,6 +208,7 @@
         });
         document.addEventListener('pointermove', event => {
             if (!drag || event.pointerId !== drag.id) return;
+            if (widget.hidden) return finishDrag(event);
             moveWidget(drag.left + event.clientX - drag.x, drag.top + event.clientY - drag.y);
             event.preventDefault();
             event.stopPropagation();
@@ -214,23 +243,36 @@
     }
 
     function init() {
-        if (initialized || !byId('map-journey-widget')) return;
+        const widget = byId('map-journey-widget'), launcher = byId('map-journey-toggle');
+        if (initialized || !widget) return;
         initialized = true;
         initWidgetMovement();
+        launcher?.addEventListener('click', () => showPanel(widget.hidden, true));
+        byId('map-journey-close')?.addEventListener('click', () => showPanel(false, true));
         ['origin', 'destination'].forEach(kind => byId('map-pick-' + kind).addEventListener('click', () => armSelection(kind)));
         byId('map-journey-reset').addEventListener('click', () => {
             modules().api?.cancelPendingRequests({ keepMapJourney: true });
             reset();
         });
         document.addEventListener('keydown', event => {
-            if (event.key !== 'Escape' || !armed) return;
+            if (event.key !== 'Escape' || event.defaultPrevented) return;
+            if (!armed) {
+                if (launcher && !widget.hidden && (widget.contains(document.activeElement) || document.activeElement === launcher)) {
+                    event.preventDefault();
+                    showPanel(false, true);
+                }
+                return;
+            }
             const fromSchoolForm = Boolean(schoolPlaceCallback);
             schoolPlaceCallback = null;
             armed = null;
             renderSelection();
             status('지도 선택을 취소했어요. 출발지 또는 도착지 버튼으로 다시 선택할 수 있어요.');
             event.preventDefault();
-            if (fromSchoolForm) modules().shell?.openJourney('national-map-place');
+            if (fromSchoolForm) {
+                showPanel(false);
+                modules().shell?.openJourney('national-map-place');
+            }
         });
         modules().shell?.onMenuSelect((_name, options) => {
             if (options?.source !== 'map') reset({ clearSelection: false });
@@ -240,5 +282,6 @@
     }
 
     window.AppModules.mapJourney = { init, armSelection, armSchoolPlace: armSelection, pickPoint, reset, retry, onMapReady, onMapUnavailable,
+        closePanel: () => showPanel(false),
         getSelection: () => ({ origin: origin ? { ...origin } : null, destination: destination ? { ...destination } : null, armed }) };
 })();

@@ -54,8 +54,14 @@ class MotisJourneyProviderTests(unittest.TestCase):
         self.assertEqual(self.provider.walking_time(*args), (-1, -1))
         self.reply.json.return_value["direct"].append({"legs": [verified]})
         self.assertEqual(self.provider.walking_time(*args), (185 / 60, 188))
-        self.assertEqual(self.request.call_args.kwargs["params"]["directModes"], "WALK")
-        self.assertEqual(self.request.call_args.kwargs["params"]["transitModes"], "")
+        parameters = self.request.call_args.kwargs["params"]
+        self.assertEqual(parameters["directModes"], "WALK")
+        self.assertEqual(parameters["transitModes"], "")
+        self.assertEqual(parameters["maxDirectTime"], 3600)
+        self.assertNotIn("time", parameters)
+
+        self.assertEqual(self.provider.walking_time(*args, reference=True), (185 / 60, 188))
+        self.assertEqual(self.request.call_args.kwargs["params"]["time"], "2025-03-19T12:00:00+09:00")
 
     def test_requests_earliest_arrival_and_preserves_leg_times_and_source(self):
         self.reply.json.return_value = {"itineraries": [itinerary()]}
@@ -107,6 +113,26 @@ class MotisJourneyProviderTests(unittest.TestCase):
         self.assertEqual([item["booking_provider"] for item in segments], ["korail", "srt", None, None, None, None])
         self.assertFalse(segments[2]["bookable"])
         self.assertNotIn("booking", _finalize({"segments": [segments[2]]}, AT)["segments"][-1])
+
+    def test_reference_search_uses_seoul_clock_and_drops_times_trip_identity_and_booking(self):
+        ride = leg("LONG_DISTANCE", ORIGIN, DESTINATION, 6, 105, displayName="ITX-청춘",
+                   tripShortName="S2036", realTime=True, scheduledStartTime="2025-03-19T13:06:00Z")
+        for field in ("startTime", "endTime"):
+            ride[field] = ride[field].replace("2026-11-24", "2025-03-19")
+        self.reply.json.return_value = {"itineraries": [
+            {"startTime": ride["startTime"], "endTime": ride["endTime"], "legs": [ride]}
+        ]}
+        [journey] = self.provider.plan_reference(ORIGIN, DESTINATION, AT.astimezone(timezone.utc))
+        self.assertEqual(self.request.call_args.kwargs["params"]["time"], "2025-03-19T22:00:00+09:00")
+        self.assertEqual(journey["reference_kind"], "ktdb_2025_03_weekday")
+        self.assertFalse(journey["complete"])
+        [segment] = _finalize(journey, AT)["segments"]
+        self.assertEqual((segment["mode"], segment["route_name"]), ("train", "ITX-청춘"))
+        for field in ("departure_at", "arrival_at", "duration_min", "fare_won"):
+            self.assertIsNone(segment[field])
+        for field in ("booking", "scheduled_departure_at", "scheduled_arrival_at", "service_name"):
+            self.assertNotIn(field, segment)
+        self.assertFalse(segment["realtime"])
 
     def test_rejects_missing_endpoint_overlap_unknown_modes_past_trips_and_walking_only(self):
         incomplete = itinerary()

@@ -29,7 +29,7 @@ for (const width of [360, 390, 1440]) test(`${width}px ordinary taxi tab queries
         assert.doesNotMatch(await panel.innerText(), /TMAP|출발·도착 수정/);
         assert.equal(await panel.locator('section').first().getAttribute('aria-labelledby'), 'taxi-party-heading');
         assert.equal(await page.locator('#ride-room-section').isVisible(), false);
-        assert.equal(await page.locator('script[src$="/taxi-controller.js"]').count(), 1);
+        assert.equal(await page.locator('script[src*="/taxi-controller.js"]').count(), 1);
         assert.equal(app.taxiRequests.length, 0); assert.equal(app.roomRequests.length, 0);
         if (width === 360) {
             await page.locator('#taxi-new-room').click();
@@ -59,7 +59,8 @@ for (const width of [360, 390, 1440]) test(`${width}px ordinary taxi tab queries
         await people.getByRole('button', { name: '4명', exact: true }).click();
         assert.match(await page.locator('.taxi-split-amount').innerText(), /2,500~2,501원/);
         assert.equal(app.taxiRequests.length, 1, 'Changing the assumed count is local to the current quote');
-        assert.equal(app.roomRequests.length, 0);
+        assert.equal(app.roomRequests.filter(request =>
+            request.method !== 'GET' || request.pathname !== '/api/ride-rooms/session').length, 0);
         assert.equal(await page.locator('#taxi-refresh').isEnabled(), true);
         await noOverflow(page);
     } finally { await app.close(); }
@@ -144,8 +145,8 @@ test('shared room entry preserves the taxi card and asks for consent only after 
         await visibleText(page, '#taxi-content', '10,001원');
         assert.equal(await page.locator('#taxi-section').count(), 1);
         assert.equal(await page.locator('#ride-room-section').count(), 1);
-        assert.equal(await page.locator('script[src$="/taxi-controller.js"]').count(), 1);
-        assert.equal(await page.locator('script[src$="/ride-room-controller.js"]').count(), 1);
+        assert.equal(await page.locator('script[src*="/taxi-controller.js"]').count(), 1);
+        assert.equal(await page.locator('script[src*="/ride-room-controller.js"]').count(), 1);
         assert.equal(await page.locator('#taxi-room-actions').isVisible(), true);
         assert.equal(app.taxiRequests.length, 1);
         assert.equal(await page.evaluate(() => {

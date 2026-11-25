@@ -6,6 +6,7 @@
     const boundContainers = new WeakSet();
     let lastJourneyResponse = null;
     let validJourneyIndices = new Set(), selectedJourneyIndex = null;
+    let stationInfoButton = null;
 
     function text(value) {
         if (typeof value === 'string') return value;
@@ -402,8 +403,13 @@
             .filter(name => name && name !== label).join(' ');
     }
 
+    function isKtdbReferenceJourney(journey) {
+        return journey.reference_kind === 'ktdb_2025_03_weekday';
+    }
+
     function nationalTimeline(journey) {
         const segments = journey.segments;
+        const ktdbReference = isKtdbReferenceJourney(journey);
         const firstMovement = segments.findIndex(leg => leg.mode !== 'wait');
         return `<ol class="national-timeline" aria-label="통학 경로 구간">${segments.map((leg, index) => {
             const mode = text(leg.mode);
@@ -440,10 +446,10 @@
                 <div class="national-segment-info">
                     <p class="national-segment-mode">${escapeHtml(label)}${routeLabel ? `<span>${escapeHtml(routeLabel)}</span>` : ''}</p>
                     <p class="national-segment-title">${endpoints}</p>
-                    ${timed}<p class="national-segment-facts">${escapeHtml(costs)}</p>
-                    ${source ? `<p class="national-segment-source">${escapeHtml(source)}</p>` : ''}
+                    ${ktdbReference ? '' : `${timed}<p class="national-segment-facts">${escapeHtml(costs)}</p>`}
+                    ${!ktdbReference && source ? `<p class="national-segment-source">${escapeHtml(source)}</p>` : ''}
                 </div>
-                ${bookingMarkup(leg.booking, origin, destination)}
+                ${ktdbReference ? '' : bookingMarkup(leg.booking, origin, destination)}
             </li>`;
         }).join('')}</ol>`;
     }
@@ -469,31 +475,33 @@
     }
 
     function nationalCard(journey, index, mapIndex, response, walkingReference = false) {
+        const ktdbReference = isKtdbReferenceJourney(journey);
         const duration = wholeDuration(journey.total_min);
-        const arrival = duration && journey.complete !== false ? arrivalLabel(journey.arrival_at, journey.departure_at || response.departure_at) : '';
+        const arrival = !ktdbReference && duration && journey.complete !== false ? arrivalLabel(journey.arrival_at, journey.departure_at || response.departure_at) : '';
         const complete = journey.complete !== false && Boolean(duration && arrival);
         const first = index === 0;
-        const priority = walkingReference ? '도보 참고 경로'
+        const priority = ktdbReference ? '2025년 평일 기준 참고 경로' : walkingReference ? '도보 참고 경로'
             : complete ? (first && response.status === 'ok' ? '추천 경로' : '통학 경로') : '확인된 구간';
         const transferCount = number(journey.transfer_count);
-        const totalFare = number(journey.fare_won);
-        const realtime = journey.segments.some(leg => leg.realtime === true);
+        const totalFare = ktdbReference ? null : number(journey.fare_won);
+        const realtime = !ktdbReference && journey.segments.some(leg => leg.realtime === true);
         const headway = complete && journey.segments.some(leg => leg.ride_time_basis === 'published_headway_estimate');
         const publishedBus = complete && journey.segments.some(leg => leg.ride_time_basis === 'published_segment_estimate');
-        const shuttle = journey.segments.some(leg => leg.mode === 'shuttle');
+        const shuttle = !ktdbReference && journey.segments.some(leg => leg.mode === 'shuttle');
         const scheduled = complete && journey.segments.some(leg => ['subway', 'train', 'intercity_bus', 'express_bus'].includes(leg.mode));
-        const timingSource = headway ? '버스 배차 간격 기반 추정'
+        const timingSource = ktdbReference ? '국가교통DB' : headway ? '버스 배차 간격 기반 추정'
             : realtime ? '일부 실시간 반영' : publishedBus ? '공개 시각표 기반 추정' : scheduled && !shuttle ? '시간표 기준' : '';
-        const requestedStart = first ? scheduleTime(response.departure_at) : null;
+        const requestedStart = first && !ktdbReference ? scheduleTime(response.departure_at) : null;
         const departure = requestedStart ? `${kstCalendar.format(requestedStart)} ${kstClock.format(requestedStart)} 출발 기준` : '';
         const meta = [departure, transferCount === null ? '' : transferCount === 0 ? '환승 없음' : `환승 ${transferCount}회`,
             totalFare === null ? '' : `${Math.round(totalFare).toLocaleString('ko-KR')}원`, shuttle ? '셔틀 시간표 기준' : '', timingSource].filter(Boolean).join(' · ');
         const summary = nationalRouteSummary(journey.segments);
+        const headline = ktdbReference ? '현재 운행 미확인' : complete ? (journey.estimated ? '약 ' : '') + duration : '총 소요 미확인';
         return `<article class="result-card route-card national-itinerary${first ? ' national-itinerary--primary' : ''}" data-journey-index="${mapIndex}" aria-labelledby="national-route-title-${index}">
             <header class="national-itinerary-header">
                 <h3 id="national-route-title-${index}" class="national-itinerary-kicker">${priority}</h3>
                 <div class="national-itinerary-primary">
-                    <strong>${escapeHtml(complete ? (journey.estimated ? '약 ' : '') + duration : '총 소요 미확인')}</strong>
+                    <strong>${escapeHtml(headline)}</strong>
                     ${arrival ? `<span>${escapeHtml(arrival)} 도착</span>` : ''}
                 </div>
                 ${summary ? `<p class="national-itinerary-route">${escapeHtml(summary)}</p>` : ''}
@@ -552,6 +560,8 @@
     }
 
     function stationCard(station, index) {
+        const onMap = index === null;
+        const headingId = onMap ? 'map-stop-info-title' : `station-title-${index}`;
         const buses = Array.isArray(station.buses) ? station.buses.filter(value => value && typeof value === 'object' && !Array.isArray(value)).map(record) : [];
         const walk = number(station.walk_min);
         const metres = distance(station.walk_dist);
@@ -561,10 +571,43 @@
         let busList = buses.slice(0, 3).map(nearbyBus).join('');
         if (buses.length > 3) busList += `<details class="station-more"><summary><span>버스 ${buses.length - 3}개 더 보기</span>${icon('chevron-down')}</summary>${buses.slice(3).map(nearbyBus).join('')}</details>`;
         if (!buses.length) busList = `<div class="station-no-arrivals">${icon('clock')}<div><strong>${station.arrival_error ? '도착정보를 확인할 수 없어요' : '현재 표시할 도착정보가 없어요'}</strong><p>정류장 안내에서 다음 배차를 확인해 주세요.</p></div></div>`;
-        return `<article class="result-card station-card" aria-labelledby="station-title-${index}">
-            <div class="station-header"><div><span class="station-kicker">가까운 정류장 ${String(index + 1).padStart(2, '0')}</span><h3 id="station-title-${index}" class="station-name">${escapeHtml(text(station.station_name) || '이름 미확인 정류장')}</h3>${meta ? `<p class="station-meta">${escapeHtml(meta)}</p>` : ''}</div><span class="station-walk">${icon('walk')}${escapeHtml(walkText)}</span></div>
+        return `<article ${onMap ? 'id="map-stop-info" ' : ''}class="result-card station-card${onMap ? ' map-stop-info' : ''}" aria-labelledby="${headingId}">
+            <div class="station-header"><div>${onMap ? '' : `<span class="station-kicker">가까운 정류장 ${String(index + 1).padStart(2, '0')}</span>`}<h3 id="${headingId}" class="station-name">${escapeHtml(text(station.station_name) || '이름 미확인 정류장')}</h3>${meta ? `<p class="station-meta">${escapeHtml(meta)}</p>` : ''}</div><span class="station-walk">${icon('walk')}${escapeHtml(walkText)}</span>${onMap ? '<button type="button" class="results-action" aria-label="정류장 정보 닫기">닫기</button>' : ''}</div>
             <p class="station-direction">${icon('arrow-up-right')}<span>${escapeHtml(text(station.direction) || '승차 방향은 정류장 안내를 확인해 주세요.')}</span></p><div class="bus-list">${busList}</div>
             ${station.arrival_error && buses.length ? `<p class="station-arrival-warning">${icon('warning')}일부 도착정보를 확인하지 못했어요.</p>` : ''}</article>`;
+    }
+
+    function closeStationInfo(restoreFocus = false) {
+        document.getElementById('map-stop-info')?.remove();
+        if (!stationInfoButton) return;
+        const button = stationInfoButton;
+        stationInfoButton = null;
+        button.setAttribute('aria-expanded', 'false');
+        button.removeAttribute('aria-controls');
+        if (restoreFocus && button.isConnected) button.focus({ preventScroll: true });
+    }
+
+    function showStationInfo(station, button) {
+        const stage = document.getElementById('map-stage');
+        if (!stage) return;
+        closeStationInfo();
+        window.AppModules.mapJourney?.closePanel?.();
+        window.AppModules.commuteAdvice?.closePanel?.();
+        window.AppModules.shell?.fitMapPanel?.();
+        stage.insertAdjacentHTML('beforeend', stationCard(record(station), null));
+        const panel = document.getElementById('map-stop-info');
+        const closeButton = panel.querySelector('button');
+        stationInfoButton = button;
+        button.setAttribute('aria-expanded', 'true');
+        button.setAttribute('aria-controls', panel.id);
+        closeButton.addEventListener('click', () => closeStationInfo(true));
+        panel.addEventListener('keydown', event => {
+            if (event.key !== 'Escape') return;
+            event.preventDefault();
+            event.stopPropagation();
+            closeStationInfo(true);
+        });
+        closeButton.focus({ preventScroll: true });
     }
 
     function selectJourney(index, options = {}) {
@@ -582,8 +625,9 @@
         const detail = document.getElementById('route-detail');
         if (detail) {
             const ordinal = [...validJourneyIndices].indexOf(index) + 1;
-            document.getElementById('route-detail-heading').textContent = national ? '선택한 통학 경로 상세'
-                : `선택한 경로 상세 · 경로 ${String(ordinal).padStart(2, '0')}`;
+            const heading = national ? '선택한 통학 경로 상세' : `선택한 경로 상세 · 경로 ${String(ordinal).padStart(2, '0')}`;
+            document.getElementById('route-detail-heading').textContent = national && isKtdbReferenceJourney(journey)
+                ? '2025년 평일 기준 참고 경로' : heading;
             if (changed) {
                 const content = document.getElementById('route-detail-content');
                 const legs = national ? [] : journeyLegs(journey);
@@ -707,6 +751,7 @@
     window.renderResults = renderResults;
     window.AppModules = window.AppModules || {};
     window.AppModules.renderer = Object.assign(window.AppModules.renderer || {}, { renderResults, resetResults, selectJourney,
+        showStationInfo, closeStationInfo,
         getSelectedButton: () => [...document.getElementById('result-container').querySelectorAll('.route-select')]
             .find(button => Number(button.getAttribute('data-journey-index')) === selectedJourneyIndex) || null,
         getSelectedIndex: () => selectedJourneyIndex });

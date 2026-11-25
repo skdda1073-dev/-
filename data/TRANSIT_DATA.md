@@ -1,6 +1,6 @@
 # 전국 통학 경로 자료 준비
 
-2026-11-24에 수집한 자료의 출처, 기준일, 적용일, 범위, 확보 상태와 원본 SHA-256은 [sources.csv](sources.csv)에 있다. [raw](raw/)는 원본이고 [normalized](normalized/)는 통합 길찾기와 대조할 수 있도록 정리한 UTF-8 CSV다. 큰 CSV는 gzip으로 압축했다. 앱에서 사용하는 자료와 응답의 해석은 [경로 계산 안내](../docs/TRANSIT_ROUTING.md)를 참고한다.
+수집한 자료의 출처, 기준일, 적용일, 범위, 확보 상태와 원본 SHA-256은 [sources.csv](sources.csv)에 있다. [raw](raw/)는 원본이고 [normalized](normalized/)는 통합 길찾기와 대조할 수 있도록 정리한 UTF-8 CSV다. 큰 CSV는 gzip으로 압축했다. 앱에서 사용하는 자료와 응답의 해석은 [경로 계산 안내](../docs/TRANSIT_ROUTING.md)를 참고한다.
 
 ## 데이터 사용 범위
 
@@ -19,8 +19,34 @@
 
 - 현재 설정으로 **TAGO 시내버스 노선과 열차의 공개 조회**가 정상 응답했다. **TAGO 지하철·시외버스·고속버스·국내항공·국내선박** 목록 조회는 제공기관 오류 `30`을 반환했다. 해당 서비스별 활용 승인과 인증키 상태를 확인한 뒤 읽기 조회를 재검증해야 한다. [TAGO 서비스 목록](https://tago.go.kr/v5/use/openapi.jsp) · [오류 코드가 포함된 포털 명세](https://www.data.go.kr/data/15098554/openapi.do)
 - 지하철 통합표에는 고시 시각이 없거나 운행 간격으로만 표기된 구간이 있다. 인천 2호선의 정류장별 시각과 GTX-A 등 남은 노선은 해당 운영기관 운행표로 보완한다. [자료별 범위와 상태](sources.csv)
-- 국가교통DB의 GTFS는 2025년 3월 평일 하루를 담은 자료다. KTDB의 별도 자료 신청이 필요하다. [GTFS 수정 자료 안내](https://www.ktdb.go.kr/www/selectBbsNttView.do?bbsNo=2&key=45&nttNo=3831) · [KTDB 자료 신청](https://www.ktdb.go.kr/www/contents.do?key=202)
 - 전국 주소를 검색할 때는 행정안전부 주소정보 API의 검색·좌표 변환을 사용할 수 있다. 실제 도보 거리와 환승 이동은 시설 데이터와 보행 경로로 계산한다. [주소정보 API](https://business.juso.go.kr/jst/jstAddressCuration)
+
+## 국가교통DB 전국 GTFS
+
+2026-10-27 수정 배포본을 2026-11-25에 확보했다. 원본은 2025년 3월 평일 하루를 수록하며 전국 정류장 217,625개, 노선 26,797개, 운행편 326,932개, 정차 시각 18,923,658행을 담고 있다. 원본 달력에는 2017년부터 2030년까지 매일 운행으로 표시되어 있다. 변환본은 2025-03-19를 대표 평일 검색 날짜로 사용한다. 정류장·노선·환승 순서를 확인할 수 있으며 현재의 배차·공휴일 운행·예매 정보는 운영기관 자료로 확인한다. [수정 배포 공지](https://www.ktdb.go.kr/www/selectBbsNttView.do?bbsNo=2&key=45&nttNo=3831)
+
+신청 후 받은 폴더에서 `202503_GTFS_DataSet`을 지정한다. 아래는 기존 맥용 MOTIS 실행 파일과 한국 보행 지도를 재사용해 별도 실행 경로를 준비하는 예다. GTFS ZIP과 색인은 Git에서 제외되는 `.motis/ktdb/`에 보관한다.
+
+```sh
+.venv/bin/python scripts/prepare_ktdb_gtfs.py \
+  --source "$HOME/Downloads/GTFS/202503_GTFS_DataSet" \
+  --output .motis/ktdb/ktdb-reference.zip
+
+.venv/bin/python scripts/setup_motis.py \
+  --binary .motis/v2.11.4-motis-macos-arm64/motis \
+  --osm .motis/south-korea-261101.osm.pbf \
+  --gtfs .motis/ktdb/ktdb-reference.zip --runtime-dir .motis/ktdb \
+  --start-date 2025-03-18 --days 3 --port 8890 --serve
+```
+
+Flask 실행 환경의 `KTDB_MOTIS_BASE_URL`에 `http://127.0.0.1:8890`을 설정하면, 운행 시각이 확인된 대중교통 경로를 구하기 어려울 때 길찾기에서 참고 경로를 함께 볼 수 있다. 참고 결과에는 현재 시각 기준의 출발·도착·총 소요시간이 표시되지 않는다.
+
+### 전국 GTFS 연동 검증
+
+- 변환과 색인 설정은 `scripts/prepare_ktdb_gtfs.py`, `scripts/setup_motis.py`에 있다.
+- Flask 연결은 `app.py`, `services/settings.py`, `services/motis_journey_provider.py`, `services/national_journey_service.py`, `.env.example`에 있다. 화면 표시는 `static/js/ui-renderer.js`에서 처리한다.
+- 테스트는 `tests/test_motis_gtfs_export.py`, `tests/test_motis_journey_provider.py`, `tests/test_national_journey_api.py`에 추가했다. 전체 Python 테스트는 `python -m unittest discover -s tests`, 화면 회귀 검사는 `tests/app_shell_smoke.cjs`를 실행한다. ZIP은 `unzip -t .motis/ktdb/ktdb-reference.zip`으로 검사할 수 있다.
+- 로컬 Flask에서 2026-11-26 09:00 출발로 확인했다. 한림대에서 홍천 북방면행정복지센터까지 참고 경로가 반환됐고, 잠실역에서 동서울터미널까지는 기존 2호선 경로가 추천됐다. 별도 GTFS 엔진에서는 춘천→부산 시외·고속버스와 철도 연결도 확인했다.
 
 ## 데이터 갱신과 검증
 

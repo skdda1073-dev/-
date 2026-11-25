@@ -42,6 +42,7 @@
         authenticationFailed = true;
         mapReady = false;
         clearTimeout(readinessTimer);
+        window.AppModules.renderer?.closeStationInfo?.();
         setMapStatus('지도를 연결하지 못했어요. 검색 결과의 정류장과 이동 안내를 확인해 주세요.', true);
         window.AppModules.mapJourney?.onMapUnavailable?.();
         if (typeof previousAuthFailure === 'function') previousAuthFailure();
@@ -83,6 +84,8 @@
             if (naver.maps.Event && typeof naver.maps.Event.addListener === 'function') {
                 naver.maps.Event.addListener(map, 'tilesloaded', markReady);
                 naver.maps.Event.addListener(map, 'click', function(event) {
+                    const target = event?.originalEvent?.target || event?.pointerEvent?.target;
+                    if (target?.closest?.('.station-marker--interactive')) return;
                     const coord = event && event.coord;
                     if (!coord) return;
                     const lat = typeof coord.lat === 'function' ? coord.lat() : coord.lat;
@@ -99,6 +102,7 @@
             if (latestEntries.length) drawEntries(latestEntries);
             drawSelectionMarkers();
             if (mapJourneyResponse) drawMapJourney();
+            element.addEventListener('click', activateNearbyStop, true);
             return true;
         } catch (error) {
             clearTimeout(readinessTimer);
@@ -112,6 +116,7 @@
     }
 
     function removeStationMarkers() {
+        window.AppModules.renderer?.closeStationInfo?.();
         stationMarkers.forEach(function(marker) {
             if (marker && typeof marker.setMap === 'function') marker.setMap(null);
         });
@@ -125,16 +130,37 @@
         clearMapJourney();
     }
 
-    function markerEntry(lat, lon, label, kind) {
+    function markerEntry(lat, lon, label, kind, station) {
         if (!window.AppState.isValidPosition(lat, lon)) return null;
-        return { lat: Number(lat), lon: Number(lon), label: String(label || '정류장'), kind: kind || 'station' };
+        return { lat: Number(lat), lon: Number(lon), label: String(label || '정류장'), kind: kind || 'station', station };
     }
 
-    function createMarker(entry) {
-        const label = document.createElement('div');
+    function activateNearbyStop(event) {
+        const button = event.target.closest?.('button[data-station-marker-index]');
+        if (!button) return;
+        const entry = latestEntries[Number(button.dataset.stationMarkerIndex)];
+        if (!entry?.station) return;
+        event.stopPropagation();
+        const picker = window.AppModules.mapJourney;
+        if (picker?.getSelection().armed) {
+            window.AppModules.renderer?.closeStationInfo?.();
+            picker.pickPoint(entry.lat, entry.lon);
+            return;
+        }
+        window.AppModules.renderer?.showStationInfo?.(entry.station, button);
+    }
+
+    function createMarker(entry, index) {
+        const label = document.createElement(entry.station ? 'button' : 'div');
         label.className = 'station-marker station-marker--' + entry.kind;
         label.setAttribute('title', entry.label);
         label.setAttribute('aria-label', entry.label);
+        if (entry.station) {
+            label.type = 'button';
+            label.classList.add('station-marker--interactive');
+            label.setAttribute('aria-expanded', 'false');
+            label.dataset.stationMarkerIndex = String(index);
+        }
         const icon = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
         icon.setAttribute('class', 'icon');
         icon.setAttribute('aria-hidden', 'true');
@@ -164,10 +190,10 @@
         removeStationMarkers();
         if (!valid.length) return false;
         const bounds = new naver.maps.LatLngBounds();
-        valid.forEach(function(entry) {
+        valid.forEach(function(entry, index) {
             const position = new naver.maps.LatLng(entry.lat, entry.lon);
             if (!isSelectionPoint(entry)) {
-                const marker = createMarker(entry);
+                const marker = createMarker(entry, index);
                 stationMarkers.push(marker);
                 if (entry.kind === 'origin') startMarker = marker;
             }
@@ -360,7 +386,7 @@
             const walk = station.walk_min !== null && Number.isFinite(Number(station.walk_min))
                 ? ' · 도보 ' + Math.ceil(Number(station.walk_min)) + '분' : '';
             entries.push(markerEntry(station.station_lat, station.station_lon,
-                (station.station_name || '정류장') + walk, 'station'));
+                (station.station_name || '정류장') + walk, 'station', station));
         });
         return drawEntries(entries);
     }
@@ -413,6 +439,7 @@
     }
 
     function init() {
+        window.AppModules.shell?.onMenuSelect?.(() => window.AppModules.renderer?.closeStationInfo?.());
         document.querySelectorAll('[data-map-zoom]').forEach(button => {
             button.addEventListener('click', () => {
                 if (!mapReady || typeof map?.getZoom !== 'function' || typeof map.setZoom !== 'function') return;

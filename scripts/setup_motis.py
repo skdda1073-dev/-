@@ -10,6 +10,7 @@ import shutil
 import subprocess
 import tarfile
 import tempfile
+from datetime import date
 from pathlib import Path
 from zipfile import BadZipFile, ZipFile
 
@@ -97,7 +98,7 @@ def prepare_binary(runtime_dir, archive_name, checksum):
     return executable
 
 
-def prepare_config(runtime_dir, osm_path, gtfs_paths, korail_path, port):
+def prepare_config(runtime_dir, osm_path, gtfs_paths, korail_path, port, *, start_date=None, days=None):
     datasets = {}
     for number, gtfs_path in enumerate(gtfs_paths, start=1):
         datasets[f"hallym{number}"] = {"path": str(gtfs_path)}
@@ -109,13 +110,17 @@ def prepare_config(runtime_dir, osm_path, gtfs_paths, korail_path, port):
     server = {"host": "127.0.0.1", "port": port}
     if korail_path:
         server["data_attribution_link"] = "https://mkuran.pl/gtfs/"
+    timetable = {"first_day": start_date.isoformat() if start_date else "TODAY",
+                 "link_stop_distance": 250, "datasets": datasets}
+    if days is not None:
+        timetable["num_days"] = days
     config = {
         "server": server,
         "osm": str(osm_path),
         "street_routing": True,
         "osr_footpath": True,
         "logging": {"log_level": "info"},
-        "timetable": {"first_day": "TODAY", "link_stop_distance": 250, "datasets": datasets},
+        "timetable": timetable,
     }
     # MOTIS accepts JSON as a subset of its YAML configuration format.
     config_text = json.dumps(config, ensure_ascii=False, indent=2) + "\n"
@@ -130,14 +135,19 @@ def main():
     parser.add_argument("--gtfs", action="append", type=Path, default=[], help="가져올 GTFS ZIP. 여러 번 지정 가능.")
     parser.add_argument("--korail", action="store_true", help="M. Kuranowski의 코레일 GTFS와 GTFS-RT를 추가합니다.")
     parser.add_argument("--osm", type=Path, help="직접 준비한 OSM PBF. 기본값은 검증된 대한민국 지도입니다.")
+    parser.add_argument("--binary", type=Path, help="이미 준비된 MOTIS 실행 파일을 사용합니다.")
     parser.add_argument("--runtime-dir", type=Path, default=PROJECT_DIR / ".motis", help="실행 파일과 색인 저장 경로.")
     parser.add_argument("--port", type=int, default=8889, help="루프백 HTTP 포트. 기본값은 8889.")
+    parser.add_argument("--start-date", type=date.fromisoformat, help="불러올 시간표의 시작일. 기본값은 오늘입니다.")
+    parser.add_argument("--days", type=int, help="불러올 시간표의 일수. 기본값은 MOTIS 설정을 따릅니다.")
     parser.add_argument("--serve", action="store_true", help="데이터를 가져온 후 서버를 실행합니다.")
     args = parser.parse_args()
     if not args.gtfs and not args.korail:
         parser.error("--gtfs 또는 --korail을 지정하세요.")
     if not 1 <= args.port <= 65535:
         parser.error("--port는 1부터 65535까지 사용할 수 있습니다.")
+    if args.days is not None and args.days < 1:
+        parser.error("--days는 1 이상이어야 합니다.")
     architecture = (platform.system(), platform.machine())
     if architecture not in MOTIS_ARCHIVES:
         parser.error(f"이 운영체제와 아키텍처 조합의 네이티브 MOTIS를 제공하지 않습니다. {architecture}")
@@ -160,13 +170,15 @@ def main():
             except BlockingIOError as error:
                 raise RuntimeError(f"이미 MOTIS가 사용 중인 실행 경로입니다. {runtime_dir}") from error
 
-            executable = prepare_binary(runtime_dir, *MOTIS_ARCHIVES[architecture])
+            executable = (args.binary.resolve(strict=True) if args.binary
+                          else prepare_binary(runtime_dir, *MOTIS_ARCHIVES[architecture]))
             if not args.osm:
                 download(OSM_URL, osm_path, lambda path: verify_checksum(path, OSM_SHA256))
             korail_path = runtime_dir / "korail.zip" if args.korail else None
             if korail_path:
                 download(KORAIL_GTFS_URL, korail_path, validate_gtfs)
-            prepare_config(runtime_dir, osm_path, gtfs_paths, korail_path, args.port)
+            prepare_config(runtime_dir, osm_path, gtfs_paths, korail_path, args.port,
+                           start_date=args.start_date, days=args.days)
             subprocess.run([str(executable), "import"], cwd=runtime_dir, check=True)
 
             if args.serve:

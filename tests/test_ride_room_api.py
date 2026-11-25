@@ -1,9 +1,11 @@
 """실제 임시 SQLite/Flask 통합. 참가자·운임은 가짜이고 외부 통신은 하지 않는다."""
 
+from contextlib import closing
 from datetime import datetime, timedelta, timezone
 from hashlib import sha256
 import os
 from pathlib import Path
+import sqlite3
 import tempfile
 import unittest
 from unittest.mock import Mock, patch
@@ -147,13 +149,35 @@ class RideRoomApiTests(unittest.TestCase):
                                            environ_overrides={"REMOTE_ADDR": "127.0.0.1"})
         self.assertEqual(local.status_code, 200)
         self.assertNotIn("; Secure", local.headers["Set-Cookie"])
-        for base_url, remote in (("http://campus.example", "127.0.0.1"),
-                                 ("http://localhost", "203.0.113.1"),
-                                 ("http://campus.example", "203.0.113.1")):
-            with self.subTest(base_url=base_url, remote=remote):
-                blocked = self.app.test_client().get("/api/ride-rooms/session", base_url=base_url,
-                                                     environ_overrides={"REMOTE_ADDR": remote})
-                self.assert_error(blocked, 403, "CHAT_HTTPS_REQUIRED")
+        for app in (self.app, secure_app):
+            for base_url, remote in (("http://campus.example", "127.0.0.1"),
+                                     ("http://localhost", "203.0.113.1"),
+                                     ("http://campus.example", "203.0.113.1")):
+                with self.subTest(secure=app.config["SESSION_COOKIE_SECURE"], base_url=base_url, remote=remote):
+                    blocked = app.test_client().get("/api/ride-rooms/session", base_url=base_url,
+                                                    environ_overrides={"REMOTE_ADDR": remote})
+                    self.assert_error(blocked, 403, "CHAT_HTTPS_REQUIRED")
+                    self.assertNotIn("Set-Cookie", blocked.headers)
+
+    def test_production_session_policy_allows_plain_loopback_creation(self):
+        with patch("services.settings.dotenv_values", return_value={}):
+            from app import LoopbackCompatibleSessionInterface
+
+        policy_app = self.make_app(self.service, secure=True)
+        policy_app.session_interface = LoopbackCompatibleSessionInterface()
+        client = policy_app.test_client()
+        prepared = client.get("/api/ride-rooms/session")
+        self.tokens[client] = prepared.json["csrf_token"]
+        cookie = prepared.headers["Set-Cookie"]
+        self.assertNotIn("; Secure", cookie)
+        self.assertIn("; HttpOnly", cookie)
+        self.assertEqual(self.post(client, "/api/ride-rooms", self.room_payload()).status_code, 201)
+
+        tunneled = policy_app.test_client().get(
+            "/api/ride-rooms/session", base_url="http://tonghak.com",
+            headers={"X-Forwarded-Proto": "https"}, environ_overrides={"REMOTE_ADDR": "127.0.0.1"})
+        self.assertEqual(tunneled.status_code, 200)
+        self.assertIn("; Secure", tunneled.headers["Set-Cookie"])
 
     def test_local_tunnel_preserves_public_origin_and_cookie_session(self):
         client = self.make_app(self.service, secure=True).test_client()
@@ -165,10 +189,14 @@ class RideRoomApiTests(unittest.TestCase):
         created = client.post("/api/ride-rooms", base_url=base, json=self.room_payload(),
                               headers=headers, environ_overrides=local)
         self.assertEqual(created.status_code, 201)
-        for origin, remote in (("https://other.example", "127.0.0.1"), ("https://tonghak.com", "192.0.2.10")):
+        plaintext = client.get("/api/ride-rooms/session", base_url=base,
+                               headers={"X-Forwarded-Proto": "http"}, environ_overrides=local)
+        self.assert_error(plaintext, 403, "CHAT_HTTPS_REQUIRED")
+        for origin, remote, code in (("https://other.example", "127.0.0.1", "ORIGIN_INVALID"),
+                                     ("https://tonghak.com", "192.0.2.10", "CHAT_HTTPS_REQUIRED")):
             result = client.post("/api/ride-rooms", base_url=base, json=self.room_payload(),
                                  headers={**headers, "Origin": origin}, environ_overrides={"REMOTE_ADDR": remote})
-            self.assert_error(result, 403, "ORIGIN_INVALID")
+            self.assert_error(result, 403, code)
 
     def test_json_object_limits_and_forbidden_client_authority_fields(self):
         for value in (None, [], "text", 3):
@@ -251,7 +279,9 @@ class RideRoomApiTests(unittest.TestCase):
         self.assertEqual(first.json, repeated.json)
         self.assertEqual(first.json["room"]["status"], "closed")
         self.assert_error(self.send(guest, room_id), 409, "ROOM_CLOSED")
-        self.assert_error(self.join(self.new_client(), room_id), 409, "ROOM_CLOSED")
+        rejected = self.join(self.new_client(), room_id)
+        self.assert_error(rejected, 409, "ROOM_CLOSED")
+        self.assertIn("방장이 종료", rejected.json["error"])
         readable = guest.get(f"/api/ride-rooms/{room_id}/messages")
         self.assertEqual(readable.status_code, 200)
         self.assertEqual(readable.json["messages"][0]["body"], "종료 전 기록")
@@ -263,7 +293,9 @@ class RideRoomApiTests(unittest.TestCase):
         room_id, _ = self.create(departure_at=departure.isoformat())
         self.send(self.host, room_id, "출발 전 기록")
         self.now = departure
-        self.assert_error(self.join(self.new_client(), room_id), 409, "ROOM_EXPIRED")
+        rejected = self.join(self.new_client(), room_id)
+        self.assert_error(rejected, 409, "ROOM_EXPIRED")
+        self.assertIn("출발 시각이 지난", rejected.json["error"])
         self.assert_error(self.send(self.host, room_id), 409, "ROOM_EXPIRED")
         readable = self.host.get(f"/api/ride-rooms/{room_id}/messages")
         self.assertEqual(readable.status_code, 200)
@@ -272,6 +304,71 @@ class RideRoomApiTests(unittest.TestCase):
         self.assertTrue(readable.json["self"]["joined"])
         closed = self.post(self.host, f"/api/ride-rooms/{room_id}/close", {})
         self.assertEqual(closed.json["room"]["status"], "closed")
+
+    def test_active_list_excludes_closed_and_departed_rooms_and_keeps_full_rooms(self):
+        departure = self.now + timedelta(minutes=1)
+        departed, _ = self.create(departure_at=departure.isoformat())
+        closed, _ = self.create()
+        self.post(self.host, f"/api/ride-rooms/{closed}/close", {})
+        full, _ = self.create(capacity=2)
+        guest = self.new_client()
+        self.assertEqual(self.join(guest, full).status_code, 200)
+        self.now = departure
+
+        active = guest.get("/api/ride-rooms?status=active").json["rooms"]
+        previous = guest.get("/api/ride-rooms?status=all").json["rooms"]
+        self.assertEqual([row["room"]["id"] for row in active], [full])
+        self.assertEqual(active[0]["room"]["status"], "full")
+        self.assertEqual({row["room"]["id"] for row in previous}, {departed, closed, full})
+
+    def test_next_request_purges_room_and_chat_at_the_24_hour_boundary(self):
+        departure = self.now + timedelta(minutes=1)
+        expired, _ = self.create(departure_at=departure.isoformat())
+        self.assertEqual(self.send(self.host, expired).status_code, 201)
+        self.now = departure + timedelta(hours=24) - timedelta(seconds=1)
+        current, _ = self.create()
+        self.assertEqual(self.host.get(f"/api/ride-rooms/{expired}/messages").status_code, 200)
+
+        self.now += timedelta(seconds=1)
+        self.assert_error(self.host.get(f"/api/ride-rooms/{expired}"), 404, "ROOM_NOT_FOUND")
+        self.assertEqual(self.host.get(f"/api/ride-rooms/{current}").status_code, 200)
+        with closing(sqlite3.connect(self.db_path)) as connection:
+            for table in ("participants", "messages"):
+                remaining = connection.execute(f"SELECT COUNT(*) FROM {table} WHERE room_id=?", (expired,))
+                self.assertEqual(remaining.fetchone()[0], 0)
+
+    def test_author_only_delete_cascades_and_prevents_create_retry(self):
+        payload = self.room_payload()
+        created = self.post(self.host, "/api/ride-rooms", payload)
+        self.assertEqual(created.status_code, 201)
+        room_id = created.json["room"]["id"]
+        path = f"/api/ride-rooms/{room_id}"
+        guest = self.new_client()
+        self.assertEqual(self.join(guest, room_id).status_code, 200)
+        self.assertEqual(self.send(guest, room_id).status_code, 201)
+
+        self.assert_error(self.host.delete(path, json={}), 403, "CSRF_INVALID")
+        self.assert_error(guest.delete(path, json={}, headers=self.headers(guest)), 403, "ROOM_FORBIDDEN")
+        deleted = self.host.delete(path, json={}, headers=self.headers(self.host))
+        self.assertEqual(deleted.status_code, 200)
+        self.assertEqual(deleted.json, {"deleted": True})
+        self.assert_error(guest.get(path), 404, "ROOM_NOT_FOUND")
+        self.assert_error(guest.get(path + "/messages"), 404, "ROOM_NOT_FOUND")
+        self.assert_error(self.post(self.host, "/api/ride-rooms", payload), 409, "ROOM_DELETED")
+        with closing(sqlite3.connect(self.db_path)) as connection:
+            for table in ("rooms", "participants", "messages"):
+                self.assertEqual(connection.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0], 0)
+        self.create()
+
+    def test_cleanup_retries_a_write_lock_without_interrupting_reads(self):
+        room_id, _ = self.create()
+        self.now += timedelta(hours=27)
+        with closing(sqlite3.connect(self.db_path, isolation_level=None)) as connection:
+            connection.execute("BEGIN IMMEDIATE")
+            self.assertEqual(self.host.get("/api/ride-rooms?status=active").status_code, 200)
+            self.assertEqual(connection.execute("SELECT COUNT(*) FROM rooms").fetchone()[0], 1)
+            connection.rollback()
+        self.assert_error(self.host.get(f"/api/ride-rooms/{room_id}"), 404, "ROOM_NOT_FOUND")
 
     def test_departure_policy_requires_timezone_and_future_within_24_hours(self):
         for departure in (self.now.isoformat(), (self.now - timedelta(seconds=1)).isoformat(),
@@ -424,6 +521,30 @@ class RideRoomApiTests(unittest.TestCase):
                       {"from": "2026-10-20T10:00:00"}):
             self.assert_error(self.host.get("/api/ride-rooms", query_string=query), 400)
         self.remote.assert_not_called()
+
+    def test_newest_rooms_paginate_by_creation_time_with_a_stable_tiebreaker(self):
+        old = [self.create(departure_at=(self.now + timedelta(hours=hours)).isoformat())[0]
+               for hours in (1, 2)]
+        guest = self.new_client()
+        query = {"sort": "newest", "limit": 2}
+        initial = guest.get("/api/ride-rooms", query_string=query).json
+        self.assertEqual([row["room"]["id"] for row in initial["rooms"]], sorted(old, reverse=True))
+        self.now += timedelta(seconds=1)
+        latest, _ = self.create(departure_at=(self.now + timedelta(hours=12)).isoformat())
+
+        first = guest.get("/api/ride-rooms", query_string=query).json
+        expected = [latest, *sorted(old, reverse=True)]
+        self.assertEqual([row["room"]["id"] for row in first["rooms"]], expected[:2])
+        self.assertTrue(first["has_more"])
+        second = guest.get("/api/ride-rooms", query_string={**query, "cursor": first["next_cursor"]}).json
+        self.assertEqual([row["room"]["id"] for row in second["rooms"]], expected[2:])
+        self.assertFalse(second["has_more"])
+        self.assertIsNone(second["next_cursor"])
+
+        mixed_order = guest.get("/api/ride-rooms", query_string={"cursor": first["next_cursor"]})
+        self.assert_error(mixed_order, 400, "INVALID_CURSOR")
+        self.assert_error(guest.get("/api/ride-rooms?sort=unknown"), 400, "INVALID_SORT")
+        self.assertEqual([row["room"]["id"] for row in guest.get("/api/ride-rooms").json["rooms"]], [*old, latest])
 
     def test_missing_room_is_json_404_and_database_failure_is_sanitized_503(self):
         self.assert_error(self.host.get(f"/api/ride-rooms/{uuid4()}"), 404, "ROOM_NOT_FOUND")

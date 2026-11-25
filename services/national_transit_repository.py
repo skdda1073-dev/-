@@ -397,8 +397,10 @@ def _transfer_links(stations, by_name):
 
 
 class _Timetable:
-    def __init__(self, data):
-        self.stations, metro, rail_by_name, rail_by_id, by_name, crosswalk = _load_stations(data)
+    def __init__(self, data, station_data=None):
+        self.stations, metro, rail_by_name, rail_by_id, by_name, crosswalk = (
+            _load_stations(data) if station_data is None else station_data
+        )
         self.rail_by_id = rail_by_id
         self.transfers = _transfer_links(self.stations, by_name)
         self.trips = tuple(_load_metro_trips(data, metro, crosswalk)) + tuple(
@@ -709,13 +711,35 @@ class NationalTransitRepository:
     def __init__(self, data_dir, *, itx_schedule=None):
         self._normalized_path = Path(data_dir) / "normalized"
         self._lock = RLock()
+        self._station_catalog = None
         self._cached = None
         self._itx_schedule = itx_schedule
+
+    def _station_data(self):
+        with self._lock:
+            if self._station_catalog is None:
+                self._station_catalog = _load_stations(self._normalized_path)
+            return self._station_catalog
+
+    def matching_stations(self, query):
+        """Return catalog coordinates for an exact railway station name."""
+        if not query.endswith("역"):
+            return []
+        stations, _, _, _, by_name, _ = self._station_data()
+        places = {}
+        for key in by_name.get(_station_name(query), ()):
+            station = stations[key]
+            location = station.lat, station.lon
+            places.setdefault(location, {
+                **station.place(), "id": key, "sub": station.address, "source": "rail_station",
+                "coordinate_source": "station_catalog",
+            })
+        return list(places.values())
 
     def _timetable(self):
         with self._lock:
             if self._cached is None:
-                self._cached = _Timetable(self._normalized_path)
+                self._cached = _Timetable(self._normalized_path, self._station_data())
             return self._cached
 
     def chuncheon_gateways(self):

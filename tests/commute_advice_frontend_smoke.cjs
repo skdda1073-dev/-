@@ -40,16 +40,10 @@ for (const width of [320, 390, 1440]) test(`${width}px advice shows rain, dust a
     try {
         const page = app.page;
         await ready(page);
-        assert.equal(await page.locator('#commute-advice-panel').isVisible(), true);
-        assert.equal(await details(page).isVisible(), width >= 1280);
-        if (width < 1280) {
-            assert.equal(await page.locator('#commute-advice-glance-values').isVisible(), true);
-            assert.equal(await page.locator('#commute-advice-glance-temperature').innerText(), '3℃');
-            assert.equal(await page.locator('#commute-advice-glance-wind').innerText(), '4.3m/s');
-            assert.equal(await page.locator('#commute-advice-glance-rain').innerText(), '70%');
-            assert.ok((await page.locator('#commute-advice-panel').boundingBox()).height <= 88);
-        }
-        assert.notEqual(await page.evaluate(() => document.activeElement.id), 'commute-advice-body', 'Automatic opening does not move keyboard focus');
+        assert.equal(await page.locator('#commute-advice-panel').isVisible(), false);
+        assert.equal(await details(page).isVisible(), false);
+        assert.equal(await page.locator('#commute-advice-toggle').getAttribute('aria-expanded'), 'false');
+        assert.notEqual(await page.evaluate(() => document.activeElement.id), 'commute-advice-body');
         await openDetails(page);
         assert.equal(await page.locator('#commute-advice-alerts > li').count(), 3);
         assert.equal(await page.locator('#commute-advice-count').innerText(), '3');
@@ -66,19 +60,19 @@ for (const width of [320, 390, 1440]) test(`${width}px advice shows rain, dust a
             await page.screenshot({ path: path.join(process.env.CAPSTONE_ADVICE_SCREENSHOT_DIR, `advice-synthetic-${width}.png`), fullPage: false });
         }
         await page.locator('#commute-advice-close').click();
-        assert.equal(await page.locator('#commute-advice-panel').isVisible(), true);
+        assert.equal(await page.locator('#commute-advice-panel').isVisible(), false);
         assert.equal(await details(page).isVisible(), false);
-        assert.equal(await page.locator('#commute-advice-glance-values').isVisible(), true);
+        assert.equal(await page.locator('#commute-advice-toggle').isVisible(), true);
         assert.equal(await page.evaluate(() => document.activeElement.id), 'commute-advice-toggle');
         await page.locator('#commute-advice-toggle').press('Enter');
         assert.equal(await page.evaluate(() => document.activeElement.id), 'commute-advice-body');
         await page.keyboard.press('Escape');
-        assert.equal(await page.locator('#commute-advice-panel').isVisible(), true);
+        assert.equal(await page.locator('#commute-advice-panel').isVisible(), false);
         assert.equal(await details(page).isVisible(), false);
         await page.locator('#commute-advice-toggle').click();
         await selectTool(page, 'taxi');
-        assert.equal(await page.locator('#commute-advice-panel').isVisible(), true, 'Forecast remains visible in other tools');
-        assert.equal(await details(page).isVisible(), true, 'Clicking other tools leaves open details intact');
+        assert.equal(await page.locator('#commute-advice-panel').isVisible(), false, 'Changing tools closes the overlay');
+        assert.equal(await page.locator('#commute-advice-toggle').isVisible(), true);
         assert.equal(await page.locator('#transport-panel-taxi').isVisible(), true);
         assert.equal(app.adviceRequests.length, 1, 'Opening or closing does not re-query fresh data');
         assert.deepEqual(app.errors, []);
@@ -122,7 +116,7 @@ test('failed and malformed refreshes remove old advice while the app stays usabl
         await app.page.locator('#commute-advice-close').click();
         await selectTool(app.page, 'intercity');
         assert.equal(await app.page.locator('#transport-panel-intercity').isVisible(), true);
-        assert.equal(await app.page.locator('#commute-advice-panel').isVisible(), true);
+        assert.equal(await app.page.locator('#commute-advice-panel').isVisible(), false);
         assert.deepEqual(app.errors, []);
     } finally { await app.close(); }
 });
@@ -152,7 +146,7 @@ test('changing campus rejects an uncancellable old response and keeps details fo
         const returned = page.waitForResponse(response => new URL(response.url()).pathname === '/api/commute-advice' && new URL(response.url()).searchParams.get('campus') === 'hallym');
         release(); await returned;
         await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
-        assert.equal(await page.locator('#commute-advice-panel').isVisible(), true);
+        assert.equal(await page.locator('#commute-advice-panel').isVisible(), false);
         assert.equal(await details(page).isVisible(), false);
         await page.locator('#commute-advice-toggle').click();
         assert.match(await page.locator('#commute-advice-campus').innerText(), /강원대학교/);

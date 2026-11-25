@@ -1,6 +1,7 @@
 import os
 from datetime import datetime
 from flask import Flask, render_template, request, jsonify
+from flask.sessions import SecureCookieSessionInterface
 from math import isfinite
 from werkzeug.exceptions import HTTPException
 import pandas as pd
@@ -21,7 +22,7 @@ from services.taxi_service import TaxiService
 from services.taxi_routes import create_taxi_blueprint
 from services.ride_room_repository import RideRoomRepository
 from services.ride_room_service import RideRoomService
-from services.ride_room_routes import create_ride_room_blueprint
+from services.ride_room_routes import create_ride_room_blueprint, is_loopback_http_request
 from services.intercity_booking_service import BookingIntercityService
 from services.intercity_routes import create_intercity_blueprint
 from services.mobility_validation import MobilityInputError, require_json_object
@@ -64,10 +65,25 @@ CITY_CODE = "32010" # 춘천시
 
 transit_client = PublicTransitClient(BUS_DATA_KEY, CITY_CODE)
 walking_service = WalkingService(TMAP_APP_KEY)
+motis_user_agent = "HallymCapstone/1.0 (+https://github.com/skdda1073-dev/-)"
 motis_journey_provider = MotisJourneyProvider(
-    settings.motis_base_url, user_agent="HallymCapstone/1.0 (+https://github.com/skdda1073-dev/-)",
+    settings.motis_base_url, user_agent=motis_user_agent,
 ) if settings.motis_base_url else None
-walking_fallback = motis_journey_provider.walking_time if motis_journey_provider else None
+ktdb_reference_provider = MotisJourneyProvider(
+    settings.ktdb_motis_base_url, user_agent=motis_user_agent,
+) if settings.ktdb_motis_base_url else None
+
+
+def motis_walking_time(*points):
+    if motis_journey_provider is not None:
+        measured = motis_journey_provider.walking_time(*points)
+        if measured != (-1, -1) or ktdb_reference_provider is None:
+            return measured
+    # The reference server uses a historical timetable, but has its own road graph.
+    return ktdb_reference_provider.walking_time(*points, reference=True)
+
+
+walking_fallback = motis_walking_time if motis_journey_provider or ktdb_reference_provider else None
 transit_repository = CsvTransitRepository(os.path.join(national_data_dir, "raw", "bus", "chuncheon_bus_routes_20260326.csv"))
 shuttle_repository = ShuttleRepository(os.path.join(campus_data_dir, "한림대_셔틀버스.csv"))
 shuttle_profile = ShuttleProfile(
@@ -114,8 +130,9 @@ try:
 except Exception as e:
     print("CSV 로드 오류:", e)
 
-place_search_service = PlaceSearchService(TMAP_APP_KEY, CAMPUS_BUILDINGS)
 national_transit_repository = NationalTransitRepository(national_data_dir, itx_schedule=planned_itx_trips)
+place_search_service = PlaceSearchService(TMAP_APP_KEY, CAMPUS_BUILDINGS,
+                                         station_lookup=national_transit_repository.matching_stations)
 national_bus_repository = NationalBusRepository(national_data_dir)
 seoul_bus_arrivals = SeoulBusArrivals(settings.seoul_arrival_key) if settings.seoul_arrival_key else None
 rail_bus_transfers = RailBusTransfers(
@@ -137,7 +154,7 @@ national_journey_service = NationalJourneyService(
         walking_fallback=walking_fallback,
     ),
     bus_repository=national_bus_repository, motis=motis_journey_provider, regional_bus=regional_bus_journey_provider,
-    rail_bus_transfers=rail_bus_transfers, walking_fallback=walking_fallback,
+    rail_bus_transfers=rail_bus_transfers, walking_fallback=walking_fallback, ktdb_reference=ktdb_reference_provider,
 )
 
 # Independent mobility APIs preserve the existing transit response contract.
@@ -165,6 +182,14 @@ app.config.update(
     SESSION_COOKIE_SAMESITE="Lax",
     SESSION_COOKIE_SECURE=settings.session_cookie_secure,
 )
+
+
+class LoopbackCompatibleSessionInterface(SecureCookieSessionInterface):
+    def get_cookie_secure(self, app):
+        return super().get_cookie_secure(app) and not is_loopback_http_request()
+
+
+app.session_interface = LoopbackCompatibleSessionInterface()
 app.register_blueprint(create_taxi_blueprint(taxi_service, CAMPUS_BUILDINGS))
 app.register_blueprint(create_ride_room_blueprint(ride_room_service, configured=chat_configured))
 
@@ -205,6 +230,7 @@ def home():
         'index.html',
         hallym_buildings=list(CAMPUS_BUILDINGS["hallym"].keys()),
         knu_buildings=list(CAMPUS_BUILDINGS["knu"].keys()),
+        campus_buildings=CAMPUS_BUILDINGS,
         naver_map_client_id=NAVER_MAP_CLIENT_ID,
     )
 

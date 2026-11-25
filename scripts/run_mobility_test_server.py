@@ -1,6 +1,7 @@
 """Disposable loopback UI verification server: synthetic quotes, no upstream HTTP."""
 
 import argparse
+from contextlib import nullcontext
 import os
 from pathlib import Path
 import sys
@@ -13,10 +14,20 @@ sys.path.insert(0, str(ROOT))
 def main(argv=None):
     parser = argparse.ArgumentParser(description="실제 키·실제 방을 사용하지 않는 브라우저 검증 서버")
     parser.add_argument("--port", type=int, default=8765)
+    parser.add_argument("--reuse-temp-dir", type=Path, help="재시작 검증용 capstone-browser- 임시 디렉터리")
     args = parser.parse_args(argv)
     if not 1024 <= args.port <= 65535:
         parser.error("포트는 1024~65535 범위여야 합니다.")
-    with tempfile.TemporaryDirectory(prefix="capstone-browser-") as temporary:
+    if args.reuse_temp_dir is None:
+        directory = tempfile.TemporaryDirectory(prefix="capstone-browser-")
+    else:
+        temporary = args.reuse_temp_dir.resolve()
+        if (temporary.parent != Path(tempfile.gettempdir()).resolve()
+                or not temporary.name.startswith("capstone-browser-")
+                or not temporary.is_dir() or (temporary / "rooms.sqlite3").is_symlink()):
+            parser.error("운영 DB와 분리된 capstone-browser- 임시 디렉터리를 지정하세요.")
+        directory = nullcontext(temporary)
+    with directory as temporary:
         os.environ.update({
             "TMAP_APP_KEY": "fake-verification-key", "PUBLIC_DATA_KEY": "", "TAGO_API_KEY": "", "TRAIN_API_KEY": "", "NAVER_MAP_CLIENT_ID": "fake-map-id",
             "FLASK_SECRET_KEY": "fixed-non-secret-verification-key-0123456789-abcdef",

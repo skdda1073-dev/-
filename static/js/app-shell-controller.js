@@ -33,8 +33,9 @@
         detail.hidden = !visible;
         if (docked && visible) {
             const panel = detail.getBoundingClientRect();
-            const overlays = [stage.querySelector('.map-tools'), byId('map-journey-widget'), byId('commute-advice-panel')];
+            const overlays = [stage.querySelector('.map-tools'), byId('map-journey-widget'), byId('commute-advice-panel'), byId('map-stop-info')];
             const overlaps = overlays.some(element => {
+                if (!element || element.hidden) return false;
                 const box = element?.getBoundingClientRect();
                 return box && box.width > 0 && box.height > 0
                     && panel.left < box.right && panel.right > box.left && panel.top < box.bottom && panel.bottom > box.top;
@@ -107,6 +108,8 @@
     function select(name, options = {}) {
         if (!initialized) init();
         if (!tabs.some(tab => keyOf(tab) === name)) return false;
+        window.AppModules.commuteAdvice?.closePanel?.();
+        window.AppModules.mapJourney?.closePanel?.();
         navigation++;
         resultOpen = false;
         detailView = false;
@@ -204,6 +207,9 @@
     }
     function showDetail(options = {}) {
         if (!canPresent()) return;
+        window.AppModules.commuteAdvice?.closePanel?.();
+        window.AppModules.mapJourney?.closePanel?.();
+        window.AppModules.renderer?.closeStationInfo?.();
         sheet()?.reveal('full');
         detailView = true; render();
         if (options.focus || mobile()) byId('route-detail-heading').focus({ preventScroll: true });
@@ -237,6 +243,20 @@
         if (!wide()) { navigation++; resultOpen = false; toolOpen = false; }
         sheet()?.setPosition('peek');
         render();
+        resizeMap();
+    }
+    function fitMapPanel() {
+        const stage = byId('map-stage');
+        if (!mobile() || !stage || stage.getBoundingClientRect().height >= 260) return;
+        sheet()?.setPosition(window.innerHeight < 700 ? 'peek' : 'half');
+    }
+    function onSheetResize() {
+        if (mobile() && byId('workspace-panel')?.dataset.position === 'full'
+            && byId('map-stage')?.classList.contains('map-stage--compact-tools')) {
+            window.AppModules.mapJourney?.closePanel?.();
+            window.AppModules.commuteAdvice?.closePanel?.();
+            window.AppModules.renderer?.closeStationInfo?.();
+        }
         resizeMap();
     }
     function hasUnsavedData() { return Boolean(dirtyProvider()); }
@@ -295,7 +315,7 @@
         byId('route-detail').addEventListener('keydown', event => {
             if (event.key === 'Escape' && detailView) { event.preventDefault(); event.stopPropagation(); closeDetail(); }
         });
-        window.AppModules.workspaceSheet?.init({ onResize: resizeMap, onReveal: () => {
+        window.AppModules.workspaceSheet?.init({ onResize: onSheetResize, onReveal: () => {
             if (toolOpen || resultOpen) return;
             if (active === 'journey' && resultAvailable) showResults();
             else openTool();
@@ -303,14 +323,13 @@
         if (typeof window.ResizeObserver === 'function') {
             const observer = new window.ResizeObserver(layoutDetail);
             observer.observe(byId('map-stage'));
-            const weather = byId('commute-advice-panel');
-            if (weather) observer.observe(weather);
+            ['commute-advice-panel', 'map-journey-widget'].map(byId).filter(Boolean).forEach(panel => observer.observe(panel));
         }
         byId('skip-search').addEventListener('click', event => { event.preventDefault(); openJourney('tab-hallym'); });
         document.addEventListener('input', refreshUnloadGuard);
         document.addEventListener('change', refreshUnloadGuard);
         document.addEventListener('keydown', event => {
-            if (event.key === 'Escape' && expanded) {
+            if (event.key === 'Escape' && !event.defaultPrevented && expanded) {
                 expanded = false; render(); resizeMap(); byId('sidebar-toggle').focus();
             }
             if (event.key === 'Tab' && mobile() && expanded) {
@@ -331,7 +350,7 @@
         render(); refreshUnloadGuard();
     }
     window.AppModules.shell = { init, select, closeTool, openTool, openJourney, syncSelection,
-        beginResults, updateResultSummary, canPresent, invalidateResults, showResults, closeResults, editSearch, showDetail, closeDetail, showMap,
+        beginResults, updateResultSummary, canPresent, invalidateResults, showResults, closeResults, editSearch, showDetail, closeDetail, showMap, fitMapPanel,
         getNavigation: () => navigation,
         onMenuSelect: listener => { menuListeners.add(listener); return () => menuListeners.delete(listener); },
         setDirtyProvider, refreshUnloadGuard, hasUnsavedData,

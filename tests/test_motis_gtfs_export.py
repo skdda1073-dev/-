@@ -7,6 +7,7 @@ import unittest
 from zipfile import ZipFile
 
 from scripts.export_motis_gtfs import MAX_DAYS, export_gtfs
+from scripts.prepare_ktdb_gtfs import KTDB_REFERENCE_DATE, prepare_ktdb_gtfs
 from services.national_transit_repository import LOCAL_MODE, TRAIN_MODE, _Station, _StopTime, _Timetable, _Trip
 
 
@@ -107,6 +108,53 @@ class MotisGtfsExportTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "No rail or metro service"):
             export_gtfs(timetable({}, ()), self.path, START, 3)
         self.assertEqual(self.path.read_bytes(), previous)
+
+
+class KtdbGtfsPreparationTests(unittest.TestCase):
+    def setUp(self):
+        directory = TemporaryDirectory()
+        self.addCleanup(directory.cleanup)
+        self.source = Path(directory.name) / "raw"
+        self.source.mkdir()
+        self.target = self.source.parent / "reference.zip"
+        self.tables = {
+            "agency": "agency_id,agency_name,agency_url,agency_timezone\nA1,KTDB,https://ktdb.go.kr,Asia/Seoul\n",
+            "stops": "stop_id,stop_name,stop_lat,stop_lon\nA,첫 정류장,37.8,127.7\nB,다음 정류장,37.81,127.71\n",
+            "routes": "route_id,agency_id,route_short_name,route_type\nBR_TAGO_1,A1,12,0\nBR_ACC3_1,A1,시외,3\n"
+                      "BR_TAGO_2,A1,공항,5\nRR_ACC1_1,A1,경춘선,1\nRR_ACC4_1,A1,일반철도,4\n"
+                      "RR_ACC6_1,A1,KTX,6\nSR_1,A1,여객선,2\nAR_ACC7_1,A1,국내선,7\n",
+            "trips": "route_id,service_id,trip_id\nBR_TAGO_1,B1,trip1\n",
+            "stop_times": "trip_id,arrival_time,departure_time,stop_id,stop_sequence,pickup_type,drop_off_type,timepoint\n"
+                          "trip1,23:50:00,23:50:00,A,1,0,1,1\ntrip1,24:10:00,24:10:00,B,2,1,0,1\n",
+            "transfers": "from_stop_id,to_stop_id,transfer_type,min_transfer_time\nA,B,2,120\n",
+            "calendar": "service_id,monday,tuesday,wednesday,thursday,friday,saturday,sunday,start_date,end_date\n"
+                        "B1,1,1,1,1,1,1,1,20170101,20301231\n",
+        }
+        for name, table in self.tables.items():
+            (self.source / f"{name}.txt").write_text(table, encoding="utf-8-sig")
+
+    def test_uses_one_reference_weekday_and_corrects_mode_codes(self):
+        prepare_ktdb_gtfs(self.source, self.target)
+        with ZipFile(self.target) as archive:
+            self.assertNotIn("calendar.txt", archive.namelist())
+            self.assertEqual(read_table(archive, "calendar_dates"), [
+                {"service_id": "B1", "date": KTDB_REFERENCE_DATE.strftime("%Y%m%d"), "exception_type": "1"}
+            ])
+            self.assertEqual({row["route_id"]: row["route_type"] for row in read_table(archive, "routes")}, {
+                "BR_TAGO_1": "3", "BR_ACC3_1": "200", "BR_TAGO_2": "3", "RR_ACC1_1": "1",
+                "RR_ACC4_1": "2", "RR_ACC6_1": "101",
+                "SR_1": "4", "AR_ACC7_1": "1100",
+            })
+            for name in ("agency", "stops", "trips", "stop_times", "transfers"):
+                self.assertEqual(archive.read(f"{name}.txt").decode("utf-8"), self.tables[name])
+
+    def test_malformed_source_preserves_previous_zip(self):
+        prepare_ktdb_gtfs(self.source, self.target)
+        previous = self.target.read_bytes()
+        (self.source / "routes.txt").write_text("route_id,route_type\nBR_TAGO_1,8\n", encoding="utf-8")
+        with self.assertRaisesRegex(ValueError, "KTDB 교통수단"):
+            prepare_ktdb_gtfs(self.source, self.target)
+        self.assertEqual(self.target.read_bytes(), previous)
 
 
 if __name__ == "__main__":

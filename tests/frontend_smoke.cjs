@@ -149,6 +149,10 @@ const MAP_SDK = String.raw`(() => {
             this.element.style.cssText = 'position:absolute;left:52%;top:46%;transform:translate(-50%,-50%)';
             if (options.icon && typeof options.icon.content === 'string') this.element.innerHTML = options.icon.content;
             if (options.icon && options.icon.content instanceof Element) this.element.append(options.icon.content);
+            if (this.element.querySelector('button.station-marker')) {
+                const nearbyPins = options.map.markerLayer.querySelectorAll('button.station-marker').length;
+                this.element.style.left = (60 + nearbyPins * 15) + '%';
+            }
             this.setMap(options.map);
         }
         setMap(map) { this.map = map; this.element.remove(); if (map && map.markerLayer) map.markerLayer.append(this.element); }
@@ -332,7 +336,7 @@ async function openApp(browser, options = {}) {
         } else { errors.push(`Unexpected blocking dialog: ${dialog.message()}`); dialog.dismiss().catch(() => {}); }
     });
     try {
-        await page.goto(BASE_URL, { waitUntil: options.mapSDKGate ? 'domcontentloaded' : 'networkidle' });
+        await page.goto(BASE_URL, { timeout: 15000, waitUntil: options.mapSDKGate ? 'domcontentloaded' : 'networkidle' });
         await page.locator('#route-submit').waitFor({ state: 'visible' });
         await page.locator('#app-intro').waitFor({ state: 'hidden' });
         if (!options.keepCommuteAdviceOpen && await page.locator('#commute-advice-close').isVisible()) {
@@ -474,49 +478,77 @@ test('desktop search and results use the same panel beside the map', async brows
 });
 
 for (const [width, height] of [[360, 720], [1024, 768], [1440, 768]]) {
-    test(`${width}px map keeps both forecast and route selection visible through tool and result changes`, async browser => {
+    test(`${width}px map keeps its round launchers available without covering tool and result panels`, async browser => {
         const app = await openApp(browser, { viewport: { width, height }, keepCommuteAdviceOpen: true });
         try {
             const { page } = app;
             const route = page.locator('#map-journey-widget');
             const weather = page.locator('#commute-advice-panel');
+            const routeToggle = page.locator('#map-journey-toggle');
+            const weatherToggle = page.locator('#commute-advice-toggle');
             const map = page.locator('#map-stage');
             const handle = page.locator('#sheet-handle');
             const overlaps = (first, second) => first.x < second.x + second.width && first.x + first.width > second.x
                 && first.y < second.y + second.height && first.y + first.height > second.y;
-            async function checkBanners() {
-                await route.waitFor({ state: 'visible' });
-                await weather.waitFor({ state: 'visible' });
-                const [routeBox, forecastBox, mapBox] = await Promise.all([route.boundingBox(), weather.boundingBox(), map.boundingBox()]);
-                assert.ok(routeBox.y + routeBox.height <= mapBox.y + mapBox.height + 1, 'The sheet leaves map route controls available');
-                assert.equal(overlaps(routeBox, forecastBox), false, 'Pinned route and forecast are separate');
-                assert.equal(await route.locator('#map-pick-origin').isEnabled(), true);
+            async function checkLaunchers(container = map) {
+                assert.equal(await route.isVisible(), false);
+                assert.equal(await weather.isVisible(), false);
+                const containerBox = await container.boundingBox();
+                for (const launcher of [routeToggle, weatherToggle]) {
+                    await launcher.click({ trial: true });
+                    const box = await launcher.boundingBox();
+                    assert.equal(box.width, box.height);
+                    assert.ok(box.width >= 42 && box.width <= 46);
+                    assert.equal(await launcher.evaluate(button => getComputedStyle(button).borderRadius), '50%');
+                    assert.ok(box.x >= containerBox.x && box.y >= containerBox.y
+                        && box.x + box.width <= containerBox.x + containerBox.width + 1
+                        && box.y + box.height <= containerBox.y + containerBox.height + 1);
+                }
             }
 
-            await checkBanners();
+            await checkLaunchers();
+            await routeToggle.click();
+            await route.waitFor({ state: 'visible' });
+            assert.equal(await route.locator('#map-pick-origin').isEnabled(), true);
+            await weatherToggle.click();
+            await weather.waitFor({ state: 'visible' });
+            assert.equal(await route.isVisible(), false);
             if (width >= 1280) await page.locator('[data-map-zoom="1"]').click({ trial: true });
             await selectTool(page, 'shuttle');
-            await checkBanners();
+            await checkLaunchers();
             if (width < 800) {
+                const header = page.locator('.app-header');
+                const panel = page.locator('#workspace-panel');
                 await handle.press('End');
-                assert.equal(await page.locator('#workspace-panel').getAttribute('data-position'), 'full');
-                await checkBanners();
+                assert.equal(await panel.getAttribute('data-position'), 'full');
+                await checkLaunchers(header);
+                await routeToggle.click();
+                await route.waitFor({ state: 'visible' });
+                assert.equal(await panel.getAttribute('data-position'), 'half');
+                await handle.press('End');
+                await route.waitFor({ state: 'hidden' });
+                assert.equal(await routeToggle.getAttribute('aria-expanded'), 'false');
+                await weatherToggle.click();
+                await weather.waitFor({ state: 'visible' });
+                assert.equal(await panel.getAttribute('data-position'), 'half');
+                await handle.press('End');
+                await weather.waitFor({ state: 'hidden' });
+                assert.equal(await weatherToggle.getAttribute('aria-expanded'), 'false');
+                await checkLaunchers(header);
             }
             await chooseBuilding(page);
             await selectDestination(page);
             await page.locator('#route-submit').click();
             await resultContains(page, '총 소요 추정');
-            await checkBanners();
+            await checkLaunchers(width < 800 ? page.locator('.app-header') : map);
             await page.locator('#result-container .route-select').first().click();
             const detail = page.locator('#route-detail');
             await detail.waitFor({ state: 'visible' });
             if (await detail.evaluate(element => element.parentElement.id === 'route-detail-map')) {
                 const detailBox = await detail.boundingBox();
-                assert.equal(overlaps(detailBox, await route.boundingBox()), false, 'Docked details leave the map point selector visible');
-                assert.equal(overlaps(detailBox, await weather.boundingBox()), false, 'Docked details do not cover the forecast');
+                assert.equal(overlaps(detailBox, await routeToggle.boundingBox()), false, 'Docked details leave map launchers available');
+                assert.equal(overlaps(detailBox, await weatherToggle.boundingBox()), false, 'Docked details leave weather launchers available');
             }
-            await route.locator('#map-pick-origin').click({ trial: true });
-            await weather.locator('#commute-advice-heading').click({ trial: true });
             await noOverflow(page);
         } finally { await app.close(); }
     });
@@ -530,6 +562,8 @@ test('mobile sheet snaps by click, keys, mouse and touch while preserving route 
         const handle = panel.locator('#sheet-handle');
         const content = panel.locator('#workspace-content');
         const map = page.locator('#map-stage');
+        const header = await page.locator('.app-header').boundingBox();
+        const headerBottom = header.y + header.height;
         async function expectPosition(position) {
             await page.locator(`#workspace-panel[data-position="${position}"]`).waitFor();
             assert.equal(await handle.getAttribute('aria-expanded'), String(position !== 'peek'));
@@ -550,7 +584,9 @@ test('mobile sheet snaps by click, keys, mouse and touch while preserving route 
         await expectPosition('full');
         const full = await handle.boundingBox();
         assert.ok((await panel.boundingBox()).height > half.height);
-        assert.ok((await map.boundingBox()).height >= 131, 'The expanded panel still leaves room to use the map');
+        assert.ok(Math.abs((await panel.boundingBox()).y - headerBottom) <= 1, 'The expanded panel reaches the header');
+        await page.locator('#map-journey-toggle').click({ trial: true });
+        await page.locator('#commute-advice-toggle').click({ trial: true });
         await handle.press('ArrowDown');
         await expectPosition('half');
 
@@ -559,7 +595,7 @@ test('mobile sheet snaps by click, keys, mouse and touch while preserving route 
         await page.mouse.move(x, y);
         await page.mouse.down();
         await page.mouse.move(x, 24, { steps: 8 });
-        assert.ok((await map.boundingBox()).height >= 131, 'Dragging past full does not cover the rest of the map');
+        assert.ok(Math.abs((await panel.boundingBox()).y - headerBottom) <= 1, 'Dragging past full stops at the header');
         await page.mouse.move(x, full.y + full.height / 2, { steps: 8 });
         await page.mouse.up();
         await expectPosition('full');
@@ -609,7 +645,8 @@ test('390px initial layout, campus data, keyboard destination selection and clea
         assert.equal(await page.getByRole('button', { name: '지금 출발' }).getAttribute('aria-pressed'), 'true');
         assert.equal(await page.getByRole('button', { name: '날짜·시간 선택' }).isVisible(), true);
         assert.equal(await page.locator('#national-departure').isVisible(), false);
-        assert.equal(await page.locator('#map-journey-widget').isVisible(), true, 'The map selector is available on startup');
+        assert.equal(await page.locator('#map-journey-widget').isVisible(), false);
+        assert.equal(await page.locator('#map-journey-toggle').isVisible(), true, 'The map launcher is available on startup');
         assert.ok((await page.locator('#dest-input').boundingBox()).height >= 44, 'Destination entry remains usable by touch');
         await screenshot(page, 'mobile-initial-preview.png');
         await page.locator('#journey-options > summary').press('Enter');
@@ -904,12 +941,44 @@ test('1440px desktop layout and nearby station arrays', async browser => {
         await resultContains(page, '교동초등학교');
         await resultContains(page, '200-1');
         assert.equal(app.requests.at(-1).dest_name, '');
+        const stopCard = page.locator('#map-stop-info');
+        const pins = page.locator('#map-stage button.station-marker--interactive');
+        assert.equal(await pins.count(), 2);
+        await pins.first().click();
+        assert.match(await stopCard.innerText(), /한림대학교 정문[\s\S]*1010[\s\S]*200-1[\s\S]*약 8분 후/);
+        await pins.last().click();
+        assert.equal(await pins.first().getAttribute('aria-expanded'), 'false');
+        assert.match(await stopCard.innerText(), /교동초등학교[\s\S]*1020[\s\S]*현재 표시할 도착정보가 없어요/);
+        assert.equal(app.requests.length, 1);
         await noOverflow(page);
         await selectDestination(page);
         await page.locator('#route-submit').click();
         await resultContains(page, '총 소요 추정');
+        await stopCard.waitFor({ state: 'detached' });
         await noOverflow(page);
         await screenshot(page, 'desktop-journey-preview.png');
+    } finally { await app.close(); }
+});
+
+test('mobile nearby stop pins can be used with touch and keyboard', async browser => {
+    const app = await openApp(browser, { viewport: { width: 390, height: 844 }, hasTouch: true });
+    try {
+        const { page } = app;
+        await chooseBuilding(page);
+        await page.locator('#route-submit').click();
+        await resultContains(page, '한림대학교 정문');
+        await page.locator('#results-map').click();
+        const pin = page.locator('#map-stage button.station-marker--interactive').first();
+        const detail = page.locator('#map-stop-info');
+        await pin.tap();
+        await detail.waitFor({ state: 'visible' });
+        assert.equal(await pin.getAttribute('aria-expanded'), 'true');
+        await page.keyboard.press('Escape');
+        await detail.waitFor({ state: 'detached' });
+        assert.equal(await pin.evaluate(button => button === document.activeElement), true);
+        await pin.press('Enter');
+        await detail.waitFor({ state: 'visible' });
+        await noOverflow(page);
     } finally { await app.close(); }
 });
 

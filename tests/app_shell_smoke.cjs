@@ -897,7 +897,11 @@ test('map-space limits and real overflow/collision checks use the inline fallbac
         assert.equal(detail.hidden, false);
     }
     app.resize(1440, { width: 640, height: 480 });
-    assert.equal(detail.parentElement.id, 'route-detail-inline', 'The map point picker remains unobstructed on a short map');
+    assert.equal(detail.parentElement.id, 'route-detail-map', 'A folded map picker leaves the docking area free');
+    app.el('map-journey-widget').hidden = false;
+    app.resize(1440, { width: 640, height: 480 });
+    assert.equal(detail.parentElement.id, 'route-detail-inline', 'The open map point picker remains unobstructed on a short map');
+    app.el('map-journey-widget').hidden = true;
     app.resize(1440, { width: 640, height: 700 });
     assert.equal(detail.parentElement, app.el('route-detail-map'));
     detail.getBoundingClientRect = () => ({ left: 0, right: 2000, top: 0, bottom: 2000, width: 2000, height: 2000 });
@@ -1021,6 +1025,9 @@ test('map selection opens the shared results pipeline without overwriting GPS or
         assert.equal(app.el(id).listeners.get('click').length, 1);
     }
     assert.equal(app.el('planner-body').contains(app.el('map-journey-widget')), false);
+    assert.equal(app.el('map-journey-widget').hidden, true);
+    await app.el('map-journey-toggle').emit('click');
+    assert.equal(app.el('map-journey-toggle').getAttribute('aria-expanded'), 'true');
     await app.el('map-pick-origin').emit('click');
     assert.equal(routing.controller.pickPoint(37.88, 127.73), true);
     await flush();
@@ -1039,6 +1046,7 @@ test('map selection opens the shared results pipeline without overwriting GPS or
     assert.equal(input.value, '보존할 검색어');
     assert.equal(app.el('results-section').hidden, false);
     assert.equal(app.el('results-section').dataset.state, 'ready');
+    assert.equal(app.el('map-journey-widget').hidden, true, 'The results remain clear of the selector');
     assert.equal(app.shell.getState().active, 'journey');
     assert.equal(routing.presentation.begin, 1); assert.ok(routing.presentation.render >= 2);
     assert.equal(app.document.activeElement, app.el('results-heading'));
@@ -1433,6 +1441,7 @@ test('widget mouse, touch and pen drags stay inside the map without selecting po
 test('widget position reclamps after resize and supports focused arrow, shifted-arrow and Home controls', async () => {
     const app = harness(), geometry = mapWidgetGeometry(app), routing = app.loadMapJourney();
     const { handle, size, position } = geometry;
+    await app.el('map-journey-toggle').emit('click');
     await handle.emit('pointerdown', { pointerType: 'mouse', pointerId: 10, isPrimary: true, button: 0, clientX: 150, clientY: 100 });
     await app.document.emit('pointermove', { pointerId: 10, clientX: 9999, clientY: 9999 });
     await app.document.emit('pointerup', { pointerId: 10 });

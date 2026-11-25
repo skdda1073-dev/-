@@ -640,7 +640,7 @@ class RegionalBusJourneyProvider:
 
 class NationalJourneyService:
     def __init__(self, repository, walking_time, local_transit=None, intercity=None, bus_repository=None, now=None,
-                 *, motis=None, regional_bus=None, rail_bus_transfers=None, walking_fallback=None):
+                 *, motis=None, ktdb_reference=None, regional_bus=None, rail_bus_transfers=None, walking_fallback=None):
         self.repository = repository
         self.primary_walking_time = walking_time
         self.walking_fallback = walking_fallback
@@ -649,6 +649,7 @@ class NationalJourneyService:
         self.bus_repository = bus_repository
         self.now = now or (lambda: datetime.now(KST))
         self.motis = motis
+        self.ktdb_reference = ktdb_reference
         self.rail_bus_transfers = rail_bus_transfers
         self.regional_bus = regional_bus if regional_bus is not None else RegionalBusJourneyProvider(
             bus_repository, self.walking_time, local_transit, self.now,
@@ -873,18 +874,33 @@ class NationalJourneyService:
             if signature not in seen:
                 seen.add(signature)
                 distinct.append(journey)
-        options = distinct
+        options = distinct[:5]
+        has_timed_transit = any(
+            journey["complete"] and any(leg["mode"] not in ("walk", "wait", "connection")
+                                        for leg in journey["segments"])
+            for journey in options
+        )
+        if self.ktdb_reference is not None and not has_timed_transit:
+            try:
+                references = self.ktdb_reference.plan_reference(origin, destination, query_at)
+            except MotisProviderError:
+                references = []
+            for reference in references:
+                journey = _finalize(reference, query_at, origin=origin, destination=destination)
+                if journey is not None and _journey_signature(journey) not in seen:
+                    options = [*options[:4], journey]
+                    break
         if source_unavailable:
             warnings.append("연결된 교통 데이터 일부를 불러오지 못했습니다.")
         if not options or not options[0]["complete"]:
             warnings.append("이 출발 시각에 끝까지 이어지는 경로의 모든 시간표와 환승 시간을 확인하지 못했습니다.")
-        if options and _distance_km(origin, destination) > 8:
+        if distinct and _distance_km(origin, destination) > 8:
             warnings.append("확인 가능한 운행표 기준입니다. 배차 변경, 운임, 잔여 좌석은 운송사에서 확인할 수 있습니다.")
         status = ("ok" if options[0]["complete"] else "partial") if options else (
             "unavailable" if source_unavailable else "partial" if self.intercity is not None and len(warnings) > 1 else "empty"
         )
         return {"mode": "national_journeys", "status": status, "origin": origin, "destination": destination,
-                "departure_at": query_at.isoformat(), "journeys": options[:5], "warnings": warnings}
+                "departure_at": query_at.isoformat(), "journeys": options, "warnings": warnings}
 
 
 def _uses_shuttle(journey):

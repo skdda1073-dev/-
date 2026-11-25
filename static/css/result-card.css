@@ -149,6 +149,14 @@
 .station-meta { margin: 5px 0 0; color: var(--muted, #6a7a73); font-size: 10px; line-height: 1.5; }
 .station-walk { display: inline-flex; align-items: center; justify-content: center; flex: 0 0 auto; gap: 4px; margin-top: 1px; padding: 6px 8px; color: var(--green-dark, #187526); background: var(--green-soft, #e8f7e9); border-radius: 8px; font-size: 10px; font-weight: 700; }
 .station-walk > .icon { width: 14px; height: 14px; }
+.station-marker--interactive { padding: 0; pointer-events: auto; }
+.station-marker--interactive:focus-visible, .station-marker--interactive[aria-expanded="true"] { outline: 2px solid var(--green-dark, #187526); outline-offset: 2px; }
+.map-stop-info.result-card { position: absolute; top: 12px; left: 12px; z-index: 4; width: min(300px, calc(100% - 24px)); max-height: calc(100% - 24px); margin: 0; padding: 13px; overflow: auto; overscroll-behavior: contain; overflow-wrap: anywhere; }
+.map-stop-info .station-header { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: start; gap: 3px 8px; }
+.map-stop-info .station-header > button { grid-area: 1 / 2 / span 2; }
+.map-stop-info .station-walk { justify-self: start; }
+.map-stop-info .station-direction, .map-stop-info .bus-row { margin-block: 8px; }
+.map-stop-info .bus-row { padding-block: 8px; }
 .station-direction { display: flex; align-items: flex-start; gap: 4px; margin: 10px 0 13px; color: var(--muted, #6a7a73); font-size: 10px; line-height: 1.65; }
 .station-direction > .icon { flex: 0 0 13px; width: 13px; height: 13px; margin-top: 2px; }
 .bus-list { border-top: 1px solid var(--line, #e2eae4); }
@@ -181,6 +189,10 @@
 .loading-spinner { flex: 0 0 21px; width: 21px; height: 21px; border: 2px solid #d5ebd9; border-top-color: var(--green-dark, #187526); border-radius: 50%; animation: route-loading-spin .85s linear infinite; }
 
 @keyframes route-loading-spin { to { transform: rotate(360deg); } }
+
+@media (max-width: 799px) {
+    .map-stop-info.result-card { left: 60px; width: min(300px, calc(100% - 72px)); max-height: calc(100% - 76px); }
+}
 
 @media (max-width: 420px) {
     .result-card { padding: 17px; border-radius: 18px; }

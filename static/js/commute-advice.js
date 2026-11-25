@@ -9,7 +9,7 @@
     const ALERT_IDS = new Set(['rain', 'snow', 'cold_wind', 'cold', 'wind', 'dust']);
     let initialized = false, sequence = 0, controller = null, timer = null;
     let lastAttemptAt = 0, renderedCampus = null, activeCampus = null, inFlight = false, hasRendered = false;
-    let toggle, panel, details, close, refresh, body;
+    let toggle, panel, details, close, refresh, body, compact;
 
     function element(id) { return document.getElementById(id); }
     function text(value, fallback, limit) {
@@ -34,7 +34,13 @@
         }).format(date);
     }
     function showDetails(value, moveFocus = false) {
-        const focusedInside = details.contains(document.activeElement) || document.activeElement === close;
+        const focusedInside = panel.contains(document.activeElement);
+        if (compact && value) {
+            window.AppModules.mapJourney?.closePanel?.();
+            window.AppModules.renderer?.closeStationInfo?.();
+            window.AppModules.shell?.fitMapPanel?.();
+        }
+        if (compact) panel.hidden = !value;
         details.hidden = !value;
         close.hidden = !value;
         panel.dataset.detailsOpen = String(value);
@@ -267,6 +273,7 @@
         body = element('commute-advice-body');
         if (!toggle || !panel || !details || !close || !refresh || !body) return;
         initialized = true;
+        compact = toggle.getAttribute('aria-controls') === 'commute-advice-panel';
         const desktop = window.matchMedia('(min-width: 1280px)');
         toggle.addEventListener('click', function() {
             const opening = details.hidden;
@@ -276,11 +283,11 @@
         close.addEventListener('click', function() { showDetails(false, true); });
         refresh.addEventListener('click', function() { load(true); });
         document.addEventListener('keydown', function(event) {
-            if (event.key === 'Escape' && !details.hidden && (panel.contains(document.activeElement) || toggle.contains(document.activeElement))) {
+            if (event.key === 'Escape' && !event.defaultPrevented && !details.hidden && (panel.contains(document.activeElement) || toggle.contains(document.activeElement))) {
                 event.preventDefault(); showDetails(false, true);
             }
         });
-        desktop.addEventListener('change', function(event) { showDetails(event.matches); });
+        if (!compact) desktop.addEventListener('change', function(event) { showDetails(event.matches); });
         window.addEventListener('commute:campus-change', function() {
             ++sequence;
             if (controller) controller.abort();
@@ -304,9 +311,10 @@
                 else schedule();
             }
         });
-        showDetails(desktop.matches);
+        showDetails(!compact && desktop.matches);
         load();
     }
     window.AppModules = window.AppModules || {};
-    window.AppModules.commuteAdvice = { init: init, refresh: function() { return load(true); } };
+    window.AppModules.commuteAdvice = { init: init, refresh: function() { return load(true); },
+        closePanel: function() { if (compact && !panel.hidden) showDetails(false); } };
 })();

@@ -15,26 +15,29 @@ from services.ride_room_service import RoomError
 from services.taxi_service import TaxiError
 
 
+def _is_loopback(value):
+    try:
+        return ipaddress.ip_address(value or "").is_loopback
+    except ValueError:
+        return False
+
+
+def is_loopback_http_request():
+    host = urlsplit(request.host_url).hostname
+    return (request.scheme == "http" and _is_loopback(request.remote_addr)
+            and (host == "localhost" or _is_loopback(host)))
+
+
 def create_ride_room_blueprint(service, configured=True):
     blueprint = Blueprint("ride_rooms", __name__, url_prefix="/api/ride-rooms")
 
     def fail(code, message, status):
         return jsonify(code=code, error=message), status
 
-    def loopback(value):
-        try:
-            return ipaddress.ip_address(value or "").is_loopback
-        except ValueError:
-            return False
-
-    def local_http():
-        host = urlsplit(request.host_url).hostname
-        return (host == "localhost" or loopback(host)) and loopback(request.remote_addr)
-
     def public_https():
         # The local cloudflared connector preserves Host and sets X-Forwarded-Proto.
         # Forwarded host and requests from external proxy addresses are never trusted.
-        return request.is_secure or (loopback(request.remote_addr)
+        return request.is_secure or (_is_loopback(request.remote_addr)
                                      and request.host.lower() == "tonghak.com"
                                      and request.headers.get("X-Forwarded-Proto") == "https")
 
@@ -63,7 +66,7 @@ def create_ride_room_blueprint(service, configured=True):
     def protect_requests():
         if not configured or not current_app.secret_key:
             return fail("CHAT_NOT_CONFIGURED", "모집·채팅 설정을 준비 중입니다. 택시와 버스 검색은 이용할 수 있어요.", 503)
-        if not current_app.config.get("SESSION_COOKIE_SECURE", True) and not public_https() and not local_http():
+        if not public_https() and not is_loopback_http_request():
             return fail("CHAT_HTTPS_REQUIRED", "모집·채팅은 HTTPS 연결이 필요합니다.", 403)
         if request.method in {"POST", "PUT", "PATCH", "DELETE"}:
             if not request.is_json:
@@ -79,6 +82,13 @@ def create_ride_room_blueprint(service, configured=True):
             if not same_origin(source) or fetch_site not in {"", "same-origin", "none"}:
                 return fail("ORIGIN_INVALID", "같은 웹사이트에서 다시 요청해 주세요.", 403)
             actor_hash()
+        try:
+            service.purge_expired_rooms()
+        except RoomError as error:
+            if error.code != "ROOM_DB_UNAVAILABLE":
+                raise
+            # Retry on a later request without interrupting an available read.
+            current_app.logger.debug("Ride room expiry cleanup will retry on the next request")
 
     @blueprint.after_request
     def private_response(response):
@@ -127,6 +137,11 @@ def create_ride_room_blueprint(service, configured=True):
     @blueprint.get("/<room_id>")
     def room_details(room_id):
         return jsonify(service.get_room(actor_hash(prepare=True), room_id))
+
+    @blueprint.delete("/<room_id>")
+    def delete_room(room_id):
+        body()
+        return jsonify(service.delete_room(actor_hash(), room_id))
 
     @blueprint.post("/<room_id>/join")
     def join_room(room_id):

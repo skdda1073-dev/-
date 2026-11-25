@@ -180,6 +180,21 @@ class NationalLine8IntegrationTests(unittest.TestCase):
         return [(leg["route_name"], leg["from_place"]["name"], leg["to_place"]["name"])
                 for leg in journey["segments"] if leg["mode"] in {"subway", "train"}]
 
+    def test_hallym_to_exact_maseok_station_does_not_require_a_destination_walk(self):
+        origin = {"name": "한림대학교 공학관", "lat": 37.88695, "lon": 127.73585}
+        destination, = self.repository.matching_stations("마석역")
+        requested = "2026-11-25T22:34:30+09:00"
+
+        def access_only(_lat1, _lon1, start, _lat2, _lon2, end):
+            return (1879 / 60, 2300) if (start, end) == (origin["name"], "춘천역") else (-1, -1)
+
+        poi = {**destination, "lat": destination["lat"] + 0.0006}
+        self.assertFalse(self.repository.plan(origin, poi, requested, access_only))
+        first, *_ = self.repository.plan(origin, destination, requested, access_only)
+        self.assertEqual(self.rides(first), [("경춘선", "춘천역", "마석역")])
+        self.assertEqual(first["arrival_at"], "2026-11-26T00:20:30+09:00")
+        self.assertEqual(first["segments"][0]["duration_min"], 32)
+
     def test_dated_itx_uses_verified_gateway_and_preserves_midnight_arrival(self):
         service_date = date(2026, 11, 26)
 

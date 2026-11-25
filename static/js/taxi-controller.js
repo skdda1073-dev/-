@@ -208,7 +208,7 @@
         const find = byId('taxi-find-room');
         if (find) find.addEventListener('click', function() {
             if (context && context.isCurrent() && window.AppModules.rideRooms) {
-                window.AppModules.rideRooms.openList(context.payload.dest_name);
+                window.AppModules.rideRooms.openList();
             }
         });
         const create = byId('taxi-create-room');

@@ -1,11 +1,13 @@
 """TMAP은 모두 가짜 응답을 사용하며 실제 키·외부 호출이 필요 없다."""
 
 import unittest
+from pathlib import Path
 from unittest.mock import Mock
 
 import requests
 
 from services.place_search_service import PlaceSearchError, PlaceSearchService
+from services.national_transit_repository import NationalTransitRepository
 
 
 BUILDINGS = {
@@ -85,6 +87,25 @@ class PlaceSearchServiceTests(unittest.TestCase):
         self.assertEqual(len(rows), 2)
         self.assertEqual(rows[0]["search_warning"]["code"], "TMAP_KEY_MISSING")
         requester.assert_not_called()
+
+    def test_maseok_exact_station_uses_catalog_when_tmap_is_unavailable(self):
+        data_dir = Path(__file__).resolve().parents[1] / "data"
+        stations = NationalTransitRepository(data_dir)
+        requester = Mock(return_value=response([poi("마석역 광장", middleAddrName="남양주시")]))
+        service = PlaceSearchService("test-key", BUILDINGS, requester, station_lookup=stations.matching_stations)
+
+        canonical, remote = service.search("마석역", "hallym", scope="national")
+        self.assertEqual((canonical["name"], canonical["source"], canonical["lat"], canonical["lon"]),
+                         ("마석역", "rail_station", 37.652328, 127.311713))
+        self.assertEqual(remote["name"], "마석역 광장")
+
+        requester.return_value = response(status=429)
+        fallback, = service.search("마석역", "hallym", scope="national")
+        warning = fallback.pop("search_warning")
+        self.assertEqual(fallback, canonical)
+        self.assertEqual(warning["code"], "TMAP_QUOTA")
+        with self.assertRaises(PlaceSearchError):
+            service.search("마석역", "hallym", scope="local")
 
     def test_external_failure_preserves_local_results_without_catching_input_errors(self):
         service, requester = self.service()
